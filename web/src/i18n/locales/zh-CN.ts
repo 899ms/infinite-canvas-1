@@ -312,6 +312,7 @@ export default {
         canvas: "我的画布",
         image: "生图工作台",
         video: "视频创作台",
+        frameflow: "审美训练",
         prompts: "提示词库",
         assets: "我的资产",
         config: "配置",

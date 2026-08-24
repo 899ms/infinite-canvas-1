@@ -1,0 +1,3 @@
+# Cancel generation before registering assets
+
+FrameFlow persists `run.cancelled` before aborting the provider and treats that event as the registration boundary: once cancellation is committed, no later provider result may become an Image Asset. Generated files that arrive late, fail validation, lose their journal transaction, or are found without event lineage after restart are retained under `quarantine/files` with a separate append-only `quarantine/records.jsonl` recovery record. The quarantine journal intentionally sits outside the domain event journal because it must still record files created when the domain journal append itself fails.

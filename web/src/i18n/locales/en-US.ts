@@ -312,6 +312,7 @@ export default {
         canvas: "My Canvases",
         image: "Image Studio",
         video: "Video Studio",
+        frameflow: "Aesthetic Training",
         prompts: "Prompt Library",
         assets: "My Assets",
         config: "Settings",

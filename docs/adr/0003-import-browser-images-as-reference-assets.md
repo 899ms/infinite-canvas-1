@@ -1,0 +1,5 @@
+# Import browser images as FrameFlow Reference Assets
+
+FrameFlow treats a browser-library image as an external source, not as an Image Asset or Preference Evidence. Before a Creative Brief may reference it, the Web client converts the raster image to PNG and uploads its bytes to Canvas Agent with a source identity and asset-version idempotency key. Canvas Agent validates the PNG and 20MB limit, writes an atomic managed copy under `assets/references`, records its SHA-256 in an immutable `reference.imported` event, and exposes content only by registered Reference Asset ID. ImageGen receives the verified managed path rather than an IndexedDB, blob, data, or arbitrary local URL.
+
+This adds a copy and may use more disk space, but keeps browser storage outside the trust boundary, makes Brief and Prompt lineage replayable after browser or Agent restarts, prevents unregistered paths from reaching ImageGen, and allows orphan or journal-failed copies to enter the same recovery quarantine discipline as generated assets.

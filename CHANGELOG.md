@@ -3,6 +3,7 @@
 ## Unreleased
 
 + [新增] 提示词来源新增 Freestylefly GPT Image 2 内置来源。
++ [修复] FrameFlow 需求归档改为按 Creative Requirement 统一隔离：归档后的自动跑、演化轨迹和图片退出活动列表与待审计数，历史血缘保持只读并可恢复；Agent 同步拒绝归档历史继续反馈、改任务、重试、翻译或重新分析。
 
 ## v0.15.1 - 2026-08-07
 
