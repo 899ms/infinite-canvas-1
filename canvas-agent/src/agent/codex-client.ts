@@ -55,6 +55,7 @@ export class CodexAppClient {
     private skillReloads = new Map<string, Promise<CodexRequestResult<"skills/list">>>();
     private silentThreadIds = new Set<string>();
     private structuredOutputByTurn = new Map<string, string>();
+    private generatedImagesByTurn = new Map<string, string[]>();
     private pendingSilentThreadStarts = new Set<symbol>();
     private pendingThreadStartedNotifications: JsonRecord[] = [];
     private pendingPreheatThreadStarts = 0;
@@ -121,7 +122,17 @@ export class CodexAppClient {
 
     /** 创建不会持久化或向网页广播的草稿线程。 */
     async startSkillDraftThread(cwd: string) {
-        return await this.startSilentThread("thread/start", { ...skillDraftThreadSettings(cwd), threadSource: "user" });
+        return await this.startStructuredOutputThread(cwd, SKILL_DRAFT_INSTRUCTIONS);
+    }
+
+    /** 创建只返回结构化结果、不持久化或向网页广播的临时线程。 */
+    async startStructuredOutputThread(cwd: string, developerInstructions: string) {
+        return await this.startSilentThread("thread/start", { ...structuredOutputThreadSettings(cwd, developerInstructions), threadSource: "user" });
+    }
+
+    /** 创建允许原生 ImageGen 写入结果图片、但不广播或持久化事件的临时线程。 */
+    async startImageGenerationThread(cwd: string, developerInstructions: string) {
+        return await this.startSilentThread("thread/start", { ...imageGenerationThreadSettings(cwd, developerInstructions), threadSource: "user" });
     }
 
     /** 从指定对话派生不会持久化或向网页广播的草稿线程。 */
@@ -173,6 +184,7 @@ export class CodexAppClient {
             this.silentThreadIds.delete(threadId);
             const prefix = `${threadId}\0`;
             [...this.structuredOutputByTurn.keys()].filter((key) => key.startsWith(prefix)).forEach((key) => this.structuredOutputByTurn.delete(key));
+            [...this.generatedImagesByTurn.keys()].filter((key) => key.startsWith(prefix)).forEach((key) => this.generatedImagesByTurn.delete(key));
         }
     }
 
@@ -214,7 +226,7 @@ export class CodexAppClient {
     }
 
     /** 启动一个 Codex turn 并等待完成通知。 */
-    async startTurn(threadId: string, prompt: string, images: string[], permissionMode: AgentPermissionMode, model?: string, effort?: CodexReasoningEffort, onTurn?: (turnId: string) => void, skill?: CodexSkillSelector, messageText?: string, outputSchema?: JsonRecord) {
+    async startTurn(threadId: string, prompt: string, images: string[], permissionMode: AgentPermissionMode, model?: string, effort?: CodexReasoningEffort, onTurn?: (turnId: string) => void, skill?: CodexSkillSelector, messageText?: string, outputSchema?: JsonRecord, silent = Boolean(outputSchema)) {
         this.preheatingThreadIds.delete(threadId);
         this.currentThreadId = threadId;
         this.currentTurnId = "";
@@ -222,7 +234,7 @@ export class CodexAppClient {
         const pendingStart: PendingTurnStart = { threadId, prompt, messageText, onTurn };
         this.pendingTurnStart = pendingStart;
         try {
-            const { turn } = await this.request("turn/start", { threadId, input: codexInput(prompt, images, skill), ...(outputSchema ? skillDraftTurnSettings() : turnSettings(permissionMode)), ...(model ? { model } : {}), ...(effort ? { effort } : {}), ...(outputSchema ? { outputSchema } : {}) }, Boolean(outputSchema));
+            const { turn } = await this.request("turn/start", { threadId, input: codexInput(prompt, images, skill), ...(outputSchema ? skillDraftTurnSettings() : turnSettings(permissionMode)), ...(model ? { model } : {}), ...(effort ? { effort } : {}), ...(outputSchema ? { outputSchema } : {}) }, silent);
             const turnId = turn.id;
             if (!turnId) throw new Error("Codex app-server 没有返回 turn id");
             pendingStart.turnId = turnId;
@@ -251,11 +263,26 @@ export class CodexAppClient {
 
     /** 在静默线程中生成结构化输出。 */
     async generateSkillDraft(threadId: string, prompt: string, outputSchema: JsonRecord, model?: string, effort?: CodexReasoningEffort) {
+        return await this.generateStructuredOutput(threadId, prompt, [], outputSchema, model, effort, "Codex 没有返回 Skill 草稿");
+    }
+
+    /** 在静默线程中根据文本与本地图片生成结构化输出。 */
+    async generateStructuredOutput(threadId: string, prompt: string, images: string[], outputSchema: JsonRecord, model?: string, effort?: CodexReasoningEffort, emptyMessage = "Codex 没有返回结构化结果") {
         this.silentThreadIds.add(threadId);
-        const result = await this.startTurn(threadId, prompt, [], "request", model, effort, undefined, undefined, undefined, outputSchema);
+        const result = await this.startTurn(threadId, prompt, images, "request", model, effort, undefined, undefined, undefined, outputSchema);
         const output = String(field(result, "output") || "").trim();
-        if (!output) throw new Error("Codex 没有返回 Skill 草稿");
+        if (!output) throw new Error(emptyMessage);
         return output;
+    }
+
+    /** 在静默线程中调用 Codex 原生 ImageGen，并返回其落盘图片路径。 */
+    async generateImages(threadId: string, prompt: string, images: string[], model?: string, effort?: CodexReasoningEffort, emptyMessage = "Codex ImageGen 没有返回图片") {
+        this.silentThreadIds.add(threadId);
+        const result = await this.startTurn(threadId, prompt, images, "request", model, effort, undefined, undefined, undefined, undefined, true);
+        const paths = field(result, "images");
+        const generated = Array.isArray(paths) ? paths.map(String).filter(Boolean) : [];
+        if (!generated.length) throw new Error(emptyMessage);
+        return generated;
     }
 
     /** 中断当前正在运行且属于指定线程的 Codex turn。 */
@@ -528,6 +555,12 @@ export class CodexAppClient {
                 const text = String(item.text || this.textByItem.get(key) || "").trim();
                 if (text) this.structuredOutputByTurn.set(turnCacheKey(threadId, turnId), text);
             }
+            if (item.type === "image_generation" && turnId) {
+                const turnKey = turnCacheKey(threadId, turnId);
+                const current = this.generatedImagesByTurn.get(turnKey) || [];
+                const next = generatedImagePaths(item);
+                this.generatedImagesByTurn.set(turnKey, [...new Set([...current, ...next])]);
+            }
             if (itemId) this.textByItem.delete(key);
             return true;
         }
@@ -536,11 +569,13 @@ export class CodexAppClient {
         const completedTurnId = String(field(turn, "id") || turnId);
         const turnKey = turnCacheKey(threadId, completedTurnId);
         const output = this.structuredOutputByTurn.get(turnKey) || "";
+        const images = this.generatedImagesByTurn.get(turnKey) || [];
         this.structuredOutputByTurn.delete(turnKey);
+        this.generatedImagesByTurn.delete(turnKey);
         this.finishTurnDeltas(threadId, completedTurnId);
         const failure = turn.error ? new CodexReportedError(turn.error.message || "Codex turn failed") : null;
         const pending = this.activeTurns.get(turnKey);
-        const result = { output };
+        const result = { output, images };
         if (pending) {
             this.activeTurns.delete(turnKey);
             failure ? pending.reject(failure) : pending.resolve(result);
@@ -726,6 +761,7 @@ export class CodexAppClient {
         this.pendingSilentThreadStarts.clear();
         this.pendingThreadStartedNotifications.length = 0;
         this.structuredOutputByTurn.clear();
+        this.generatedImagesByTurn.clear();
         this.pendingTurnStart = undefined;
         this.startedTurnKeys.clear();
         this.lastUsage = null;
@@ -770,6 +806,18 @@ function turnCacheKey(threadId: string, turnId: string) {
     return `${threadId}\0${turnId}`;
 }
 
+/** 从 ImageGen 事件中提取 Windows 或 POSIX 绝对图片路径。 */
+function generatedImagePaths(value: unknown, result = new Set<string>()) {
+    if (typeof value === "string") {
+        const candidate = value.trim();
+        if ((path.isAbsolute(candidate) || /^[A-Za-z]:[\\/]/.test(candidate)) && /\.(?:avif|gif|jpe?g|png|webp)$/i.test(candidate)) result.add(candidate);
+        return [...result];
+    }
+    if (Array.isArray(value)) value.forEach((item) => generatedImagePaths(item, result));
+    else if (value && typeof value === "object") Object.values(value).forEach((item) => generatedImagePaths(item, result));
+    return [...result];
+}
+
 /** 生成 Codex 调用 Canvas Agent MCP 的启动命令。 */
 function canvasAgentMcpCommand() {
     const current = process.argv.find((arg) => /index\.(t|j)s$/.test(arg)) || "";
@@ -787,15 +835,30 @@ function threadSettings(permissionMode: AgentPermissionMode) {
     return { approvalPolicy: permissionMode === "full" ? "never" as const : "on-request" as const, sandbox: permissionMode === "full" ? "danger-full-access" as const : "workspace-write" as const, config: codexConfig(permissionMode) };
 }
 
-function skillDraftThreadSettings(cwd: string) {
+function structuredOutputThreadSettings(cwd: string, developerInstructions: string) {
     return {
         approvalPolicy: "never" as const,
         sandbox: "read-only" as const,
         config: { model_reasoning_summary: "auto", mcp_servers: {} },
         cwd,
-        developerInstructions: SKILL_DRAFT_INSTRUCTIONS,
+        developerInstructions,
         ephemeral: true,
     };
+}
+
+function imageGenerationThreadSettings(cwd: string, developerInstructions: string) {
+    return {
+        approvalPolicy: "never" as const,
+        sandbox: "workspace-write" as const,
+        config: { model_reasoning_summary: "auto", mcp_servers: {} },
+        cwd,
+        developerInstructions,
+        ephemeral: true,
+    };
+}
+
+function skillDraftThreadSettings(cwd: string) {
+    return structuredOutputThreadSettings(cwd, SKILL_DRAFT_INSTRUCTIONS);
 }
 
 function turnSettings(permissionMode: AgentPermissionMode) {

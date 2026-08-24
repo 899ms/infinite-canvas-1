@@ -4,15 +4,17 @@ import path from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 
 import { runClaudeTurn } from "../agent/claude.js";
-import { archiveCodexThread, CodexSkillLookupError, configureCodexSkill, generateCodexSkillDraft, interruptCodexTurn, isRecoverableThreadError, listCodexModels, listCodexSkills, listCodexThreads, readCodexThread, resolveCodexApproval, resolveCodexSkill, resumeCodexThread, runCodexTurn, startCodexThread, summarizeCodexThread } from "../agent/codex.js";
+import { archiveCodexThread, CodexSkillLookupError, configureCodexSkill, generateCanvasImages, generateCodexSkillDraft, generateFrameFlowImages, generateFrameFlowPrompt, generateFrameFlowPromptTranslation, generateInteriorImages, generateInteriorPrompt, interruptCodexTurn, isRecoverableThreadError, listCodexModels, listCodexSkills, listCodexThreads, readCodexThread, resolveCodexApproval, resolveCodexSkill, resumeCodexThread, reviewFrameFlowImages, runCodexTurn, startCodexThread, summarizeCodexThread, summarizeFrameFlowTrajectory, type InteriorImageStage, type InteriorPromptStage } from "../agent/codex.js";
 import type { CodexReasoningEffort, CodexSkillSelector } from "../agent/codex-protocol.js";
 import { messageMetadataStore } from "../agent/message-metadata.js";
 import type { AgentAttachment, AgentPermissionMode } from "../agent/types.js";
 import { AGENT_PROTOCOL_VERSION, CanvasSession } from "../canvas/session.js";
 import { DEFAULT_PORT, ensureSiteWorkspace, loadConfig, saveConfig, updateSiteWorkspace, type CanvasAgentConfig } from "../config.js";
+import { FrameFlowCore } from "../frameflow/core.js";
 import { logger } from "../utils/logger.js";
 import { checkVersions } from "../version-check.js";
 import { SkillStore, SkillStoreError } from "../skills/store.js";
+import { createFrameFlowRouter } from "./frameflow-http.js";
 
 /** 启动仅监听本机的 Canvas Agent HTTP 服务。 */
 export function startHttpServer() {
@@ -48,6 +50,16 @@ export function startHttpServer() {
         session.trackCodexEvent(type, data);
         threadId ? session.emitThread(type, threadId, data) : session.emitAll(type, data);
     };
+    const frameFlowCore = new FrameFlowCore(initialWorkspace.workspacePath, {
+        planner: {
+            plan: (input) => generateFrameFlowPrompt(emit, initialWorkspace.workspacePath, input),
+            translate: (input) => generateFrameFlowPromptTranslation(emit, initialWorkspace.workspacePath, input),
+        },
+        imageGenerator: { generate: (input) => generateFrameFlowImages(emit, initialWorkspace.workspacePath, input) },
+        imageReviewer: { review: (input) => reviewFrameFlowImages(emit, initialWorkspace.workspacePath, input) },
+        trajectorySummarizer: { summarize: (input) => summarizeFrameFlowTrajectory(emit, initialWorkspace.workspacePath, input) },
+    });
+    const frameFlowChanged = (payload: unknown) => session.emitAll("frameflow_changed", payload);
     /** 保存并广播当前站点工作空间的活跃线程。 */
     const setActiveThread = (activeThreadId: string, payload: Record<string, unknown> = {}, preserveConversation = false) => {
         const workspace = updateSiteWorkspace(config, { activeThreadId: activeThreadId || undefined });
@@ -126,6 +138,7 @@ export function startHttpServer() {
         if (validToken(req, requestUrl(req, config), config.token)) return next();
         res.status(401).json({ ok: false, error: "invalid token" });
     });
+    app.use("/agent/frameflow", createFrameFlowRouter(frameFlowCore, frameFlowChanged));
     app.get("/events", (req, res) => {
         session.openEvents(requestUrl(req, config), res, ensureSiteWorkspace(config).activeThreadId || "");
     });
@@ -212,6 +225,58 @@ export function startHttpServer() {
             skillDraftRunning = false;
             session.setCodexState(previousCodexState, { preserveReplay: true });
         }
+    }));
+    app.post("/agent/codex/interior-prompt", route(async (req, res) => {
+        const stage = String(req.body?.stage || "") as InteriorPromptStage;
+        if (!["white-model", "design", "walkthrough"].includes(stage)) return res.status(400).json({ ok: false, error: "室内设计提示词阶段无效" });
+        const workspace = ensureSiteWorkspace(config);
+        const attachments = Array.isArray(req.body?.attachments) ? (req.body.attachments as AgentAttachment[]).slice(0, 1) : [];
+        const data = await generateInteriorPrompt(emit, workspace.workspacePath, {
+            stage,
+            roomType: String(req.body?.roomType || "未指定空间").slice(0, 100),
+            style: String(req.body?.style || "").slice(0, 200),
+            requirements: String(req.body?.requirements || "").slice(0, 4000),
+            model: String(req.body?.model || "") || undefined,
+            effort: reasoningEffort(req.body?.effort),
+            attachments,
+        });
+        res.json({ ok: true, data });
+    }));
+    app.post("/agent/codex/interior-images", route(async (req, res) => {
+        const stage = String(req.body?.stage || "") as InteriorImageStage;
+        if (!["white-model", "design"].includes(stage)) return res.status(400).json({ ok: false, error: "室内生图阶段无效" });
+        const prompt = String(req.body?.prompt || "").trim().slice(0, 12_000);
+        if (!prompt) return res.status(400).json({ ok: false, error: "室内生图提示词不能为空" });
+        const attachments = Array.isArray(req.body?.attachments) ? (req.body.attachments as AgentAttachment[]).slice(0, 1) : [];
+        if (!attachments.length) return res.status(400).json({ ok: false, error: "室内生图需要一张空间参考图" });
+        const workspace = ensureSiteWorkspace(config);
+        const images = await generateInteriorImages(emit, workspace.workspacePath, {
+            stage,
+            roomType: String(req.body?.roomType || "未指定空间").slice(0, 100),
+            style: String(req.body?.style || "").slice(0, 200),
+            requirements: String(req.body?.requirements || "").slice(0, 4000),
+            prompt,
+            count: Math.max(1, Math.min(3, Number(req.body?.count) || 3)),
+            model: String(req.body?.model || "") || undefined,
+            effort: reasoningEffort(req.body?.effort),
+            attachments,
+        });
+        res.json({ ok: true, data: { images } });
+    }));
+    app.post("/agent/codex/canvas-images", route(async (req, res) => {
+        const prompt = String(req.body?.prompt || "").trim().slice(0, 12_000);
+        if (!prompt) return res.status(400).json({ ok: false, error: "画布生图提示词不能为空" });
+        const attachments = Array.isArray(req.body?.attachments) ? (req.body.attachments as AgentAttachment[]).slice(0, 8) : [];
+        const workspace = ensureSiteWorkspace(config);
+        const images = await generateCanvasImages(emit, workspace.workspacePath, {
+            prompt,
+            count: Math.max(1, Math.min(8, Number(req.body?.count) || 1)),
+            aspectRatio: String(req.body?.aspectRatio || "").slice(0, 40) || undefined,
+            model: String(req.body?.model || "") || undefined,
+            effort: reasoningEffort(req.body?.effort),
+            attachments,
+        });
+        res.json({ ok: true, data: { images } });
     }));
     app.get("/agent/codex/skills/:name", route(async (req, res) => {
         res.json({ ok: true, data: await skillStore.get(routeParam(req.params.name)) });

@@ -4,25 +4,27 @@
 
 ## 启动
 
-```bash
-npx -y @basketikun/canvas-agent
-```
-
-需要排查连接、线程、Codex app-server 或工具调用问题时，可开启 Debug 模式：
-
-```bash
-npx -y @basketikun/canvas-agent --debug
-```
-
-Debug 日志会以 `[DEBUG][HH:mm:ss]` 等传统格式输出到终端，并按启动日期保存到 `~/.infinite-canvas/logs/canvas-agent-YYYY-MM-DD.log`。终端日志带级别颜色，文件日志为纯文本；日志包含 HTTP、SSE、线程、turn、Codex app-server 和工具调用事件，token 与图片 Data URL 会自动隐藏。
-
-本仓库开发时也可以直接运行：
+当前仓库的室内设计提示词接口尚未包含在 npm 上的 `0.6.0` 版本中。使用本仓库前端时，请优先从当前源码启动：
 
 ```bash
 cd canvas-agent
 npm install
 npm run build
-node dist/index.js
+npm start
+```
+
+需要排查连接、线程、Codex app-server 或工具调用问题时，可开启 Debug 模式：
+
+```bash
+npm run debug
+```
+
+Debug 日志会以 `[DEBUG][HH:mm:ss]` 等传统格式输出到终端，并按启动日期保存到 `~/.infinite-canvas/logs/canvas-agent-YYYY-MM-DD.log`。终端日志带级别颜色，文件日志为纯文本；日志包含 HTTP、SSE、线程、turn、Codex app-server 和工具调用事件，token 与图片 Data URL 会自动隐藏。
+
+只需要 npm 已发布稳定版能力时，可以运行：
+
+```bash
+npx -y @basketikun/canvas-agent
 ```
 
 启动后会输出本机地址和 token：
@@ -40,9 +42,9 @@ Canvas Agent 默认只监听 `127.0.0.1`。网页第一次带正确 token 连接
 
 ## 发布
 
-`canvas-agent` 使用自己的 `package.json` 版本号，不跟仓库根目录 `VERSION` 绑定。推送到 `main` 后，GitHub Actions 会检查 npm 上是否已经存在当前包版本；不存在时才发布 `@basketikun/canvas-agent`。
+`canvas-agent` 使用自己的 `package.json` 版本号，不跟仓库根目录 `VERSION` 绑定。发布前必须提升该版本号，并确认 npm 包实际包含当前仓库新增接口。
 
-发布前需要在 GitHub 仓库 Secrets 中配置 `NPM_TOKEN`。
+发布需要仓库维护者拥有 `@basketikun/canvas-agent` 的 npm 权限；未发布前，文档和前端错误引导都必须指向本仓库源码启动方式。
 
 ## Codex MCP
 

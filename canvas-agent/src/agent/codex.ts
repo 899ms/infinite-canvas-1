@@ -4,6 +4,8 @@ import path from "node:path";
 import { z } from "zod";
 
 import type { CanvasSnapshot } from "../canvas/types.js";
+import { autoRunTrajectorySummaryDraftSchema, machineReviewResultSchema, promptPlanSchema, promptTranslationSchema } from "../frameflow/schemas.js";
+import type { AutoRunTrajectorySummaryDraft, AutoRunTrajectorySummaryInput, CreativeBrief, FrameFlowPreferenceContext, MachineReview, PromptDisplayLanguage, PromptPlan, PromptTranslation, PromptVersion } from "../frameflow/types.js";
 import { logger } from "../utils/logger.js";
 import { errorMessage, field, type JsonRecord } from "../utils/value.js";
 import { CodexAppClient, CodexReportedError } from "./codex-client.js";
@@ -15,6 +17,41 @@ import type { AgentAttachment, AgentEmit, AgentPermissionMode } from "./types.js
 
 type CodexRunOptions = { threadId?: string; cwd?: string; permissionMode?: AgentPermissionMode; model?: string; effort?: CodexReasoningEffort; skill?: CodexSkillSelector; messageText?: string; appEmit?: AgentEmit; onStart?: () => void; onThread?: (threadId: string) => void; onTurn?: (turnId: string) => void; onFinish?: () => void };
 type CodexSkillDraftInput = { model?: string; effort?: CodexReasoningEffort } & ({ source: "conversation"; threadId: string } | { source: "canvas"; snapshot: CanvasSnapshot });
+export type InteriorPromptStage = "white-model" | "design" | "walkthrough";
+export type InteriorPromptInput = {
+    stage: InteriorPromptStage;
+    roomType: string;
+    style?: string;
+    requirements?: string;
+    model?: string;
+    effort?: CodexReasoningEffort;
+    attachments?: AgentAttachment[];
+};
+export type InteriorImageStage = "white-model" | "design";
+export type InteriorImageInput = {
+    stage: InteriorImageStage;
+    roomType: string;
+    style?: string;
+    requirements?: string;
+    prompt: string;
+    count?: number;
+    model?: string;
+    effort?: CodexReasoningEffort;
+    attachments?: AgentAttachment[];
+};
+export type CanvasImageInput = {
+    prompt: string;
+    count?: number;
+    aspectRatio?: string;
+    model?: string;
+    effort?: CodexReasoningEffort;
+    attachments?: AgentAttachment[];
+};
+export type FrameFlowPromptInput = { brief: CreativeBrief; strategy: CreativeBrief["strategy"]; preference: FrameFlowPreferenceContext; machineReviews: MachineReview[]; model?: string; effort?: CodexReasoningEffort };
+export type FrameFlowPromptTranslationInput = { prompt: PromptVersion; language: PromptDisplayLanguage; model?: string; effort?: CodexReasoningEffort };
+export type FrameFlowImageInput = { prompt: PromptVersion; count: number; aspectRatio: string; cropPosition: "top" | "attention"; referenceFiles: string[]; signal: AbortSignal; model?: string; effort?: CodexReasoningEffort };
+export type FrameFlowImageReviewInput = { brief: CreativeBrief; prompt: PromptVersion; autoRunId: string; runId: string; iteration: number; images: Array<{ imageId: string; filePath: string }>; model?: string; effort?: CodexReasoningEffort };
+export type FrameFlowTrajectorySummaryInput = AutoRunTrajectorySummaryInput & { model?: string; effort?: CodexReasoningEffort };
 
 const skillNamePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const skillDraftSchema = z.object({
@@ -43,6 +80,159 @@ const SKILL_DRAFT_OUTPUT_SCHEMA: JsonRecord = {
 };
 
 export type AgentSkillDraft = z.infer<typeof skillDraftSchema>;
+const interiorPromptSchema = z.object({
+    title: z.string().trim().min(1).max(80),
+    prompt: z.string().trim().min(1).max(8000),
+    negativePrompt: z.string().trim().max(3000),
+    summary: z.string().trim().min(1).max(800),
+}).strict();
+const INTERIOR_PROMPT_OUTPUT_SCHEMA: JsonRecord = {
+    type: "object",
+    additionalProperties: false,
+    required: ["title", "prompt", "negativePrompt", "summary"],
+    properties: {
+        title: { type: "string", minLength: 1, maxLength: 80 },
+        prompt: { type: "string", minLength: 1, maxLength: 8000 },
+        negativePrompt: { type: "string", maxLength: 3000 },
+        summary: { type: "string", minLength: 1, maxLength: 800 },
+    },
+};
+const INTERIOR_PROMPT_INSTRUCTIONS = "你是专业室内建筑可视化与镜头设计提示词工程师。只分析用户提供的空间信息和参考图，生成可直接交给图像或视频模型的制作提示词。不得调用工具、执行命令、读取其他文件、访问网络或修改状态。严格按 outputSchema 返回结果；prompt 使用适合生成模型的英文，summary 使用简体中文。";
+const INTERIOR_IMAGE_INSTRUCTIONS = "你是专业室内建筑可视化执行 Agent。你的唯一任务是使用 Codex 原生 ImageGen 功能，根据用户提示词和唯一参考图生成图片。不得调用命令、访问网络、读取其他文件或使用其他工具；必须保留参考图的空间几何和视角。生成完成后不要解释。";
+const CANVAS_IMAGE_INSTRUCTIONS = "你是 Infinite Canvas 图像生成执行 Agent。唯一任务是调用 Codex 原生 ImageGen，根据用户提示词生成图片。提供参考图时必须遵守其主体、构图与编辑约束。不得执行命令、访问网络、读取未提供的文件或调用其他工具；生成完成后不要解释。";
+const FRAMEFLOW_PROMPT_INSTRUCTIONS = "你是 FrameFlow 的结构化图像提示词规划 Agent。根据请求中的 Creative Brief、Preference DNA 与本自动跑此前的 Machine Review 生成 Prompt Version，不得调用工具、执行命令、读取文件、访问网络或修改状态。Creative Brief 的硬约束优先；Machine Review 的 keep/vary/reject、strengths 与 issues 用于自动保留、变体或规避当前方向；Preference DNA 的 boost/avoid 只代表人工偏好。必须在 reason 中明确说明如何根据机器审图改进下一轮；decision.evidence 只逐条处置人工 Preference DNA：adopted 表示采纳，avoided 表示主动规避，ignored 表示因冲突或不适用于本 Brief 而忽略，不得把机器自评冒充人工证据。不得遗漏、重复或编造 imageId。所有 fields 和 compiledPrompt 使用适合图像生成模型的英文；translations.zh-CN 必须逐字段忠实翻译英文执行 Prompt，不增删约束；reason、decision.summary 与 decision.evidence.reason 使用简体中文。严格按 outputSchema 返回对象。";
+const FRAMEFLOW_TRANSLATION_INSTRUCTIONS = "你是 FrameFlow Prompt 翻译 Agent。把给定的英文执行 Prompt 忠实翻译为简体中文，仅用于人工阅读与审核。必须逐字段保持原意、顺序、数量、技术参数、否定约束和画幅信息，不得优化、增删或改写执行意图。不得调用工具、执行命令、读取文件、访问网络或修改状态。严格按 outputSchema 返回对象。";
+const FRAMEFLOW_IMAGE_INSTRUCTIONS = "你是 FrameFlow 图像生成执行 Agent。唯一任务是调用 Codex 原生 ImageGen，根据已批准 Prompt 生成 PNG 图片；目标画幅是硬约束，必须优先选择与请求比例一致的原生输出尺寸，禁止拉伸、边框或留黑。不得执行命令、访问网络、读取未提供的文件或调用其他工具。提供参考图时必须保留其明确约束，生成后不要输出说明。";
+const FRAMEFLOW_REVIEW_INSTRUCTIONS = "你是 FrameFlow 的机器审图 Agent。只审查请求中明确附带的本轮图片，不得调用工具、执行命令、读取其他文件、访问网络或修改状态。逐张对照 Creative Brief、批准 Prompt、画幅、构图、主体、风格一致性和技术缺陷评分，并给出可执行的下一轮改进意见。评分是机器判断，不能冒充用户偏好；不得请求删除文件。严格按 outputSchema 返回对象。";
+const FRAMEFLOW_TRAJECTORY_SUMMARY_INSTRUCTIONS = "你是 FrameFlow 的跨轮 Machine Review 分析 Agent。只根据请求中给出的 Creative Brief、各轮 Prompt Diff 与 Machine Review 做语义归纳，不得调用工具、执行命令、读取文件、访问网络或修改状态。识别哪些问题在后续轮次中明显改善、哪些问题重复出现或在最新轮仍未解决，并从已有轮次中推荐当前最佳轮次。机器判断不能冒充用户偏好，也不能写入 Preference DNA。不要按字符串是否相同做机械计数，要合并语义相同的问题并给出具体证据轮次。严格按 outputSchema 返回简体中文对象。";
+const frameFlowPromptValues: JsonRecord = { type: "array", maxItems: 100, items: { type: "string", minLength: 1, maxLength: 500 } };
+const frameFlowPromptFieldsOutput: JsonRecord = {
+    type: "object",
+    additionalProperties: false,
+    required: ["subject", "composition", "color", "lighting", "material", "layout", "mood", "rendering", "technical", "negative"],
+    properties: {
+        subject: frameFlowPromptValues,
+        composition: frameFlowPromptValues,
+        color: frameFlowPromptValues,
+        lighting: frameFlowPromptValues,
+        material: frameFlowPromptValues,
+        layout: frameFlowPromptValues,
+        mood: frameFlowPromptValues,
+        rendering: frameFlowPromptValues,
+        technical: frameFlowPromptValues,
+        negative: frameFlowPromptValues,
+    },
+};
+const FRAMEFLOW_TRANSLATION_OUTPUT_SCHEMA: JsonRecord = {
+    type: "object",
+    additionalProperties: false,
+    required: ["fields", "compiledPrompt"],
+    properties: {
+        fields: frameFlowPromptFieldsOutput,
+        compiledPrompt: { type: "string", minLength: 1, maxLength: 12000 },
+    },
+};
+const FRAMEFLOW_PROMPT_OUTPUT_SCHEMA: JsonRecord = {
+    type: "object",
+    additionalProperties: false,
+    required: ["fields", "compiledPrompt", "translations", "reason", "decision"],
+    properties: {
+        fields: frameFlowPromptFieldsOutput,
+        compiledPrompt: { type: "string", minLength: 1, maxLength: 12000 },
+        translations: {
+            type: "object",
+            additionalProperties: false,
+            required: ["zh-CN"],
+            properties: { "zh-CN": FRAMEFLOW_TRANSLATION_OUTPUT_SCHEMA },
+        },
+        reason: { type: "string", minLength: 1, maxLength: 2000 },
+        decision: {
+            type: "object",
+            additionalProperties: false,
+            required: ["summary", "evidence"],
+            properties: {
+                summary: { type: "string", minLength: 1, maxLength: 2000 },
+                evidence: {
+                    type: "array",
+                    maxItems: 200,
+                    items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["imageId", "disposition", "affectedFields", "reason"],
+                        properties: {
+                            imageId: { type: "string", minLength: 1, maxLength: 200 },
+                            disposition: { type: "string", enum: ["adopted", "avoided", "ignored"] },
+                            affectedFields: { type: "array", minItems: 1, maxItems: 10, items: { type: "string", enum: ["subject", "composition", "color", "lighting", "material", "layout", "mood", "rendering", "technical", "negative"] } },
+                            reason: { type: "string", minLength: 1, maxLength: 2000 },
+                        },
+                    },
+                },
+            },
+        },
+    },
+};
+const FRAMEFLOW_REVIEW_OUTPUT_SCHEMA: JsonRecord = {
+    type: "object",
+    additionalProperties: false,
+    required: ["reviews"],
+    properties: {
+        reviews: {
+            type: "array",
+            minItems: 1,
+            maxItems: 8,
+            items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["imageId", "rating", "comment", "decision", "strengths", "issues"],
+                properties: {
+                    imageId: { type: "string", minLength: 1, maxLength: 200 },
+                    rating: { type: "integer", minimum: 1, maximum: 5 },
+                    comment: { type: "string", minLength: 1, maxLength: 2000 },
+                    decision: { type: "string", enum: ["keep", "vary", "reject"] },
+                    strengths: { type: "array", maxItems: 20, items: { type: "string", minLength: 1, maxLength: 500 } },
+                    issues: { type: "array", maxItems: 20, items: { type: "string", minLength: 1, maxLength: 500 } },
+                },
+            },
+        },
+    },
+};
+const FRAMEFLOW_TRAJECTORY_SUMMARY_OUTPUT_SCHEMA: JsonRecord = {
+    type: "object",
+    additionalProperties: false,
+    required: ["improved", "recurring", "bestIteration", "bestReason"],
+    properties: {
+        improved: {
+            type: "array",
+            maxItems: 20,
+            items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["issue", "evidenceIterations", "explanation"],
+                properties: {
+                    issue: { type: "string", minLength: 1, maxLength: 500 },
+                    evidenceIterations: { type: "array", minItems: 1, maxItems: 20, items: { type: "integer", minimum: 1, maximum: 20 } },
+                    explanation: { type: "string", minLength: 1, maxLength: 2000 },
+                },
+            },
+        },
+        recurring: {
+            type: "array",
+            maxItems: 20,
+            items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["issue", "evidenceIterations", "recommendation"],
+                properties: {
+                    issue: { type: "string", minLength: 1, maxLength: 500 },
+                    evidenceIterations: { type: "array", minItems: 1, maxItems: 20, items: { type: "integer", minimum: 1, maximum: 20 } },
+                    recommendation: { type: "string", minLength: 1, maxLength: 2000 },
+                },
+            },
+        },
+        bestIteration: { type: "integer", minimum: 1, maximum: 20 },
+        bestReason: { type: "string", minLength: 1, maxLength: 2000 },
+    },
+};
 
 export class CodexSkillLookupError extends Error {
     override name = "CodexSkillLookupError";
@@ -69,6 +259,62 @@ export async function runCodexTurn(prompt: string, lifecycleEmit: AgentEmit, att
 /** 从当前对话或指定网页画布生成可编辑草稿，不写入 Skill 文件。 */
 export async function generateCodexSkillDraft(emit: AgentEmit, cwd: string, input: CodexSkillDraftInput): Promise<AgentSkillDraft> {
     const queued = codexQueue.catch(() => undefined).then(() => generateCodexSkillDraftNow(emit, cwd, input));
+    codexQueue = queued;
+    return await queued;
+}
+
+/** 使用独立的只读 Codex 临时线程生成室内设计工作流提示词。 */
+export async function generateInteriorPrompt(emit: AgentEmit, cwd: string, input: InteriorPromptInput) {
+    const queued = codexQueue.catch(() => undefined).then(() => generateInteriorPromptNow(emit, cwd, input));
+    codexQueue = queued;
+    return await queued;
+}
+
+/** 使用独立 Codex 临时线程调用原生 ImageGen 生成室内图片。 */
+export async function generateInteriorImages(emit: AgentEmit, cwd: string, input: InteriorImageInput) {
+    const queued = codexQueue.catch(() => undefined).then(() => generateInteriorImagesNow(emit, cwd, input));
+    codexQueue = queued;
+    return await queued;
+}
+
+/** 使用独立 Codex 临时线程，让无限画布中的任意生图操作调用原生 ImageGen。 */
+export async function generateCanvasImages(emit: AgentEmit, cwd: string, input: CanvasImageInput) {
+    const queued = codexQueue.catch(() => undefined).then(() => generateCanvasImagesNow(emit, cwd, input));
+    codexQueue = queued;
+    return await queued;
+}
+
+/** 使用独立只读 Codex 线程把 Creative Brief 规划为结构化 Prompt Version。 */
+export async function generateFrameFlowPrompt(emit: AgentEmit, cwd: string, input: FrameFlowPromptInput): Promise<PromptPlan> {
+    const queued = codexQueue.catch(() => undefined).then(() => generateFrameFlowPromptNow(emit, cwd, input));
+    codexQueue = queued;
+    return await queued;
+}
+
+/** 为已有 Prompt Version 补充不参与执行的中文审核翻译。 */
+export async function generateFrameFlowPromptTranslation(emit: AgentEmit, cwd: string, input: FrameFlowPromptTranslationInput): Promise<PromptTranslation> {
+    const queued = codexQueue.catch(() => undefined).then(() => generateFrameFlowPromptTranslationNow(emit, cwd, input));
+    codexQueue = queued;
+    return await queued;
+}
+
+/** 使用独立 Codex 临时线程调用原生 ImageGen 执行已批准 Prompt。 */
+export async function generateFrameFlowImages(emit: AgentEmit, cwd: string, input: FrameFlowImageInput) {
+    const queued = codexQueue.catch(() => undefined).then(() => generateFrameFlowImagesNow(emit, cwd, input));
+    codexQueue = queued;
+    return await queued;
+}
+
+/** 使用独立只读 Codex 线程逐张审查本轮图片，并返回不污染人工偏好的机器判断。 */
+export async function reviewFrameFlowImages(emit: AgentEmit, cwd: string, input: FrameFlowImageReviewInput) {
+    const queued = codexQueue.catch(() => undefined).then(() => reviewFrameFlowImagesNow(emit, cwd, input));
+    codexQueue = queued;
+    return await queued;
+}
+
+/** 使用独立只读 Codex 线程语义比较各轮机器审图，并推荐当前最佳轮次。 */
+export async function summarizeFrameFlowTrajectory(emit: AgentEmit, cwd: string, input: FrameFlowTrajectorySummaryInput): Promise<AutoRunTrajectorySummaryDraft> {
+    const queued = codexQueue.catch(() => undefined).then(() => summarizeFrameFlowTrajectoryNow(emit, cwd, input));
     codexQueue = queued;
     return await queued;
 }
@@ -263,6 +509,292 @@ async function generateCodexSkillDraftNow(emit: AgentEmit, cwd: string, input: C
     } finally {
         if (threadId) await app.closeSkillDraftThread(threadId).catch((error) => logger.warn("Failed to release Skill draft thread", { threadId, error }));
     }
+}
+
+async function generateInteriorPromptNow(emit: AgentEmit, cwd: string, input: InteriorPromptInput) {
+    const app = await getCodexApp(emit);
+    let threadId = "";
+    let files: string[] = [];
+    try {
+        const thread = await app.startStructuredOutputThread(cwd, INTERIOR_PROMPT_INSTRUCTIONS);
+        threadId = String(field(thread, "id") || "");
+        files = await writeAttachmentFiles(input.attachments || []);
+        const raw = await app.generateStructuredOutput(threadId, interiorPromptRequest(input), files, INTERIOR_PROMPT_OUTPUT_SCHEMA, input.model, input.effort || "high", "Codex 没有返回室内设计提示词");
+        return interiorPromptSchema.parse(JSON.parse(raw));
+    } finally {
+        if (threadId) await app.closeSkillDraftThread(threadId).catch((error) => logger.warn("Failed to release interior prompt thread", { threadId, error }));
+        await Promise.all(files.map((file) => fs.unlink(file).catch(() => undefined)));
+    }
+}
+
+async function generateFrameFlowPromptNow(emit: AgentEmit, cwd: string, input: FrameFlowPromptInput): Promise<PromptPlan> {
+    const app = await getCodexApp(emit);
+    let threadId = "";
+    try {
+        const thread = await app.startStructuredOutputThread(cwd, FRAMEFLOW_PROMPT_INSTRUCTIONS);
+        threadId = String(field(thread, "id") || "");
+        const raw = await app.generateStructuredOutput(
+            threadId,
+            frameFlowPromptRequest(input),
+            [],
+            FRAMEFLOW_PROMPT_OUTPUT_SCHEMA,
+            input.model,
+            input.effort || "high",
+            "Codex 没有返回 FrameFlow Prompt Version",
+        );
+        let value: unknown;
+        try {
+            value = JSON.parse(raw);
+        } catch {
+            throw new Error("Codex 返回的 FrameFlow Prompt 不是有效 JSON");
+        }
+        const parsed = promptPlanSchema.safeParse(value);
+        if (!parsed.success) throw new Error("Codex 返回的 FrameFlow Prompt 格式不正确");
+        return parsed.data;
+    } finally {
+        if (threadId) await app.closeSkillDraftThread(threadId).catch((error) => logger.warn("Failed to release FrameFlow prompt thread", { threadId, error }));
+    }
+}
+
+async function generateFrameFlowPromptTranslationNow(emit: AgentEmit, cwd: string, input: FrameFlowPromptTranslationInput): Promise<PromptTranslation> {
+    const app = await getCodexApp(emit);
+    let threadId = "";
+    try {
+        const thread = await app.startStructuredOutputThread(cwd, FRAMEFLOW_TRANSLATION_INSTRUCTIONS);
+        threadId = String(field(thread, "id") || "");
+        const raw = await app.generateStructuredOutput(
+            threadId,
+            frameFlowTranslationRequest(input),
+            [],
+            FRAMEFLOW_TRANSLATION_OUTPUT_SCHEMA,
+            input.model,
+            input.effort || "high",
+            "Codex 没有返回 FrameFlow 中文翻译",
+        );
+        let value: unknown;
+        try {
+            value = JSON.parse(raw);
+        } catch {
+            throw new Error("Codex 返回的 FrameFlow 中文翻译不是有效 JSON");
+        }
+        const parsed = promptTranslationSchema.safeParse(value);
+        if (!parsed.success) throw new Error("Codex 返回的 FrameFlow 中文翻译格式不正确");
+        return parsed.data;
+    } finally {
+        if (threadId) await app.closeSkillDraftThread(threadId).catch((error) => logger.warn("Failed to release FrameFlow translation thread", { threadId, error }));
+    }
+}
+
+async function reviewFrameFlowImagesNow(emit: AgentEmit, cwd: string, input: FrameFlowImageReviewInput) {
+    const app = await getCodexApp(emit);
+    let threadId = "";
+    try {
+        const thread = await app.startStructuredOutputThread(cwd, FRAMEFLOW_REVIEW_INSTRUCTIONS);
+        threadId = String(field(thread, "id") || "");
+        const raw = await app.generateStructuredOutput(
+            threadId,
+            frameFlowReviewRequest(input),
+            input.images.map((image) => image.filePath),
+            FRAMEFLOW_REVIEW_OUTPUT_SCHEMA,
+            input.model,
+            input.effort || "high",
+            "Codex 没有返回 FrameFlow 机器审图结果",
+        );
+        const parsed = z.object({ reviews: z.array(machineReviewResultSchema).min(1).max(8) }).strict().parse(JSON.parse(raw));
+        const expected = input.images.map((image) => image.imageId);
+        const actual = parsed.reviews.map((review) => review.imageId);
+        if (new Set(actual).size !== actual.length || expected.some((imageId) => !actual.includes(imageId)) || actual.some((imageId) => !expected.includes(imageId))) {
+            throw new Error("Codex 机器审图结果没有逐张对应本轮图片");
+        }
+        return parsed.reviews;
+    } finally {
+        if (threadId) await app.closeSkillDraftThread(threadId).catch((error) => logger.warn("Failed to release FrameFlow review thread", { threadId, error }));
+    }
+}
+
+async function summarizeFrameFlowTrajectoryNow(emit: AgentEmit, cwd: string, input: FrameFlowTrajectorySummaryInput): Promise<AutoRunTrajectorySummaryDraft> {
+    const app = await getCodexApp(emit);
+    let threadId = "";
+    try {
+        const thread = await app.startStructuredOutputThread(cwd, FRAMEFLOW_TRAJECTORY_SUMMARY_INSTRUCTIONS);
+        threadId = String(field(thread, "id") || "");
+        const raw = await app.generateStructuredOutput(
+            threadId,
+            frameFlowTrajectorySummaryRequest(input),
+            [],
+            FRAMEFLOW_TRAJECTORY_SUMMARY_OUTPUT_SCHEMA,
+            input.model,
+            input.effort || "high",
+            "Codex 没有返回 FrameFlow 跨轮总结",
+        );
+        return autoRunTrajectorySummaryDraftSchema.parse(JSON.parse(raw));
+    } finally {
+        if (threadId) await app.closeSkillDraftThread(threadId).catch((error) => logger.warn("Failed to release FrameFlow trajectory summary thread", { threadId, error }));
+    }
+}
+
+async function generateFrameFlowImagesNow(emit: AgentEmit, cwd: string, input: FrameFlowImageInput) {
+    input.signal.throwIfAborted();
+    const app = await getCodexApp(emit);
+    let threadId = "";
+    let abortTurn: (() => void) | undefined;
+    try {
+        const thread = await app.startImageGenerationThread(cwd, FRAMEFLOW_IMAGE_INSTRUCTIONS);
+        threadId = String(field(thread, "id") || "");
+        input.signal.throwIfAborted();
+        abortTurn = () => { void app.interruptCurrentTurn(threadId); };
+        input.signal.addEventListener("abort", abortTurn, { once: true });
+        return await app.generateImages(
+            threadId,
+            frameFlowImageRequest(input),
+            input.referenceFiles,
+            input.model,
+            input.effort || "high",
+            "Codex ImageGen 没有返回 FrameFlow 图片",
+        );
+    } finally {
+        if (abortTurn) input.signal.removeEventListener("abort", abortTurn);
+        if (threadId) await app.closeSkillDraftThread(threadId).catch((error) => logger.warn("Failed to release FrameFlow ImageGen thread", { threadId, error }));
+    }
+}
+
+async function generateInteriorImagesNow(emit: AgentEmit, cwd: string, input: InteriorImageInput) {
+    const app = await getCodexApp(emit);
+    let threadId = "";
+    let files: string[] = [];
+    try {
+        const thread = await app.startImageGenerationThread(cwd, INTERIOR_IMAGE_INSTRUCTIONS);
+        threadId = String(field(thread, "id") || "");
+        files = await writeAttachmentFiles(input.attachments || []);
+        if (!files.length) throw new Error("Codex ImageGen 需要一张空间参考图");
+        return await app.generateImages(threadId, interiorImageRequest(input), files.slice(0, 1), input.model, input.effort || "high");
+    } finally {
+        if (threadId) await app.closeSkillDraftThread(threadId).catch((error) => logger.warn("Failed to release interior ImageGen thread", { threadId, error }));
+        await Promise.all(files.map((file) => fs.unlink(file).catch(() => undefined)));
+    }
+}
+
+async function generateCanvasImagesNow(emit: AgentEmit, cwd: string, input: CanvasImageInput) {
+    const app = await getCodexApp(emit);
+    let threadId = "";
+    let files: string[] = [];
+    try {
+        const thread = await app.startImageGenerationThread(cwd, CANVAS_IMAGE_INSTRUCTIONS);
+        threadId = String(field(thread, "id") || "");
+        files = await writeAttachmentFiles(input.attachments || []);
+        return await app.generateImages(threadId, canvasImageRequest(input), files.slice(0, 8), input.model, input.effort || "high");
+    } finally {
+        if (threadId) await app.closeSkillDraftThread(threadId).catch((error) => logger.warn("Failed to release canvas ImageGen thread", { threadId, error }));
+        await Promise.all(files.map((file) => fs.unlink(file).catch(() => undefined)));
+    }
+}
+
+function interiorPromptRequest(input: InteriorPromptInput) {
+    const context = [`空间类型：${input.roomType || "未指定"}`, `设计风格：${input.style || "未指定"}`, `附加要求：${input.requirements || "无"}`].join("\n");
+    const stage = input.stage === "white-model"
+        ? "根据平面图中选定区域生成该空间的纯白建筑白膜提示词。必须保持墙体、门窗、柱体、开口、层高关系和空间比例；使用白色哑光黏土/泡沫板材质、均匀棚拍光、无家具、无装饰、无人物、无文字。输出适合图生图模型的英文 prompt。"
+        : input.stage === "design"
+          ? "根据选中的白膜参考图生成室内设计成品效果图提示词。必须保持白膜的空间几何、墙体、门窗、视角和开口位置，只添加设计风格、家具、照明、材质与软装；输出适合图生图模型的英文 prompt。"
+          : "根据室内设计成品图生成一次连续、真实、稳定的第一人称室内漫游视频提示词。说明起点、行进路径、镜头高度、镜头朝向、速度、转弯、视差、光线稳定和终点；保持空间结构、家具、材质、色彩和物体一致，不新增或删除物体，不穿墙，不瞬移。输出适合图生视频模型的英文 prompt。";
+    return `${stage}\n\n${context}\n\n参考图是当前阶段的唯一空间视觉依据。negativePrompt 列出结构漂移、畸变、闪烁等禁止项；summary 用简体中文概括镜头或设计策略。只按 outputSchema 返回对象。`;
+}
+
+function frameFlowPromptRequest(input: FrameFlowPromptInput) {
+    return [
+        `策略：${input.strategy}`,
+        "Creative Brief：",
+        JSON.stringify(input.brief, null, 2),
+        "Preference DNA（来自不可变人工反馈，仅作为审美证据，不能覆盖 Brief 硬约束）：",
+        JSON.stringify(input.preference, null, 2),
+        "本自动跑此前的 Machine Review（Codex 自评，仅用于改进当前方向，不能写入或冒充人工 Preference DNA）：",
+        JSON.stringify(input.machineReviews, null, 2),
+        "完整覆盖 subject、composition、color、lighting、material、layout、mood、rendering、technical、negative 十个字段。",
+        "compiledPrompt 必须由这些结构字段完整重建，并执行 constraints.keep、constraints.avoid、aspectRatio 与用途要求。",
+        "不得添加 Brief 中不存在的品牌、人物身份、版权角色或未经请求的文字内容。",
+        "decision.evidence 必须与 Preference DNA 的 boost 和 avoid 图片一一对应；没有证据时返回空数组。每条说明 adopted、avoided 或 ignored、受影响字段和具体原因。",
+        "只按 outputSchema 返回对象。",
+    ].join("\n\n");
+}
+
+function frameFlowReviewRequest(input: FrameFlowImageReviewInput) {
+    return [
+        `自动跑：${input.autoRunId}；第 ${input.iteration} 轮；Run：${input.runId}`,
+        "Creative Brief：",
+        JSON.stringify(input.brief, null, 2),
+        "本轮批准 Prompt：",
+        JSON.stringify({ id: input.prompt.id, fields: input.prompt.fields, compiledPrompt: input.prompt.compiledPrompt }, null, 2),
+        "附件与 imageId 按相同顺序一一对应：",
+        JSON.stringify(input.images.map((image, index) => ({ index: index + 1, imageId: image.imageId })), null, 2),
+        "rating：1=严重偏离或明显失败，3=可用但需改进，5=高度符合方向且完成度高。decision：keep=下一轮保留该方向，vary=保留核心但做变体，reject=下一轮主动规避。",
+        "comment 使用简体中文，明确说明判断依据和下一轮动作；strengths/issues 使用简短可执行条目。必须逐张返回且不得遗漏、重复或编造 imageId。",
+        "只按 outputSchema 返回对象。",
+    ].join("\n\n");
+}
+
+function frameFlowTrajectorySummaryRequest(input: FrameFlowTrajectorySummaryInput) {
+    return [
+        "Creative Brief（硬约束与探索方向）：",
+        JSON.stringify(input.brief, null, 2),
+        "已完成轮次。prompt.diff 是本轮相对上一版的调整；machineReviews 是 Codex 对该轮图片的机器判断：",
+        JSON.stringify(input.rounds.map((round) => ({
+            iteration: round.iteration,
+            prompt: { revision: round.prompt.revision, reason: round.prompt.reason, diff: round.prompt.diff },
+            machineReviews: round.machineReviews.map((review) => ({ rating: review.rating, decision: review.decision, comment: review.comment, strengths: review.strengths, issues: review.issues })),
+        })), null, 2),
+        "improved 只列出有跨轮证据显示减轻或解决的问题；recurring 列出重复出现或最新轮仍存在的问题，并给出下一轮可执行建议。",
+        "bestIteration 必须是上述真实 iteration 之一，综合 Brief 符合度、评分、决策、优点、缺陷和完成度选择；evidenceIterations 也只能引用真实轮次。",
+        "只按 outputSchema 返回对象。",
+    ].join("\n\n");
+}
+
+function frameFlowTranslationRequest(input: FrameFlowPromptTranslationInput) {
+    return [
+        `目标语言：${input.language}`,
+        "英文结构字段：",
+        JSON.stringify(input.prompt.fields, null, 2),
+        "英文完整 Prompt：",
+        input.prompt.compiledPrompt,
+        "只返回逐字段对应的中文 fields 与中文 compiledPrompt；不得改变英文执行 Prompt。",
+    ].join("\n\n");
+}
+
+function frameFlowImageRequest(input: FrameFlowImageInput) {
+    return [
+        `必须调用 Codex 原生 ImageGen，生成 ${input.count} 张互相独立的 PNG 图片。`,
+        `硬性输出画幅：${input.aspectRatio}。必须让主体和关键界面位于安全构图区，优先使用与该比例一致的原生输出尺寸；不得拉伸、加边框或留黑。系统会在落库前智能裁切任何偏离画幅的结果。`,
+        `已批准 Prompt：\n${input.prompt.compiledPrompt}`,
+        `Negative：\n${input.prompt.fields.negative.join(", ") || "none"}`,
+        `技术约束：\n${input.prompt.fields.technical.join(", ") || "none"}`,
+        input.referenceFiles.length ? `提供了 ${input.referenceFiles.length} 张参考图，必须遵守其构图、主体或血缘约束。` : "本轮没有参考图。",
+        `连续调用 ImageGen 直到获得 ${input.count} 张结果；只生成图片，不输出解释。`,
+    ].join("\n\n");
+}
+
+function interiorImageRequest(input: InteriorImageInput) {
+    const count = Math.max(1, Math.min(3, Math.floor(input.count || 3)));
+    const constraints = input.stage === "white-model"
+        ? "生成纯白建筑白膜：保留参考平面图选区的墙体、门窗、柱体、开口、比例和空间关系；白色哑光黏土/泡沫板材质，均匀棚拍光；无家具、无装饰、无人物、无文字。"
+        : `生成${input.style || "指定风格"}室内设计成品图：严格保持参考白膜的几何、墙体、门窗、开口与相机视角，只添加家具、照明、材质和软装。`;
+    return [
+        `必须调用 Codex 原生 ImageGen 功能生成 ${count} 张独立候选图。`,
+        "附件是唯一空间参考图，不得用其他图片替代。",
+        constraints,
+        `空间类型：${input.roomType || "未指定"}`,
+        `附加要求：${input.requirements || "无"}`,
+        `最终生成提示词：${input.prompt}`,
+        `请连续调用 ImageGen 直到获得 ${count} 张结果；不要输出文本说明。`,
+    ].join("\n");
+}
+
+function canvasImageRequest(input: CanvasImageInput) {
+    const count = Math.max(1, Math.min(8, Math.floor(input.count || 1)));
+    return [
+        `必须调用 Codex 原生 ImageGen 功能生成 ${count} 张独立图片。`,
+        input.aspectRatio ? `目标画幅：${input.aspectRatio}。不得拉伸、加边框或留黑。` : "保持适合内容的自然画幅。",
+        input.attachments?.length ? `提供了 ${Math.min(input.attachments.length, 8)} 张参考图，必须遵守其中明确的主体、构图或编辑约束。` : "本轮没有参考图，按文本生图。",
+        `用户提示词：\n${input.prompt}`,
+        `连续调用 ImageGen 直到获得 ${count} 张结果；只生成图片，不输出解释。`,
+    ].join("\n\n");
 }
 
 function skillDraftPrompt(input: CodexSkillDraftInput) {

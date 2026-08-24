@@ -11,7 +11,7 @@ const CODEX_VERSION = String((require("@openai/codex/package.json") as { version
 
 /** 输出当前版本，并在后台检查 npm 最新版本。 */
 export function checkVersions() {
-    const localCodexVersion = commandVersion("codex");
+    const localCodexVersion = commandVersion(resolveCodexVersionCommand());
     logger.info("Canvas Agent version", { version: VERSION });
     logger.info("Bundled Codex version", { version: CODEX_VERSION });
     logger.info("Local Codex version", { version: localCodexVersion || "not found" });
@@ -21,6 +21,13 @@ export function checkVersions() {
         logger.warn(`Bundled Codex ${CODEX_VERSION} does not match local Codex ${localCodexVersion}. Keep both current with: npm install -g @openai/codex@latest && npx -y @basketikun/canvas-agent@latest`);
     }
     void checkLatestVersions(localCodexVersion);
+}
+
+/** Windows 的 Node 子进程需经 cmd.exe 执行 npm 生成的 codex.cmd。 */
+export function resolveCodexVersionCommand(platform: NodeJS.Platform = process.platform, comspec = process.env.ComSpec || "cmd.exe") {
+    return platform === "win32"
+        ? { command: comspec, args: ["/d", "/s", "/c", "codex.cmd --version"] }
+        : { command: "codex", args: ["--version"] };
 }
 
 /** 查询 npm，提醒升级不再维护的旧版本。 */
@@ -39,9 +46,9 @@ async function checkLatestVersions(localCodexVersion: string) {
 }
 
 /** 读取本机命令输出中的语义版本号。 */
-function commandVersion(command: string) {
+function commandVersion(input: { command: string; args: string[] }) {
     try {
-        return execFileSync(command, ["--version"], { encoding: "utf8", timeout: 5_000 }).match(/\d+\.\d+\.\d+/)?.[0] || "";
+        return execFileSync(input.command, input.args, { encoding: "utf8", timeout: 5_000 }).match(/\d+\.\d+\.\d+/)?.[0] || "";
     } catch {
         return "";
     }

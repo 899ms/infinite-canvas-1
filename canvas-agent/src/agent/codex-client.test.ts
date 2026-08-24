@@ -239,6 +239,59 @@ test("静默 Skill 草稿 turn 只返回结构化结果，不广播也不写历�
     assert.equal(testClient.skillDraftActive, false);
 });
 
+test("室内设计结构化输出线程携带参考图且保持只读", async () => {
+    const writes: Array<Record<string, unknown>> = [];
+    const child = { stdin: { write: (line: string) => (writes.push(JSON.parse(line)), true) } };
+    const client = Reflect.construct(CodexAppClient, [child, () => undefined, emptyEventHistory]) as CodexAppClient;
+    const testClient = client as unknown as TestClient;
+
+    const starting = client.startStructuredOutputThread("D:\\site", "只生成室内提示词");
+    const threadRequest = writes.find((item) => item.method === "thread/start");
+    assert.equal((threadRequest?.params as Record<string, unknown>)?.developerInstructions, "只生成室内提示词");
+    testClient.handle({ id: threadRequest?.id, result: { thread: { id: "interior-thread", ephemeral: true } } });
+    await starting;
+
+    const schema = { type: "object", properties: { prompt: { type: "string" } } };
+    const output = JSON.stringify({ prompt: "continuous interior walkthrough" });
+    const generating = client.generateStructuredOutput("interior-thread", "生成漫游提示词", ["D:\\temp\\room.png"], schema);
+    const turnRequest = writes.find((item) => item.method === "turn/start");
+    assert.deepEqual((turnRequest?.params as Record<string, unknown>)?.input, [
+        { type: "text", text: "生成漫游提示词", text_elements: [] },
+        { type: "localImage", path: "D:\\temp\\room.png" },
+    ]);
+    testClient.handle({ id: turnRequest?.id, result: { turn: { id: "interior-turn" } } });
+    await new Promise((resolve) => setImmediate(resolve));
+    testClient.handleNotification("item/completed", { threadId: "interior-thread", turnId: "interior-turn", item: { id: "assistant-1", type: "agentMessage", text: output } });
+    testClient.handleNotification("turn/completed", { threadId: "interior-thread", turn: { id: "interior-turn", status: "completed" } });
+    assert.equal(await generating, output);
+});
+
+test("室内设计生图线程收集 Codex ImageGen 的 Windows 图片路径", async () => {
+    const writes: Array<Record<string, unknown>> = [];
+    const child = { stdin: { write: (line: string) => (writes.push(JSON.parse(line)), true) } };
+    const client = Reflect.construct(CodexAppClient, [child, () => undefined, emptyEventHistory]) as CodexAppClient;
+    const testClient = client as unknown as TestClient;
+
+    const starting = client.startImageGenerationThread("D:\\site", "只调用 ImageGen");
+    const threadRequest = writes.find((item) => item.method === "thread/start");
+    assert.equal((threadRequest?.params as Record<string, unknown>)?.sandbox, "workspace-write");
+    assert.deepEqual(((threadRequest?.params as Record<string, unknown>)?.config as Record<string, unknown>)?.mcp_servers, {});
+    testClient.handle({ id: threadRequest?.id, result: { thread: { id: "image-thread", ephemeral: true } } });
+    await starting;
+
+    const generating = client.generateImages("image-thread", "生成三张白膜", ["D:\\temp\\room.png"]);
+    const turnRequest = writes.find((item) => item.method === "turn/start");
+    testClient.handle({ id: turnRequest?.id, result: { turn: { id: "image-turn" } } });
+    await new Promise((resolve) => setImmediate(resolve));
+    testClient.handleNotification("item/completed", {
+        threadId: "image-thread",
+        turnId: "image-turn",
+        item: { id: "image-1", type: "imageGeneration", savedPath: "D:\\generated\\white.png" },
+    });
+    testClient.handleNotification("turn/completed", { threadId: "image-thread", turn: { id: "image-turn", status: "completed" } });
+    assert.deepEqual(await generating, ["D:\\generated\\white.png"]);
+});
+
 test("静默线程创建期间只隐藏响应返回的线程", async () => {
     const writes: Array<Record<string, unknown>> = [];
     const events: Array<{ type: string; payload: unknown }> = [];
