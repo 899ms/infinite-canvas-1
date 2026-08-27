@@ -116,3 +116,15 @@
 - 测试请求仅命中 Playwright 本地路由夹具；未读取或使用本机 Canvas Agent 的真实 Token、真实图片或端口 3000/17371 服务。
 
 阶段 B 已具备隔离自动化证据与一次内置浏览器可见闭环记录；后续仍须按 95 项主清单逐项补齐缺口，且不得把本次临时 Provider 验收写成真实 Agent/外部模型生产验收。Docker/容器验收仍不在本轮范围。
+
+## 9. 阶段 C 首个解耦切片（2026-08-28）
+
+本切片只迁移 Canvas Skill 草稿的纯脱敏/快照投影逻辑；不改变 HTTP API、Codex 调度、画布存储或前端行为。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/agent/canvas-skill-safety.ts` | 新增 | 独立承载画布快照的节点匿名化、媒体/路径/凭据/临时字段剔除、长度限制，以及草稿输出的敏感信息拒绝逻辑；输入输出均为纯数据，便于脱离 Codex 进程测试。 |
+| `canvas-agent/src/agent/codex.ts` | 修改 | 保留 Codex 编排职责，改为调用上述纯模块生成安全的画布 Skill 输入并校验草稿输出；`CanvasSnapshot` 仍作为公开输入类型，不改变调用方契约。 |
+| `canvas-agent/src/agent/codex-client.test.ts` | 修改 | 既有安全回归改为直接导入新模块，覆盖匿名节点引用、敏感信息清除、截断优先级和草稿拒绝规则，防止后续重新耦合到 Codex 编排层。 |
+
+验证记录：先将既有测试切换到新模块路径，确认模块不存在时得到预期的 `ERR_MODULE_NOT_FOUND`；迁移同一段纯逻辑后，聚焦测试 `npx tsx --test src/agent/codex-client.test.ts` 40 项通过，`npm run build` 通过，完整 `npm test` 170 项通过。测试日志中的中断/SSE 文本来自既有测试夹具，不是本机 Agent 服务操作。

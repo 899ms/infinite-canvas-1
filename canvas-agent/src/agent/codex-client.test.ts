@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { CodexAppClient } from "./codex-client.js";
-import { assertDraftHasNoSensitiveValues, canvasSkillSource } from "./codex.js";
+import { assertDraftHasNoSensitiveValues, canvasSkillSource } from "./canvas-skill-safety.js";
 
 type TestClient = {
     currentThreadId: string;
