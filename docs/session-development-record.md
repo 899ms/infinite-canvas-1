@@ -283,3 +283,17 @@
 | `canvas-agent/` | 路径差异复核 | 当前提交相对第 19 节的已验证提交无源码变更，因此继续引用第 19 节在同一干净克隆完成的 178 项测试与构建证据。 |
 
 边界：这证明 fork 的当前提交可在隔离 Windows 环境完成已列的本地质量门禁；它不证明 Vercel 已实际部署或已发送响应头，也不替代 95 项中文主清单的逐项人工验收。临时克隆继续保留，不删除、不纳入项目文件。
+
+## 22. 阶段 C FrameFlow 事务结果映射解耦（2026-08-28）
+
+本切片将已提交事务转换为命令响应的纯映射移出 `FrameFlowCore`；事件写入、幂等键命中、投影更新、资产隔离和 HTTP API 均保持由 Core/HTTP 层负责。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/transaction-result.ts` | 新增 | 纯函数：从事务生成事务 ID、序列、事件 ID 与资源定位；沿用既有的首事件资源和 `run.queued` 优先级规则。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 执行命令时委托新模块生成响应，保留原有公开结果类型和执行时序。 |
+| `canvas-agent/src/frameflow/transaction-result.test.ts` | 新增 | 直接验证 Brief、Run 排队覆盖、重试与取消的资源映射及完整事件 ID。 |
+| `canvas-agent/package.json` | 修改 | 将纯映射回归纳入正式 Canvas Agent 测试命令。 |
+| `docs/session-development-record.md` | 修改 | 记录职责边界、测试先行过程、文件关联和验证证据。 |
+
+验证记录：先让新测试导入尚不存在模块，得到预期 `ERR_MODULE_NOT_FOUND`；迁移原函数后，聚焦测试 3 项、`npm run build` 与完整 `npm test` 181 项均通过。该切片不改变命令响应内容，只令事务结果规则脱离大 Core 进行独立测试。
