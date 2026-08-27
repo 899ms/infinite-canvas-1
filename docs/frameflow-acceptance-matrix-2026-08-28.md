@@ -19,7 +19,7 @@
 | 09 | FrameFlow 演化轨迹 | 未验证 | 主清单 09；临时多轮 Run；只聚合同一 Auto Run | `web/e2e/frameflow-preview.spec.ts` 仅覆盖预览分组 |
 | 10 | FrameFlow 跨轮总结 | 未验证 | 主清单 10；两轮机器评审；真实证据可追溯 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
 | 11 | FrameFlow 创建页 | 未验证 | 主清单 11；隔离参考图与 Brief；批准和生成独立 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
-| 12 | FrameFlow 待审页 | 未验证 | 主清单 12；隔离图片；评分、评论、隐藏和删除语义正确 | HTTP 闭环及 `web/e2e/frameflow-task-context.spec.ts` 覆盖任务筛选局部行为 |
+| 12 | FrameFlow 待审页 | 未验证 | 主清单 12；隔离图片；评分、评论、隐藏和删除语义正确 | HTTP 闭环；`web/e2e/frameflow-task-context.spec.ts` 覆盖同一任务筛选，以及隐藏与恢复的独立反馈回写。评分、评论和删除仍待验收 |
 | 13 | FrameFlow 机器审图状态 | 未验证 | 主清单 13；隔离 Auto Run；状态仅出现在当前评审图片 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
 | 14 | FrameFlow Preference DNA 页 | 未验证 | 主清单 14；隔离反馈；证据与硬约束保持分离 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
 | 15 | FrameFlow 运行与血缘页面 | 未验证 | 主清单 15；隔离 Run；任务过滤、重试和隔离一致 | HTTP 闭环及 `web/e2e/frameflow-task-context.spec.ts` 覆盖任务过滤局部行为 |
@@ -110,4 +110,5 @@
 - 阻塞：2 项（01、18），原因均为当前明确排除 Docker/容器部署。
 - 未验证：92 项。虽然其中若干项已有单元或局部浏览器回归，其范围不足以覆盖主清单对应的完整可见行为，仍需逐项人工或补充自动化验收。
 - 本次新增的 `FrameFlow HTTP 隔离夹具覆盖停止、恢复、反馈、血缘与 Requirement 归档闭环` 是阶段 B 的 P0 自动化证据；其余仍按本矩阵继续关闭，不将它外推为 95 项全部通过。
+- `web/e2e/frameflow-task-context.spec.ts` 现以隔离浏览器 origin 和路由夹具验证待审页的隐藏与恢复：只有右侧检查器确实回显“已隐藏”后才执行恢复，并验证“已恢复”及两条反馈命令。该证据不覆盖评分、Comment 或永久删除。
 - 内置浏览器已在隔离 Web 服务 `127.0.0.1:3013/frameflow` 完成人工只读检查：页头导航、中文标题、8 个工作标签和“先连接 Canvas Agent”离线引导均正常渲染，控制台没有 error/warn。该服务未接入 Agent，因此此证据只覆盖离线可见状态，不覆盖创建、自动跑或人工反馈闭环。

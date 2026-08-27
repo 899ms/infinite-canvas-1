@@ -45,6 +45,44 @@ test("FrameFlow 待审与运行血缘默认保持同一最新任务上下文", a
     await expect(page.getByText("旧任务", { exact: true })).toHaveCount(0);
 });
 
+test("FrameFlow 待审页把人工隐藏与恢复保持为独立反馈", async ({ page }) => {
+    let imageStatus: "pending_review" | "hidden" | "restored" = "pending_review";
+    const commands: Array<{ feedback?: { kind?: string } }> = [];
+    await page.addInitScript(() => {
+        localStorage.setItem("canvas-agent-url", "http://127.0.0.1:4173");
+        localStorage.setItem("canvas-agent-token", "frameflow-review-feedback-token");
+    });
+    await page.route("**/agent/frameflow/query?**", async (route) => {
+        const query = route.request().postDataJSON() as { type?: string };
+        const item = reviewItem("image-feedback", newerAutoRun, "run-new");
+        item.image.status = imageStatus;
+        item.feedback = imageStatus === "hidden" ? { hiddenReason: "aesthetic_dislike" } : {};
+        const data = query.type === "auto_run.list"
+            ? { type: "auto_run.list", autoRuns: [newerAutoRun] }
+            : { type: "review.queue", items: [item] };
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data }) });
+    });
+    await page.route("**/agent/frameflow/commands**", async (route) => {
+        const command = route.request().postDataJSON() as { type?: string; feedback?: { kind?: string } };
+        commands.push(command);
+        imageStatus = command.feedback?.kind === "soft_delete" ? "hidden" : command.feedback?.kind === "restore" ? "restored" : imageStatus;
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data: { resource: { type: "run", id: "run-new" } } }) });
+    });
+    await page.route("**/agent/frameflow/assets/**", async (route) => {
+        await route.fulfill({ contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
+    });
+
+    await page.goto("/frameflow?view=review");
+    await page.getByRole("button", { name: "不喜欢并学习" }).click();
+    await expect(page.getByText("确认标记为不喜欢？")).toBeVisible();
+    await page.locator(".ant-popconfirm-buttons").getByRole("button", { name: "不喜欢并学习", exact: true }).click();
+    const inspector = page.getByRole("complementary", { name: "图片审核检查器" });
+    await expect(inspector.getByText("已隐藏", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "恢复图片" }).click();
+    await expect(inspector.getByText("已恢复", { exact: true })).toBeVisible();
+    expect(commands.map((command) => command.feedback?.kind)).toEqual(["soft_delete", "restore"]);
+});
+
 function autoRun(id: string, name: string, briefId: string, runId: string) {
     return { id, name, briefId, count: 1, maxIterations: 1, canContinueExploration: false, state: "completed", iteration: 1, currentRunId: runId, lastRunId: runId, requirementArchived: false, briefSuperseded: false, createdAt: now, updatedAt: now };
 }
