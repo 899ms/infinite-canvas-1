@@ -523,3 +523,19 @@
 | `docs/session-development-record.md` | 修改 | 记录浏览器交互、证据边界和文件关联。 |
 
 验证记录：使用独立 Playwright CLI 会话和临时 Vite `127.0.0.1:4173`，先确认 `/interior` 首屏的 6 步流程、8 节点说明和前置禁用状态；上传 QA SVG 后确认“平面图已上传”，点击“使用整张图”后工作流创建按钮启用，点击后跳转到新 `/canvas/<id>`。画布侧栏显示“画布元素 8”，并列出 01 原始平面图至 08 室内漫游视频，其中 03、05、07 三个 Codex 提示词节点的引导文本可见。既有纯单元测试验证同一构造器输出 8 节点、10 连线。未连接 Canvas Agent，也未调用真实 ImageGen、视频 API 或 Docker；以上外部调用不由本项验收声称覆盖。结束后精确关闭 Playwright 会话与临时 Vite，3000/17371 原服务未受影响。
+
+## 39. 设计系统主题与键盘路径的隔离浏览器验收（2026-08-28）
+
+本切片关闭中文主清单第 23 项。验收同时检查首屏主题初始化、浅色主题色同步、画布库键盘路径以及生成工作台和画布设置控件的可达性；第 22 项上游 v0.15.1 的 Freestylefly、图片节点多图和 Agent 功能仍未覆盖，继续保持“未验证”。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/index.html` | 既有实现（未修改） | 在 React 模块启动前读取主题持久化值，设置根节点 class、`data-ds-theme`、`color-scheme` 和浏览器 `theme-color`，避免深色偏好首帧闪白。 |
+| `web/src/components/layout/app-providers.tsx` | 既有实现（未修改） | React 已挂载后继续同步主题 class、浏览器主题色和 Ant Design 主题，确保切换后的状态一致。 |
+| `web/src/components/canvas/canvas-project-card.tsx` | 既有实现（未修改） | 提供可 Tab 聚焦并由 Enter 打开的原生画布标题按钮，以及选择、重命名、导出、删除操作。 |
+| `web/src/pages/image/index.tsx`、`web/src/pages/video/index.tsx`、`web/src/components/audio-settings-panel.tsx` | 既有实现（未修改） | 分别提供图像、视频与画布音频设置控件，供键盘焦点与原生控件可达性核验。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 第 23 项改为“人工通过”；汇总更新为 2 项人工通过、88 项未验证。 |
+| `docs/post-development-roadmap.md` | 修改 | 同步当前未验证项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本次真实浏览器交互、源代码边界和临时产物说明。 |
+
+验证记录：使用独立 Playwright CLI 会话与临时 Vite `127.0.0.1:4173`。以深色偏好创建隔离画布，首屏已是深色；切换浅色后，浏览器实际读取到 `data-ds-theme=light`、无 `dark` class、`colorScheme=light` 与 `theme-color=#fafaf9`，刷新后主题仍保持。源码进一步确认上述首屏主题写入发生在 `index.html` 的模块脚本之前。画布库中创建一次性空画布，选中卡片后按 Tab 焦点落到标题原生按钮且具有浏览器焦点轮廓，按 Enter 进入该画布；再返回库完成选择、重命名、零节点 ZIP 导出及确认删除。生图质量、视频清晰度和画布音频设置面板均在真实浏览器显示可访问的输入/选项；前两者通过 Tab 取得明确焦点轮廓，音频面板渲染了声音、格式、语速与声音指令控件。导出的零节点 ZIP 仅位于被 Git 忽略的 `.playwright-cli/` 临时会话目录，不含真实资产；本节不访问 3000/17371，不连接 Agent，不调用外部生成服务，也不包含 Docker/容器部署。
