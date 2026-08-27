@@ -483,7 +483,7 @@ export class FrameFlowCore {
             const run = this.projection.runs[command.runId];
             if (!run) throw new FrameFlowDomainError("找不到 Generation Run", 404);
             if (run.status !== "queued" && run.status !== "running" && run.status !== "retrying") throw new FrameFlowDomainError("只有生成中的 Run 可以取消", 409);
-            return [{ type: "run.cancelled", eventId, runId: run.id, cancelledAt: occurredAt }];
+            return [{ type: "run.cancelled", eventId, runId: run.id, cancelledAt: occurredAt, reason: "user_requested" }];
         }
         if (command.type === "image.delete") {
             const image = this.projection.images[command.imageId];
@@ -1158,7 +1158,7 @@ export class FrameFlowCore {
                 idempotencyKey: `system:restart-recovery:${crypto.randomUUID()}`,
                 occurredAt,
                 actor: { type: "system" },
-                events: staleRuns.map((run) => ({ type: "run.cancelled", eventId: crypto.randomUUID(), runId: run.id, cancelledAt: occurredAt })),
+                events: staleRuns.map((run) => ({ type: "run.cancelled", eventId: crypto.randomUUID(), runId: run.id, cancelledAt: occurredAt, reason: "agent_restart" })),
             };
             await this.store.append(recovery);
             this.remember(recovery);

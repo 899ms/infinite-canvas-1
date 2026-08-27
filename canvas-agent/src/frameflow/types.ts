@@ -56,6 +56,7 @@ export type DailyCollectionSchedule = {
 
 export type AutoRunState = "paused" | "generating" | "reviewing" | "completed" | "failed" | "awaiting_review";
 export type AutoRunPauseReason = "user_requested";
+export type RunCancellationReason = "user_requested" | "agent_restart";
 
 export type AutoRun = {
     id: string;
@@ -367,7 +368,7 @@ export type FrameFlowEvent =
     | { type: "run.queued"; eventId: string; run: GenerationRun }
     | { type: "run.started"; eventId: string; runId: string; startedAt: string }
     | { type: "run.retry_started"; eventId: string; runId: string; slotIds: string[]; startedAt: string }
-    | { type: "run.cancelled"; eventId: string; runId: string; cancelledAt: string }
+    | { type: "run.cancelled"; eventId: string; runId: string; cancelledAt: string; /** Omitted only by journals written before cancellation reasons were recorded. */ reason?: RunCancellationReason }
     | { type: "run.slot_succeeded"; eventId: string; runId: string; slotId: string; imageId: string }
     | { type: "run.slot_failed"; eventId: string; runId: string; slotId: string; error: GenerationError }
     | { type: "image.registered"; eventId: string; image: FrameFlowImageAsset }

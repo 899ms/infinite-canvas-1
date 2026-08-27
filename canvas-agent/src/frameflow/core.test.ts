@@ -767,7 +767,10 @@ test("取消运行会立即生效并把迟到的生成文件移入 quarantine", 
     await waitFor(async () => (await core.query({ type: "run.detail", runId })).run.status === "cancelled");
 
     const detail = await core.query({ type: "run.detail", runId });
+    const history = await core.query({ type: "event.history", subjectId: runId, limit: 20 });
+    const cancelledEvent = history.events.find((event) => event.type === "run.cancelled");
     assert.equal(detail.run.status, "cancelled");
+    assert.equal(cancelledEvent?.reason, "user_requested");
     assert.deepEqual(detail.run.imageIds, []);
     assert.equal(detail.slots[0]?.status, "cancelled");
     const quarantine = await core.query({ type: "quarantine.list", limit: 20 });
@@ -804,6 +807,24 @@ test("重试运行也可取消且不会覆盖原成功图片", async (context) =
     assert.equal(cancelled.run.status, "cancelled");
     assert.deepEqual(cancelled.run.imageIds, []);
     assert.equal(cancelled.slots[0]?.status, "cancelled");
+});
+
+test("重启恢复会注明运行因 Agent 重启而取消", async (context) => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "frameflow-restart-cancel-"));
+    context.after(() => fs.rm(workspace, { recursive: true, force: true }));
+    const core = new FrameFlowCore(workspace, {
+        planner: { plan: async () => testPlan },
+        imageGenerator: { generate: async () => new Promise<string[]>(() => {}) },
+    });
+    const promptVersionId = await approvedPrompt(core, "restart-cancel");
+    const started = await core.execute({ type: "run.start", promptVersionId, count: 1, idempotencyKey: "restart-cancel-start" });
+    const runId = started.resource!.id;
+
+    const restarted = new FrameFlowCore(workspace);
+    assert.equal((await restarted.query({ type: "run.detail", runId })).run.status, "cancelled");
+    const history = await restarted.query({ type: "event.history", subjectId: runId, limit: 20 });
+    const cancelledEvent = history.events.find((event) => event.type === "run.cancelled");
+    assert.equal(cancelledEvent?.reason, "agent_restart");
 });
 
 test("重启时把未被事件血缘引用的 managed 文件移入 quarantine", async (context) => {

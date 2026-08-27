@@ -340,7 +340,7 @@ const feedbackEventSchema = z.discriminatedUnion("type", [
     z.object({ type: z.literal("run.queued"), eventId, run: generationRunSchema }).strict(),
     z.object({ type: z.literal("run.started"), eventId, runId: id, startedAt: z.string().datetime() }).strict(),
     z.object({ type: z.literal("run.retry_started"), eventId, runId: id, slotIds: z.array(id).min(1).max(8), startedAt: z.string().datetime() }).strict(),
-    z.object({ type: z.literal("run.cancelled"), eventId, runId: id, cancelledAt: z.string().datetime() }).strict(),
+    z.object({ type: z.literal("run.cancelled"), eventId, runId: id, cancelledAt: z.string().datetime(), reason: z.enum(["user_requested", "agent_restart"]).optional() }).strict(),
     z.object({ type: z.literal("run.slot_succeeded"), eventId, runId: id, slotId: id, imageId: id }).strict(),
     z.object({ type: z.literal("run.slot_failed"), eventId, runId: id, slotId: id, error: generationErrorSchema }).strict(),
     z.object({ type: z.literal("image.registered"), eventId, image: imageAssetSchema }).strict(),
