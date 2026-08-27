@@ -553,3 +553,18 @@
 | `docs/session-development-record.md` | 修改 | 记录响应式尺寸、键盘时序和证据边界。 |
 
 验证记录：独立 Playwright CLI 会话在 `127.0.0.1:4173/prompts` 读取公开提示词列表。1000px 宽度下，分类轨道 `clientWidth=937`、`scrollWidth=1208`，标签轨道 `clientWidth=937`、`scrollWidth=50778`，二者实际计算样式均为 `overflow-x:auto` 与 `flex-wrap:nowrap`；没有换行堆叠或卡片受挤压。先选中 `all` 分类、Tab 到 `Banana Prompt Quicker`、按 Enter 后该分类显示 `aria-pressed=true` 并将列表更新为 323 条；为避免状态更新导致的旧焦点误判，再按实际路径选中“工作”、Tab 到“海报”、按 Space 后“海报”显示 `aria-pressed=true` 且结果继续过滤。1280px 宽度下，侧栏实际为 `position:sticky`、`overflow-y:auto`，可视高度 804、内容高度 2924，分类与标签轨道均恢复 `overflow-x:visible` 与 `flex-wrap:wrap`。开始时曾在鼠标点击标签后直接按空格，重渲染已使旧元素失焦；复测采用真实 Tab 路径后确认键盘行为正确。结束后关闭 Playwright 与临时 Vite；3000/17371 原服务未受影响，也未连接 Agent、执行外部生成、使用 Docker 或写入用户资产。
+
+## 41. 资产瀑布流与资产库操作的隔离浏览器验收（2026-08-28）
+
+本切片关闭中文主清单第 17 项。全部测试资产仅存在于独立 Playwright browser origin：使用已跟踪的 QA SVG 创建两张图片资产，不读取、修改或删除用户的真实资产、未跟踪文件或 3000/17371 服务数据。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/pages/assets/index.tsx` | 既有实现（未修改） | 提供资产种类/标签、搜索、排序、密度、隐藏视图、新增以及导入导出入口；本节以真实浏览器执行其主路径。 |
+| `web/qa-fixtures/qa-99-image.svg` | 既有夹具（未修改） | 作为隔离图片资产输入，原始尺寸为 320x240；不属于用户真实资产。 |
+| `.playwright-cli/我的资产.zip` | 临时且 Git 忽略 | 由隔离浏览器导出并立即回导，验证 ZIP 包含 2 个资产、2 个媒体文件和可复用校验结果；不纳入提交。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 第 17 项改为“人工通过”；汇总更新为 4 项人工通过、86 项未验证。 |
+| `docs/post-development-roadmap.md` | 修改 | 同步当前未验证项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本次浏览器主路径、临时文件边界和端口保护结果。 |
+
+验证记录：在临时 Vite `127.0.0.1:4173/assets` 创建“瀑布流宽图”与“瀑布流隐藏图”后，实际读取瀑布流列 `column-width=292px`、`column-gap=16px`；QA SVG 自然尺寸 320x240，渲染尺寸 335x251、`object-fit=contain`，保持 4:3 原比例。五星“强化”与一星“强降权”分别改变卡片评分和审美偏好；选择“高评分”后五星资产位于一星资产之前。标题搜索可收敛到单项，输入不存在词后显示“没有匹配条件的资产”与“清除筛选”。密度切换实际在 `column-width=232px` 和 `292px` 间往返。点击导出产生 `我的资产.zip`；随即导入该包，页面报告“已校验：2 个资产、2 个媒体文件、3.5 KB；可重新导入”，并实际导入 2 个资产。对一星资产执行 Soft delete 后，正常资产库从 4 降至 3；“已隐藏”视图仅显示该 1 项并提供“恢复到库中”，恢复后正常库回到 4 项。结束时精确关闭浏览器会话和本轮监听 4173 的 Vite，复核 3000（PID 37996）及 17371（PID 42544）仍在监听；不涉及 Agent、外部生成服务或 Docker/容器部署。
