@@ -55,6 +55,7 @@ export type DailyCollectionSchedule = {
 };
 
 export type AutoRunState = "paused" | "generating" | "reviewing" | "completed" | "failed" | "awaiting_review";
+export type AutoRunPauseReason = "user_requested";
 
 export type AutoRun = {
     id: string;
@@ -352,7 +353,7 @@ export type FrameFlowEvent =
     | { type: "auto_run.trajectory_summarized"; eventId: string; summary: AutoRunTrajectorySummary }
     | { type: "auto_run.completed"; eventId: string; autoRunId: string; runId: string; completedAt: string }
     | { type: "auto_run.extended"; eventId: string; autoRunId: string; previousMaxIterations: number; maxIterations: number; additionalIterations: number; extendedAt: string }
-    | { type: "auto_run.paused"; eventId: string; autoRunId: string; pausedAt: string }
+    | { type: "auto_run.paused"; eventId: string; autoRunId: string; pausedAt: string; /** Omitted only by journals written before stop reasons were recorded. */ reason?: AutoRunPauseReason }
     | { type: "auto_run.failed"; eventId: string; autoRunId: string; error: string; failedAt: string }
     | { type: "schedule.created"; eventId: string; schedule: DailyCollectionSchedule }
     | { type: "schedule.updated"; eventId: string; schedule: DailyCollectionSchedule }

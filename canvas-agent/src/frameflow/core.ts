@@ -379,7 +379,7 @@ export class FrameFlowCore {
             const autoRun = this.projection.autoRuns[command.autoRunId];
             if (!autoRun) throw new FrameFlowDomainError("找不到自动跑", 404);
             if (autoRun.state !== "generating" && autoRun.state !== "reviewing") throw new FrameFlowDomainError("只有正在生成或机器审图的自动跑可以停止", 409);
-            return [{ type: "auto_run.paused", eventId, autoRunId: autoRun.id, pausedAt: occurredAt }];
+            return [{ type: "auto_run.paused", eventId, autoRunId: autoRun.id, pausedAt: occurredAt, reason: "user_requested" }];
         }
         if (command.type === "auto_run.start") {
             const autoRun = this.projection.autoRuns[command.autoRunId];

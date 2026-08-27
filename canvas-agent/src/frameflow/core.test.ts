@@ -422,7 +422,10 @@ test("机器审图期间停止会保留结果但不会自动启动下一轮", as
     await waitFor(async () => (await core.query({ type: "review.queue", limit: 20 })).items[0]?.machineReview?.rating === 3);
 
     const stopped = (await core.query({ type: "auto_run.list", limit: 20 })).autoRuns[0]!;
+    const history = await core.query({ type: "event.history", subjectId: created.resource!.id, limit: 20 });
+    const paused = history.events.find((event) => event.type === "auto_run.paused");
     assert.equal(stopped.state, "paused");
+    assert.equal(paused?.reason, "user_requested");
     assert.equal(stopped.iteration, 1);
     assert.equal(generationCount, 1);
 });

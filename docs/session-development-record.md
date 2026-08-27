@@ -163,3 +163,15 @@
 | `docs/session-development-record.md` | 修改 | 记录协议、来源与失败降级边界及质量结果。 |
 
 验证记录：先新增协议断言，确认当前实现会返回 `javascript:alert(1)` 且缺少来源链接清理函数；实现后聚焦测试 6 项通过，`npm run typecheck` 通过，完整 `npm test` 为 15 个文件/49 项通过，`npm run build` 通过。该切片不把浏览器 Prompt URL 政策外推为全部外部内容审计，CSP 与来源抓取网络策略仍需后续阶段 D 工作。
+
+## 13. 阶段 D 自动跑停止原因（2026-08-28）
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/types.ts` | 修改 | 为 `auto_run.paused` 事件增加可选的 `reason`；新事件使用 `user_requested`，而旧 journal 缺少该字段时仍保持可回放。 |
+| `canvas-agent/src/frameflow/schemas.ts` | 修改 | 将停止原因纳入事件 schema，并保持可选以兼容历史持久化记录。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 用户执行 `auto_run.stop` 时在事实事件中持久化 `user_requested`。 |
+| `canvas-agent/src/frameflow/core.test.ts` | 修改 | 在机器审图期间停止的既有状态机回归中查询 `event.history`，确认停止原因与 Auto Run 一起可追溯。 |
+| `docs/session-development-record.md` | 修改 | 记录事件契约、向后兼容约束和验证结果。 |
+
+验证记录：先新增事件历史断言，原实现返回 `undefined`，证明停止原因尚未记录；补齐类型、schema 与命令事件后，聚焦 FrameFlow 核心测试 44 项、Canvas Agent 构建和完整 `npm test` 171 项均通过。此切片补的是用户主动停止语义；生成失败、机器审图、轮次、批次和隔离结果已有独立事实事件，未将其伪装成单一通用遥测流。

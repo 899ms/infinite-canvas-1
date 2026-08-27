@@ -326,7 +326,7 @@ const feedbackEventSchema = z.discriminatedUnion("type", [
         additionalIterations: z.number().int().min(1).max(20),
         extendedAt: z.string().datetime(),
     }).strict(),
-    z.object({ type: z.literal("auto_run.paused"), eventId, autoRunId: id, pausedAt: z.string().datetime() }).strict(),
+    z.object({ type: z.literal("auto_run.paused"), eventId, autoRunId: id, pausedAt: z.string().datetime(), reason: z.literal("user_requested").optional() }).strict(),
     z.object({ type: z.literal("auto_run.failed"), eventId, autoRunId: id, error: z.string().trim().min(1).max(500), failedAt: z.string().datetime() }).strict(),
     z.object({ type: z.literal("schedule.created"), eventId, schedule: scheduleSchema }).strict(),
     z.object({ type: z.literal("schedule.updated"), eventId, schedule: scheduleSchema }).strict(),
