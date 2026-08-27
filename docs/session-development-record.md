@@ -539,3 +539,17 @@
 | `docs/session-development-record.md` | 修改 | 记录本次真实浏览器交互、源代码边界和临时产物说明。 |
 
 验证记录：使用独立 Playwright CLI 会话与临时 Vite `127.0.0.1:4173`。以深色偏好创建隔离画布，首屏已是深色；切换浅色后，浏览器实际读取到 `data-ds-theme=light`、无 `dark` class、`colorScheme=light` 与 `theme-color=#fafaf9`，刷新后主题仍保持。源码进一步确认上述首屏主题写入发生在 `index.html` 的模块脚本之前。画布库中创建一次性空画布，选中卡片后按 Tab 焦点落到标题原生按钮且具有浏览器焦点轮廓，按 Enter 进入该画布；再返回库完成选择、重命名、零节点 ZIP 导出及确认删除。生图质量、视频清晰度和画布音频设置面板均在真实浏览器显示可访问的输入/选项；前两者通过 Tab 取得明确焦点轮廓，音频面板渲染了声音、格式、语速与声音指令控件。导出的零节点 ZIP 仅位于被 Git 忽略的 `.playwright-cli/` 临时会话目录，不含真实资产；本节不访问 3000/17371，不连接 Agent，不调用外部生成服务，也不包含 Docker/容器部署。
+
+## 40. 提示词筛选响应式与键盘验收（2026-08-28）
+
+本切片关闭中文主清单第 25 项。以真实公共提示词列表验证窄宽度下分类与标签各自有独立横向滚动轨道，桌面恢复左侧纵向筛选栏，并检查键盘激活语义；没有新增或修改任何提示词、资产、浏览器持久化数据或业务代码。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/pages/prompts/index.tsx` | 既有实现（未修改） | 提供 1100px 以下独立横向轨道、桌面 `lg` 左侧筛选栏，以及 `aria-pressed` 与 Enter/Space 键盘激活处理。 |
+| `web/src/styles/globals.css` | 既有实现（未修改） | 为筛选按钮提供与主题一致的活动和焦点视觉状态。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 第 25 项改为“人工通过”；汇总更新为 3 项人工通过、87 项未验证。 |
+| `docs/post-development-roadmap.md` | 修改 | 同步当前未验证项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录响应式尺寸、键盘时序和证据边界。 |
+
+验证记录：独立 Playwright CLI 会话在 `127.0.0.1:4173/prompts` 读取公开提示词列表。1000px 宽度下，分类轨道 `clientWidth=937`、`scrollWidth=1208`，标签轨道 `clientWidth=937`、`scrollWidth=50778`，二者实际计算样式均为 `overflow-x:auto` 与 `flex-wrap:nowrap`；没有换行堆叠或卡片受挤压。先选中 `all` 分类、Tab 到 `Banana Prompt Quicker`、按 Enter 后该分类显示 `aria-pressed=true` 并将列表更新为 323 条；为避免状态更新导致的旧焦点误判，再按实际路径选中“工作”、Tab 到“海报”、按 Space 后“海报”显示 `aria-pressed=true` 且结果继续过滤。1280px 宽度下，侧栏实际为 `position:sticky`、`overflow-y:auto`，可视高度 804、内容高度 2924，分类与标签轨道均恢复 `overflow-x:visible` 与 `flex-wrap:wrap`。开始时曾在鼠标点击标签后直接按空格，重渲染已使旧元素失焦；复测采用真实 Tab 路径后确认键盘行为正确。结束后关闭 Playwright 与临时 Vite；3000/17371 原服务未受影响，也未连接 Agent、执行外部生成、使用 Docker 或写入用户资产。
