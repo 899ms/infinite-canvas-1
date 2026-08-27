@@ -599,3 +599,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本次交互、修复、端口保护和证据边界，满足对话级可追溯要求。 |
 
 验证记录：配置页首访的网络请求中没有 `channel-editor-drawer.tsx` 或 `model-script-editor.tsx`；点击“编辑”后显示“编辑渠道”对话框，点击“调用脚本”后显示模型脚本编辑器。隔离浏览器依次确认：生图页的“16 倍数对齐”和“透明背景”开关、视频页的“清晰度”和“秒数”数值控件、提示词来源的具名来源开关、画布外观的“图片信息”开关、节点插件入口，以及 Agent 面板的“对话/历史/技能/日志”标签均有清晰的可访问名称或状态。对已获得焦点的“16 倍数对齐”、提示词来源和“图片信息”按 Space 均实际切换自身状态；画布开关可从已选中切换为未选中，未触发画布平移。未连接的 Agent “技能”标签按产品预期显示“连接 Agent 后查看 Skill”并禁用操作；修复后以全新浏览器会话重复打开该标签，控制台为 0 errors、0 warnings，之前的 `useForm` 未连接表单警告不再出现。结束时精确关闭浏览器会话与监听 4173 的临时 Vite，复核 3000（PID 37996）和 17371（PID 42544）仍在监听；不涉及真实 Agent、外部生成或 Docker/容器部署。
+
+## 44. FrameFlow 图片预览全入口隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 05 项。新增浏览器夹具完全拦截 FrameFlow 查询、命令与图片请求；只使用内存中的 1×1 PNG 和固定路由响应，不读取真实 Agent Token、用户资产、3000/17371 服务数据或 Docker/容器环境。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-preview.spec.ts` | 修改 | 新增跨入口预览回归：运行与血缘成功结果、演化轨迹同轮图片、待审右侧当前图片，以及 Preference DNA 的强化/规避/Comment 证据图。验证预览集合切换、缩放、旋转、翻转、关闭与零命令写入。 |
+| `web/src/pages/frameflow/index.tsx`、`web/src/pages/frameflow/trajectory-view.tsx`、`web/src/pages/frameflow/review-view.tsx`、`web/src/pages/frameflow/preference-view.tsx` | 既有实现（未修改） | 四个页面均以 `Image`/`Image.PreviewGroup` 提供图片预览；本节通过真实 Chromium 浏览器覆盖可见入口。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 05 项记为“自动化通过”，并同步未验证项总数为 84。 |
+| `docs/session-development-record.md` | 修改 | 记录夹具、操作范围、无写入断言和质量门禁边界。 |
+
+验证记录：新用例先在演化轨迹点击“第 1 轮图片 1”，验证仅在该轮 2 张图片间从 `1 / 2` 切换到 `2 / 2`，随后实际执行 `zoomIn`、`zoomOut`、`rotateLeft`、`rotateRight`、`flipX`、`flipY` 与关闭操作。它再分别从运行与血缘的“生成结果 1”、待审检查器的“当前审核图片”、偏好页的“强化方向图片 image-a”“规避方向图片 image-b”“Comment 证据 image-a”打开预览；预览关闭后仍可见原始血缘结果、评分 `5 星`、Comment 与对应证据卡。所有命令路由均被收集并最终断言为空数组，因此放大、浏览和变换不会写入评分、Comment、soft delete 或其他反馈。该用例及同文件的既有同轮切换用例在 Chromium 中共 2 项通过，完整 Playwright 套件为 19 项通过；Web 单测 15 文件/50 项、生产构建和文档内容/类型/生产构建均通过。`format:check` 已不报告本次的预览用例，但仍因保留的 `.playwright-cli` 证据文件及既有 `e2e/frameflow-task-context.spec.ts`、`scripts/check-csp-report-only.mjs` 报告 6 项基线外格式问题；本切片不格式化、更改或删除这些用户/既有内容。不将夹具图片或浏览器回归外推为真实外部模型、Agent SSE 或生产部署验收。
