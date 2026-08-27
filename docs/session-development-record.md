@@ -568,3 +568,19 @@
 | `docs/session-development-record.md` | 修改 | 记录本次浏览器主路径、临时文件边界和端口保护结果。 |
 
 验证记录：在临时 Vite `127.0.0.1:4173/assets` 创建“瀑布流宽图”与“瀑布流隐藏图”后，实际读取瀑布流列 `column-width=292px`、`column-gap=16px`；QA SVG 自然尺寸 320x240，渲染尺寸 335x251、`object-fit=contain`，保持 4:3 原比例。五星“强化”与一星“强降权”分别改变卡片评分和审美偏好；选择“高评分”后五星资产位于一星资产之前。标题搜索可收敛到单项，输入不存在词后显示“没有匹配条件的资产”与“清除筛选”。密度切换实际在 `column-width=232px` 和 `292px` 间往返。点击导出产生 `我的资产.zip`；随即导入该包，页面报告“已校验：2 个资产、2 个媒体文件、3.5 KB；可重新导入”，并实际导入 2 个资产。对一星资产执行 Soft delete 后，正常资产库从 4 降至 3；“已隐藏”视图仅显示该 1 项并提供“恢复到库中”，恢复后正常库回到 4 项。结束时精确关闭浏览器会话和本轮监听 4173 的 Vite，复核 3000（PID 37996）及 17371（PID 42544）仍在监听；不涉及 Agent、外部生成服务或 Docker/容器部署。
+
+## 42. 标题 Token 一致性修复与部分隔离验收（2026-08-28）
+
+本切片修复中文主清单第 24 项已经定位的标题 Token 漂移：路由级骨架与顶栏 Agent 懒加载此前已存在，但首页和图像、视频、画布、资产页没有统一引用设计系统的 display/title Token。真实已连接 Agent 的历史、日志和会话保留仍未在本轮验证，因此状态矩阵的第 24 项继续保持“未验证”。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/router.tsx` | 既有实现（未修改） | 全部路由已通过 `lazy` 和 `Suspense` 使用带 `aria-busy` 的骨架，而不是空白回退。 |
+| `web/src/pages/home/index.tsx` | 修改 | 首页唯一的 `h1` 改为 `page-display`，继承设计系统 display 尺寸、700 字重与紧凑行高。 |
+| `web/src/pages/image/index.tsx`、`web/src/pages/video/index.tsx` | 修改 | 两个工作台的唯一 `h1` 改为 `page-title`，消除本地 `text-2xl font-semibold` 偏差。 |
+| `web/src/pages/canvas/index.tsx` | 修改 | 画布库的唯一 `h1` 改为 `page-title`，保留原有外边距与文案。 |
+| `web/src/pages/assets/index.tsx` | 修改 | 在资产筛选栏上方增加可见的“我的资产” `h1.page-title`，使页面具有一致的标题层级和可访问名称。 |
+| `web/src/styles/globals.css`、`web/design-system/css/tokens.css` | 既有实现（未修改） | `page-title` 和 `page-display` 分别绑定 32px、52px 的设计 Token，并强制 700 字重。 |
+| `docs/session-development-record.md` | 修改 | 记录标题修复、浏览器实测值和未覆盖的 Agent 连接边界。 |
+
+验证记录：隔离 Vite `127.0.0.1:4173` 下，首页 `h1` 实测为 52px、700、56.16px 行高；资产、图像工作台、视频工作台、画布库和配置页 `h1` 均为 32px、700。切换浅色主题后，资产标题仍为 32px、700，根节点为 `data-ds-theme=light`。空资产库仍明确显示“新增资产”按钮。点击“打开 Agent”可展开面板，页面实际暴露对话、历史、技能、日志标签及连接设置；在未建立隔离 Agent 连接的前提下，不声称覆盖已有连接、对话、历史和日志的保留语义。结束时关闭 Playwright 和临时 Vite，3000（PID 37996）及 17371（PID 42544）未受影响；未执行外部生成、未写入用户资产且不涉及 Docker/容器部署。

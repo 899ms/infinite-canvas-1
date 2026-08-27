@@ -416,7 +416,7 @@ export default function VideoPage() {
                 <section className="grid gap-3 lg:min-h-0 lg:overflow-hidden xl:grid-cols-[420px_minmax(0,1fr)]">
                     <div className="thin-scrollbar flex flex-col rounded-lg border border-stone-200 bg-card p-4 shadow-sm dark:border-stone-800 lg:min-h-0 lg:overflow-y-auto">
                         <div className="flex items-start justify-between gap-3">
-                            <h1 className="text-2xl font-semibold text-stone-950 dark:text-stone-100">{t("videoWorkbench.title")}</h1>
+                            <h1 className="page-title text-stone-950 dark:text-stone-100">{t("videoWorkbench.title")}</h1>
                             <div className="flex shrink-0 gap-2 lg:hidden">
                                 <Button icon={<History className="size-4" />} onClick={() => setLogsOpen(true)}>
                                     {t("workbench.logs")}

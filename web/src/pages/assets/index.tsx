@@ -234,6 +234,9 @@ export default function AssetsPage() {
         <div className="flex h-full flex-col overflow-hidden bg-background text-stone-900 dark:text-stone-100">
             <main className="min-h-0 flex-1 overflow-y-auto bg-background">
                 <div className="sticky top-0 z-20 border-b border-border/80 bg-background/95 backdrop-blur">
+                    <div className="px-4 pt-4 sm:px-6">
+                        <h1 className="page-title">我的资产</h1>
+                    </div>
                     <div className="flex min-w-max items-center gap-1 overflow-x-auto px-4 pt-2 sm:px-6">
                         {kindOptions.map((option) => {
                             const active = !tagFilter && kindFilter === option.value;
