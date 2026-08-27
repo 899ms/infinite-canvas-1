@@ -257,3 +257,17 @@
 说明：Docs 只有 `bun.lock`，因此未使用会被 npm 正确拒绝的 `npm ci`；Bun 冻结安装完成后执行全部 Docs 门禁。验证不构建 Docker/Compose、不访问端口 3000 或 17371、不读取真实 Agent 凭据或用户资产。临时克隆保留在系统临时目录作为本轮可检查证据，未对原工作区执行清理或切换。
 
 已同步更新双语 TODO：工程基线不再被列为待执行动作，改为引用本节的已完成证据；FrameFlow 逐项验收、核心模块治理与 CSP 仍保持为未完成后续事项。
+
+## 20. 阶段 D Vercel CSP 报告模式（2026-08-28）
+
+本切片只为 Vercel 静态托管增加观察型 CSP 响应头；不修改 Docker/Nginx、Canvas Agent CORS、用户配置的 Provider、WebDAV 或插件行为。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `vercel.json` | 修改 | 为全部 Vercel 路径发送 `Content-Security-Policy-Report-Only`。策略以 `default-src 'self'`、`object-src 'none'`、`frame-ancestors 'none'` 建立收敛基线；保留内联主题、用户模型脚本的 `unsafe-eval`、插件 Blob 模块和 HTTP(S) 外部连接，故不阻断现有功能。 |
+| `web/scripts/check-csp-report-only.mjs` | 新增 | 读取部署配置并校验报告头及关键指令，避免后续无意删除安全基线。 |
+| `web/package.json` | 修改 | 提供正式 `npm run check:csp` 检查命令。 |
+| `docs/content/docs/support/browser-credential-threat-model*.mdx` | 修改 | 双语说明报告模式覆盖范围、保留的宽松来源、无集中报告端点以及转为强制模式前的迁移条件。 |
+| `docs/session-development-record.md` | 修改 | 记录风险评估、文件关联、覆盖边界与验证要求。 |
+
+验证记录：先运行新增检查命令，确认当前 Vercel 配置缺少 CSP 报告头而失败；补齐策略后应运行 `npm run check:csp`、Web 单元/类型/生产构建与 Docs 内容/类型/生产构建。报告头不等价于 CSP 强制保护：本应用仍有用户可信插件和用户脚本的高信任边界，Docker/自托管的响应头需在各自部署层单独设计。
