@@ -9,7 +9,7 @@
 | ID | 验收项 | 状态 | 入口 / 测试数据 / 预期 | 现有证据或阻塞原因 |
 | ---: | --- | --- | --- | --- |
 | 01 | Docker 当前源码部署 | 阻塞 | 主清单 01；Docker 环境；当前源码容器链路 | 本轮明确不包含 Docker/容器部署 |
-| 02 | FrameFlow 默认任务定位 | 未验证 | 主清单 02；隔离 Auto Run；URL 任务范围保持一致 | — |
+| 02 | FrameFlow 默认任务定位 | 未验证 | 主清单 02；隔离 Auto Run；URL 任务范围保持一致 | `web/e2e/frameflow-task-context.spec.ts` 覆盖默认最新任务与 URL 局部行为 |
 | 03 | 浏览器业务数据失败保护 | 未验证 | 主清单 03；隔离 IndexedDB；失败不得静默丢数据 | — |
 | 04 | 配置与生成控件可访问性及按需加载 | 未验证 | 主清单 04；键盘与屏幕阅读器；可达且按需加载 | `web/e2e/routes.spec.ts` 仅覆盖部分无文本控件 |
 | 05 | FrameFlow 图片预览 | 未验证 | 主清单 05；隔离图片；预览不改变审核状态 | `web/e2e/frameflow-preview.spec.ts` 仅覆盖同轮切换 |
@@ -19,10 +19,10 @@
 | 09 | FrameFlow 演化轨迹 | 未验证 | 主清单 09；临时多轮 Run；只聚合同一 Auto Run | `web/e2e/frameflow-preview.spec.ts` 仅覆盖预览分组 |
 | 10 | FrameFlow 跨轮总结 | 未验证 | 主清单 10；两轮机器评审；真实证据可追溯 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
 | 11 | FrameFlow 创建页 | 未验证 | 主清单 11；隔离参考图与 Brief；批准和生成独立 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
-| 12 | FrameFlow 待审页 | 未验证 | 主清单 12；隔离图片；评分、评论、隐藏和删除语义正确 | `canvas-agent/src/server/frameflow-http.test.ts` 有 API 局部覆盖 |
+| 12 | FrameFlow 待审页 | 未验证 | 主清单 12；隔离图片；评分、评论、隐藏和删除语义正确 | HTTP 闭环及 `web/e2e/frameflow-task-context.spec.ts` 覆盖任务筛选局部行为 |
 | 13 | FrameFlow 机器审图状态 | 未验证 | 主清单 13；隔离 Auto Run；状态仅出现在当前评审图片 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
 | 14 | FrameFlow Preference DNA 页 | 未验证 | 主清单 14；隔离反馈；证据与硬约束保持分离 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
-| 15 | FrameFlow 运行与血缘页面 | 未验证 | 主清单 15；隔离 Run；任务过滤、重试和隔离一致 | `canvas-agent/src/server/frameflow-http.test.ts` 有 API 局部覆盖 |
+| 15 | FrameFlow 运行与血缘页面 | 未验证 | 主清单 15；隔离 Run；任务过滤、重试和隔离一致 | HTTP 闭环及 `web/e2e/frameflow-task-context.spec.ts` 覆盖任务过滤局部行为 |
 | 16 | FrameFlow 事实内核 | 自动化通过 | 主清单 16；临时工作区与 PNG；事件、血缘、取消及重启一致 | `canvas-agent/src/frameflow/core.test.ts` |
 | 17 | 资产瀑布流回归 | 未验证 | 主清单 17；隔离资产库；布局和筛选可用 | — |
 | 18 | 可移植设计系统与启动链路 | 阻塞 | 主清单 18；干净目录与 Docker；本地/容器均使用当前源码 | 干净 Web 安装已验证；Docker 验收不在本轮范围 |
