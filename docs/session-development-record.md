@@ -654,3 +654,17 @@
 | `docs/session-development-record.md` | 修改 | 记录夹具范围、文件关联、失败诊断和质量门禁，满足对话级可追溯要求。 |
 
 验证记录：首次测试把 Ant Design 虚拟 Select 直接定位到未进入可视窗口的 `9:16` 选项，导致 30 秒定位超时；页面快照证明自动跑页面和首轮卡片均已正确渲染，失败仅来自测试选择器。改为在实际可见下拉层选择 `4:5` 与“大胆探索”后，通过自由方向提交精确发出 `brief.create`、`auto_run.create`，后者包含同一 Brief、每轮 2 张和最大 3 轮。启动请求返回 Auto Run 资源时页面不跳转，真实可见 `Codex 规划第 1 轮`、`停止自动跑`；停止后显示“已停止”和“继续自动跑”，命令序列追加唯一 `auto_run.stop`。完整 Web 门禁为 23 项 Playwright、15 个文件/50 项单元测试和生产构建通过；Canvas Agent 为 191 项测试与生产构建通过；Docs 内容、类型与生产构建通过。格式基线和真实服务边界继续按第 46 节保留，不将路由夹具外推为外部模型生产调用。
+
+## 48. FrameFlow 演化轨迹多轮隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 09 项。由于 Windows Bash 兼容层无法启动 Playwright CLI 包装器（`Bash/0x80070422`），且 CLI 不能在不使用受限代码注入的情况下拦截 Agent 请求，本项沿用仓库的 `@playwright/test` 路由夹具；所有数据、图片和命令均在内存中，不访问真实 Agent、3000/17371、外部服务、用户资产或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-trajectory.spec.ts` | 新增 | 为同一 Auto Run 提供三轮 Prompt、Run、图片与 Machine Review，验证宽屏并排比较、Prompt Revision/评分/决策、Diff 折叠展开、390px 横向轨道与“打开本轮完整血缘”的精确 URL。 |
+| `web/src/pages/frameflow/trajectory-view.tsx` | 既有实现（未修改） | 提供按轮次的横向卡片、窄屏滚动轨道、折叠 Prompt Diff 与 Run 血缘跳转。 |
+| `canvas-agent/src/frameflow/auto-run-trajectory.ts`、`canvas-agent/src/frameflow/core.test.ts` | 既有实现（未修改） | 轨迹仅筛选同一 Auto Run 的 `auto_run.iteration_started` 事件；Core 真实临时工作区回归验证多轮的迭代顺序、Prompt Revision、图片与 Machine Review 血缘。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 09 项记为“自动化通过”，同步自动化通过数为 8 项、未验证数为 80 项和浏览器回归基线。 |
+| `docs/session-development-record.md` | 修改 | 记录 CLI 兼容性限制、隔离夹具、文件关联和门禁边界。 |
+
+验证记录：用例在 1280px 下展示第 1 至第 3 轮的并排卡片、`Prompt r2` 和 `Codex 4/5 · 继续变体`；三张卡的顶边坐标一致。第二轮默认折叠的“查看 Prompt Diff 与规划依据”展开后显示真实规划依据及 `本轮：off-center`。在 390px 下，轨道外层的 `scrollWidth > clientWidth`，第二轮左边界仍位于视口内，保留下一轮可见提示；点击第二轮“打开本轮完整血缘”后 URL 精确包含同一 Auto Run 和 `run-traj-2`。初次断言误写 `vary` 的显示文案为“变化”，经实现核对后修正为实际的“继续变体”；第二次失败发现横向滚动属于外层容器而非 `ol`，修正后通过。完整 Web 门禁为 24 项 Playwright、15 个文件/50 项单元测试和生产构建通过；Canvas Agent 为 191 项测试与生产构建通过；Docs 内容、类型与生产构建通过。格式基线保持不改写用户或既有文件。
