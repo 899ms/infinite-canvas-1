@@ -404,3 +404,18 @@
 | `docs/session-development-record.md` | 修改 | 记录浏览器执行路径、隔离边界与保留验收缺口。 |
 
 验证记录：新增用例首次失败，原因是默认 `/prompts` 打开“公开提示词库”而非导入所在的“我的仪表盘”；补上真实标签路径后，第二次失败指出已访问的 Ant Design 隐藏标签页保留同名 Prompt，故将运行时断言限定到可见面板。最终聚焦浏览器用例 1 项与完整 Web Playwright 16 项均通过。Web 单元测试当前为 15 个文件/50 项，类型检查、生产构建、CSP 检查和 Docs 内容/类型/生产构建也通过。`npm run format:check` 仍报告未触达且不在基线内的 `e2e/frameflow-task-context.spec.ts`、`scripts/check-csp-report-only.mjs`；新增 `e2e/prompt-migration.spec.ts` 已单独通过 Prettier 检查，未为消除该既有基线漂移修改无关文件。此证据仍不覆盖审核列表超过 8 条时的滚动访问，不能把第 20 项标为完整通过。
+
+## 31. 阶段 C FrameFlow 生成准备规则解耦（2026-08-28）
+
+本切片将三条生成路径复用的裁剪位置判定与失败槽位事件构造移出 `FrameFlowCore`；生成 Provider 调用、资产写入、Run 收尾、事件格式和 HTTP 契约均未改变。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/generation-plan.ts` | 新增 | 纯生成准备规则：基于 Prompt 语义选择 `top` 或 `attention` 裁剪位置；为每个失败 slot 构造带独立 event ID 和错误快照的既有 `run.slot_failed` 事件。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 以导入调用新模块，保留排队、重试与自动跑三条既有生成路径和所有外部类型。 |
+| `canvas-agent/src/frameflow/generation-plan.test.ts` | 新增 | 验证界面语义与普通 Prompt 的裁剪选择，以及多槽位失败的 ID 独立性和错误快照。 |
+| `canvas-agent/package.json` | 修改 | 将新纯规则测试纳入正式 Canvas Agent 测试命令。 |
+| `docs/post-development-roadmap.md` | 修改 | 将 Canvas Agent 当前测试基线更新为 188 项。 |
+| `docs/session-development-record.md` | 修改 | 记录职责边界、测试先行过程和验证结果。 |
+
+验证记录：先由新测试导入尚不存在模块，得到预期 `ERR_MODULE_NOT_FOUND`；迁移后聚焦测试 2 项、Canvas Agent TypeScript 构建和完整 `npm test` 188 项均通过。该切片不改变生成裁剪的正则规则、slot 失败事件字段、随机 ID 来源或任何 Provider 行为，只使可复用的生成准备规则脱离大 Core 单独测试。

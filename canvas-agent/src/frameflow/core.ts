@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { AgentDecisionValidationError, buildAgentDecision, type AgentDecisionInput } from "./agent-decision.js";
 import { FrameFlowAssetStore, FrameFlowAssetValidationError } from "./asset-store.js";
 import { FrameFlowEventStore } from "./event-store.js";
+import { failedSlotEvents, generationCropPosition } from "./generation-plan.js";
 import { eventHistory } from "./history.js";
 import { plannerPreferenceContext } from "./preference-context.js";
 import { buildPromptDiff } from "./prompt-diff.js";
@@ -1123,19 +1124,4 @@ function planningAutoRun(autoRun: AutoRun, updatedAt: string): AutoRun {
     delete next.currentRunId;
     delete next.lastError;
     return next;
-}
-
-function generationCropPosition(prompt: PromptVersion): "top" | "attention" {
-    const context = [
-        prompt.compiledPrompt,
-        ...prompt.fields.subject,
-        ...prompt.fields.composition,
-        ...prompt.fields.layout,
-        ...prompt.fields.technical,
-    ].join(" ");
-    return /\b(?:dashboard|user interface|ui concept|web interface|website|web page|app screen|top navigation|header|toolbar)\b/i.test(context) ? "top" : "attention";
-}
-
-function failedSlotEvents(runId: string, slotIds: string[], error: GenerationError): FrameFlowEvent[] {
-    return slotIds.map((slotId) => ({ type: "run.slot_failed", eventId: crypto.randomUUID(), runId, slotId, error: structuredClone(error) }));
 }
