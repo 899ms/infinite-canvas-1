@@ -391,3 +391,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本次文件关联、边界及验证要求。 |
 
 验证要求：运行聚焦 Vitest、完整 Web 单元测试、类型检查和生产构建。该回归只证明迁移领域语义；缺失引用在实际导入页面的可见待修复状态、审核列表超过 8 条时的滚动访问，仍须隔离浏览器验收，不能据此将第 20 项标记为通过。
+
+## 30. 提示词迁移隔离浏览器回归（2026-08-28）
+
+本切片为第 20 项增加真实浏览器覆盖；使用 Playwright 的独立浏览器上下文和临时 Vite `127.0.0.1:4173`，不访问项目常用 3000/17371 端口、不读取真实浏览器存储、资产或凭据。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/prompt-migration.spec.ts` | 新增 | 在“提示词库 → 我的仪表盘”真实入口上传已跟踪 QA 夹具，验证迁入数量、收录、已审核术语、配方、完整 Prompt、运行时词库和 PromptFill 自定义模板；再以内存 JSON 注入缺失收录引用，验证页面显示“引用待修复”。 |
+| `web/qa-fixtures/prompt-migration.json` | 既有夹具（未修改） | 提供正常审核血缘迁入的确定性输入。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 第 20 项更新为单元与浏览器局部证据，仍保持“未验证”。 |
+| `docs/session-development-record.md` | 修改 | 记录浏览器执行路径、隔离边界与保留验收缺口。 |
+
+验证记录：新增用例首次失败，原因是默认 `/prompts` 打开“公开提示词库”而非导入所在的“我的仪表盘”；补上真实标签路径后，第二次失败指出已访问的 Ant Design 隐藏标签页保留同名 Prompt，故将运行时断言限定到可见面板。最终聚焦浏览器用例 1 项与完整 Web Playwright 16 项均通过。Web 单元测试当前为 15 个文件/50 项，类型检查、生产构建、CSP 检查和 Docs 内容/类型/生产构建也通过。`npm run format:check` 仍报告未触达且不在基线内的 `e2e/frameflow-task-context.spec.ts`、`scripts/check-csp-report-only.mjs`；新增 `e2e/prompt-migration.spec.ts` 已单独通过 Prettier 检查，未为消除该既有基线漂移修改无关文件。此证据仍不覆盖审核列表超过 8 条时的滚动访问，不能把第 20 项标为完整通过。
