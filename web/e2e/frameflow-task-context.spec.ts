@@ -106,9 +106,68 @@ test("FrameFlow 自动跑失败后在原任务继续审图", async ({ page }) =>
     await page.goto("/frameflow?view=auto-run");
     await expect(page.getByText("审图 Provider 暂时不可用", { exact: true })).toBeVisible();
     await expect(page.getByText("当前批次：run-reco", { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByText("审图 Provider 暂时不可用", { exact: true })).toBeVisible();
+    await expect(page.getByText("当前批次：run-reco", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "继续自动跑" }).click();
     await expect(page.getByText("已完成 1/1 轮", { exact: true })).toBeVisible();
     expect(resumed).toBe(true);
+});
+
+test("FrameFlow 创建页先批准 Prompt，再提交独立生成批次", async ({ page }) => {
+    let approved = false;
+    const commands: Array<{ type?: string; input?: { subject?: string; purpose?: string } }> = [];
+    const brief = { id: "brief-create", profileId: "default", subject: "窗边的编辑椅", purpose: "审美训练与灵感采集", aspectRatio: "4:5", constraints: { keep: [], avoid: [] }, referenceImageIds: [], strategy: "balanced", createdAt: now };
+    const prompt = { id: "prompt-create", briefId: brief.id, revision: 1, status: "draft", fields, compiledPrompt: "An editorial chair by a window.", reason: "隔离创建页验收。", diff, referenceImageIds: [], createdAt: now };
+    const run = { id: "run-create", briefId: brief.id, promptVersionId: prompt.id, status: "running", requestedCount: 4, slotIds: ["slot-create"], imageIds: [], createdAt: now };
+    await page.addInitScript(() => {
+        localStorage.setItem("canvas-agent-url", "http://127.0.0.1:4173");
+        localStorage.setItem("canvas-agent-token", "frameflow-create-flow-token");
+    });
+    await page.route("**/agent/frameflow/query?**", async (route) => {
+        const query = route.request().postDataJSON() as { type?: string };
+        const approvedPrompt = { ...prompt, status: approved ? "approved" : "draft" };
+        const data = query.type === "brief.detail"
+            ? { type: "brief.detail", brief }
+            : query.type === "prompt.lineage"
+              ? { type: "prompt.lineage", promptVersionId: prompt.id, versions: [approvedPrompt], decisions: [] }
+              : query.type === "run.list"
+                ? { type: "run.list", runs: [run] }
+                : query.type === "run.detail"
+                  ? { type: "run.detail", run, slots: [{ id: "slot-create", runId: run.id, index: 0, status: "running", attempts: 1 }] }
+                  : query.type === "auto_run.list"
+                    ? { type: "auto_run.list", autoRuns: [] }
+                    : { type: "quarantine.list", items: [] };
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data }) });
+    });
+    await page.route("**/agent/frameflow/commands**", async (route) => {
+        const command = route.request().postDataJSON() as { type?: string; input?: { subject?: string; purpose?: string } };
+        commands.push(command);
+        if (command.type === "prompt.approve") approved = true;
+        const resource = command.type === "brief.create"
+            ? { type: "brief", id: brief.id }
+            : command.type === "round.plan"
+              ? { type: "prompt_version", id: prompt.id }
+              : command.type === "run.start"
+                ? { type: "run", id: run.id }
+                : { type: "prompt_version", id: prompt.id };
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data: { resource } }) });
+    });
+
+    await page.goto("/frameflow?view=create");
+    await page.getByLabel("主体").fill("窗边的编辑椅");
+    await page.getByRole("button", { name: "让 Codex 生成 Prompt" }).click();
+    await expect(page.getByRole("heading", { name: "Prompt Version 1" })).toBeVisible();
+    expect(commands.map((command) => command.type)).toEqual(["brief.create", "round.plan"]);
+    expect(commands[0]?.input).toMatchObject({ subject: "窗边的编辑椅" });
+    expect(commands[0]?.input?.purpose).toBeUndefined();
+
+    await page.getByRole("button", { name: "批准 Prompt" }).click();
+    await expect(page.getByRole("button", { name: "开始生成 4 张" })).toBeVisible();
+    expect(commands.map((command) => command.type)).toEqual(["brief.create", "round.plan", "prompt.approve"]);
+    await page.getByRole("button", { name: "开始生成 4 张" }).click();
+    await expect(page).toHaveURL(/view=lineage.*runId=run-create/);
+    expect(commands.map((command) => command.type)).toEqual(["brief.create", "round.plan", "prompt.approve", "run.start"]);
 });
 
 function autoRun(id: string, name: string, briefId: string, runId: string) {
