@@ -271,3 +271,15 @@
 | `docs/session-development-record.md` | 修改 | 记录风险评估、文件关联、覆盖边界与验证要求。 |
 
 验证记录：先运行新增检查命令，确认当前 Vercel 配置缺少 CSP 报告头而失败；补齐策略后应运行 `npm run check:csp`、Web 单元/类型/生产构建与 Docs 内容/类型/生产构建。报告头不等价于 CSP 强制保护：本应用仍有用户可信插件和用户脚本的高信任边界，Docker/自托管的响应头需在各自部署层单独设计。
+
+## 21. 干净检出证据刷新至当前分支（2026-08-28）
+
+为避免将旧提交的复现结果外推到 CSP 更新后的分支，保留原临时浅克隆并仅对该克隆执行快进：`eddb70b` → `69b3556`。快进后工作树仍为空，且 `eddb70b..69b3556` 没有 `canvas-agent/` 路径变更。
+
+| 范围 | 当前提交复核命令 | 结果 |
+| --- | --- | --- |
+| `web/` | `npm run check:csp`、`npm test`、`npm run typecheck`、`npm run build`、`npm run test:e2e` | CSP 配置检查、49 项 Vitest、类型、生产构建和 15 项 Playwright 全部通过。 |
+| `docs/` | `bun run check:content`、`bun run types:check`、`bun run build` | 内容清单、类型与 Next 生产构建通过；`.next/BUILD_ID` 已生成。 |
+| `canvas-agent/` | 路径差异复核 | 当前提交相对第 19 节的已验证提交无源码变更，因此继续引用第 19 节在同一干净克隆完成的 178 项测试与构建证据。 |
+
+边界：这证明 fork 的当前提交可在隔离 Windows 环境完成已列的本地质量门禁；它不证明 Vercel 已实际部署或已发送响应头，也不替代 95 项中文主清单的逐项人工验收。临时克隆继续保留，不删除、不纳入项目文件。
