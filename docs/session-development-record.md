@@ -668,3 +668,17 @@
 | `docs/session-development-record.md` | 修改 | 记录 CLI 兼容性限制、隔离夹具、文件关联和门禁边界。 |
 
 验证记录：用例在 1280px 下展示第 1 至第 3 轮的并排卡片、`Prompt r2` 和 `Codex 4/5 · 继续变体`；三张卡的顶边坐标一致。第二轮默认折叠的“查看 Prompt Diff 与规划依据”展开后显示真实规划依据及 `本轮：off-center`。在 390px 下，轨道外层的 `scrollWidth > clientWidth`，第二轮左边界仍位于视口内，保留下一轮可见提示；点击第二轮“打开本轮完整血缘”后 URL 精确包含同一 Auto Run 和 `run-traj-2`。初次断言误写 `vary` 的显示文案为“变化”，经实现核对后修正为实际的“继续变体”；第二次失败发现横向滚动属于外层容器而非 `ol`，修正后通过。完整 Web 门禁为 24 项 Playwright、15 个文件/50 项单元测试和生产构建通过；Canvas Agent 为 191 项测试与生产构建通过；Docs 内容、类型与生产构建通过。格式基线保持不改写用户或既有文件。
+
+## 49. FrameFlow 跨轮总结生成、持久化与更新隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 10 项。既有 Core 使用临时工作区覆盖后台总结、不可变事件、重启持久化、证据轮次校验和 Preference DNA 隔离；新增浏览器夹具只返回内存轨迹与总结响应，不连接真实 Agent、3000/17371、外部 Provider、用户资产或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-trajectory.spec.ts` | 修改 | 新增跨轮总结闭环：两轮完整审图时生成总结、刷新仍保留；模拟追加第三轮后显示待分析，并以 `force=true` 更新到最新轮。 |
+| `web/src/pages/frameflow/trajectory-view.tsx` | 既有实现（未修改） | 呈现持续改善、连续未解决、真实证据轮次、最佳轮次与新轮次待更新状态。 |
+| `canvas-agent/src/frameflow/core.ts`、`canvas-agent/src/frameflow/core.test.ts` | 既有实现（未修改） | 只把完整 Machine Review 轮次交给总结器，验证引用轮次、写入 `auto_run.trajectory_summarized`、重启保留及不影响人工偏好。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 10 项记为“自动化通过”，同步自动化通过数 9、未验证数 79 与浏览器回归基线。 |
+| `docs/session-development-record.md` | 修改 | 记录隔离范围、测试失败诊断和回归证据。 |
+
+验证记录：初次总结路由的精确 URL 模式未覆盖实际请求，页面按安全错误提示“本地 Agent 请求失败”停留；扩展为 Auto Run summarize URL 匹配后通过。用例在两轮完整审图时点击“生成跨轮总结”，显示“推荐第 2 轮”、改善项“主体层次”和持续问题“霓虹控制”；刷新后该总结仍由查询响应呈现。模拟第三轮完成后，旧总结明确标记“有新轮次待分析”；点击“更新到最新轮”后显示“推荐第 3 轮”、移除待分析标记，并记录请求参数顺序 `[false, true]`。完整质量门禁在提交前执行；格式基线继续保留既有 6 项，不改写用户文件。

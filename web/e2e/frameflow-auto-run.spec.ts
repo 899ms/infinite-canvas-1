@@ -71,7 +71,7 @@ test("FrameFlow 自动跑从自由方向立即进入可停止的首轮规划", a
 
     await expect(page.getByText("Codex 规划第 1 轮", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "停止自动跑", exact: true })).toBeVisible();
-    expect(commands.map((command) => command.type)).toEqual(["brief.create", "auto_run.create"]);
+    await expect.poll(() => commands.map((command) => command.type)).toEqual(["brief.create", "auto_run.create"]);
     expect(commands[0]?.input).toMatchObject({
         subject: brief.subject,
         aspectRatio: "4:5",

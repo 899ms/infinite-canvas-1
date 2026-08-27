@@ -125,3 +125,62 @@ test("FrameFlow 演化轨迹按轮次比较、窄屏保留下一轮提示并可�
     await page.getByRole("button", { name: "打开本轮完整血缘", exact: true }).nth(1).click();
     await expect(page).toHaveURL(/view=lineage.*autoRunId=auto-run-trajectory.*runId=run-traj-2/);
 });
+
+test("FrameFlow 跨轮总结可生成、刷新保留并在新增轮次后更新", async ({ page }) => {
+    let includeLatestRound = false;
+    let summary:
+        | {
+              autoRunId: string;
+              throughIteration: number;
+              improved: Array<{ issue: string; evidenceIterations: number[]; explanation: string }>;
+              recurring: Array<{ issue: string; evidenceIterations: number[]; recommendation: string }>;
+              bestIteration: number;
+              bestReason: string;
+              createdAt: string;
+          }
+        | undefined;
+    const summarizeCalls: boolean[] = [];
+    await page.addInitScript(() => {
+        localStorage.setItem("canvas-agent-url", "http://127.0.0.1:4173");
+        localStorage.setItem("canvas-agent-token", "frameflow-summary-token");
+    });
+    await page.route("**/agent/frameflow/query?**", async (route) => {
+        const query = route.request().postDataJSON() as { type?: string };
+        const visibleRounds = includeLatestRound ? rounds : rounds.slice(0, 2);
+        const data =
+            query.type === "auto_run.list" ? { type: "auto_run.list", autoRuns: [autoRun] } : query.type === "auto_run.trajectory" ? { ...trajectory, rounds: visibleRounds, ...(summary ? { summary } : {}) } : { type: "quarantine.list", items: [] };
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data }) });
+    });
+    await page.route("**/agent/frameflow/auto-runs/**/summarize**", async (route) => {
+        const request = route.request().postDataJSON() as { force?: boolean };
+        summarizeCalls.push(Boolean(request.force));
+        const throughIteration = includeLatestRound ? 3 : 2;
+        summary = {
+            autoRunId: autoRun.id,
+            throughIteration,
+            improved: [{ issue: "主体层次", evidenceIterations: [1, throughIteration], explanation: "后续轮次主体更清晰。" }],
+            recurring: [{ issue: "霓虹控制", evidenceIterations: [1, throughIteration], recommendation: "继续控制高光范围。" }],
+            bestIteration: throughIteration,
+            bestReason: `第 ${throughIteration} 轮完成度最佳。`,
+            createdAt: now,
+        };
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data: { summary } }) });
+    });
+
+    await page.goto(`/frameflow?view=trajectory&autoRunId=${autoRun.id}`);
+    await page.getByRole("button", { name: "生成跨轮总结", exact: true }).click();
+    const summaryPanel = page.getByRole("region", { name: "跨轮 Machine Review 总结" });
+    await expect(summaryPanel.getByText("推荐第 2 轮", { exact: true })).toBeVisible();
+    await expect(summaryPanel.getByText("主体层次", { exact: true })).toBeVisible();
+    await expect(summaryPanel.getByText("霓虹控制", { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(summaryPanel.getByText("推荐第 2 轮", { exact: true })).toBeVisible();
+
+    includeLatestRound = true;
+    await page.reload();
+    await expect(summaryPanel.getByText("有新轮次待分析", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "更新到最新轮", exact: true }).click();
+    await expect(summaryPanel.getByText("推荐第 3 轮", { exact: true })).toBeVisible();
+    await expect(summaryPanel.getByText("有新轮次待分析", { exact: true })).toHaveCount(0);
+    expect(summarizeCalls).toEqual([false, true]);
+});
