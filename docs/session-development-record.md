@@ -189,3 +189,17 @@
 | `docs/session-development-record.md` | 修改 | 记录职责边界、测试先行过程、文件关联和验证结果。 |
 
 验证记录：先让新测试直接导入尚不存在的纯模块，得到预期 `ERR_MODULE_NOT_FOUND`；迁移后，首次断言错误地把系统指令当成请求文本，已改为只断言构建器本来负责的内容。聚焦测试、`npm run build` 和完整 `npm test` 173 项均通过。该切片不声称外部 Codex Provider 已人工验收；它只证明请求文本在本地纯函数与既有 Agent 测试组合中保持一致。
+
+## 15. 阶段 C 图像请求构建器解耦（2026-08-28）
+
+本切片继续拆分 Codex 编排层中的无副作用文本构建，但不改变附件落盘、ImageGen 线程、Provider 调用或 UI 行为。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/agent/codex-image-requests.ts` | 新增 | 独立承载室内白膜/设计/漫游提示词、室内 ImageGen 与普通画布 ImageGen 请求文本及其输入类型；只依赖协议和附件类型。 |
+| `canvas-agent/src/agent/codex.ts` | 修改 | 保留实际线程创建、附件写入、生成调用和 finally 清理，改为调用该纯构建模块，并持续导出兼容的输入类型。 |
+| `canvas-agent/src/agent/codex-image-requests.test.ts` | 新增 | 直接覆盖室内阶段语义、数量上下限、唯一参考图、画幅、普通画布参考图数量和用户提示词。 |
+| `canvas-agent/package.json` | 修改 | 将图像请求构建器回归纳入正式 Agent 测试。 |
+| `docs/session-development-record.md` | 修改 | 记录会话级文件关联、职责边界与验证结果。 |
+
+验证记录：先由测试导入尚不存在模块，得到预期 `ERR_MODULE_NOT_FOUND`；迁移后聚焦测试、`npm run build` 和完整 `npm test` 174 项均通过。此处的数量截断与文案完全沿用原行为；没有调用真实外部 ImageGen，也没有读取用户图片或端口 3000/17371 服务。
