@@ -507,3 +507,19 @@
 | `docs/session-development-record.md` | 修改 | 记录测试先行、依赖边界、验证结果与文件关联。 |
 
 验证记录：先新增模块导入测试，得到预期 `ERR_MODULE_NOT_FOUND`；实现后聚焦测试通过。完整 Canvas Agent `npm test` 191 项与 `npm run build` 均通过。现有 Core 与 HTTP 用例继续覆盖多轮排序、机器审图、归档血缘、摘要和 API 返回结构。该切片不触及运行服务、Web、真实资产、外部 Provider 或 Docker/容器部署。
+
+## 38. 室内设计工作流的隔离浏览器验收（2026-08-28）
+
+本切片关闭中文主清单第 21 项的 UI 主路径证据：在隔离浏览器 origin 上传已跟踪 QA 平面图、选择整张图并创建无限画布工作流；真实画布侧栏显示 8 个节点，三段 Codex 引导和视频节点均可见。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/qa-fixtures/qa-99-image.svg` | 既有夹具（未修改） | 作为隔离浏览器的平面图输入；不读取或写入真实用户资产。 |
+| `web/src/pages/interior/index.tsx` | 既有实现（未修改） | 提供上传、选区、整图选择与创建工作流的用户入口；本节以真实浏览器执行该路径。 |
+| `web/src/lib/canvas/interior-canvas-workflow.ts` | 既有实现（未修改） | 构造 8 节点、10 连线及 Codex 指引节点链。 |
+| `web/src/lib/canvas/interior-canvas-workflow.test.ts` | 既有回归（未修改） | 覆盖节点数、连线数、Codex ImageGen 元数据与候选主图选择。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 第 21 项升为“人工通过”；汇总更新为 1 项人工通过、89 项未验证。 |
+| `docs/post-development-roadmap.md` | 修改 | 同步当前未验证项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录浏览器交互、证据边界和文件关联。 |
+
+验证记录：使用独立 Playwright CLI 会话和临时 Vite `127.0.0.1:4173`，先确认 `/interior` 首屏的 6 步流程、8 节点说明和前置禁用状态；上传 QA SVG 后确认“平面图已上传”，点击“使用整张图”后工作流创建按钮启用，点击后跳转到新 `/canvas/<id>`。画布侧栏显示“画布元素 8”，并列出 01 原始平面图至 08 室内漫游视频，其中 03、05、07 三个 Codex 提示词节点的引导文本可见。既有纯单元测试验证同一构造器输出 8 节点、10 连线。未连接 Canvas Agent，也未调用真实 ImageGen、视频 API 或 Docker；以上外部调用不由本项验收声称覆盖。结束后精确关闭 Playwright 会话与临时 Vite，3000/17371 原服务未受影响。
