@@ -243,3 +243,15 @@
 | `artifacts/` | 运行日志、截图与对比产物 | 目录只包含 FrameFlow/Design QA PNG、HTML 对比、验收 Markdown 及 Canvas Agent/Web 运行日志。 | 保留为用户真实证据资产；不纳入代码分支，也不清理。 |
 
 结论：截至本次复核，这三项均不属于当前源码、构建脚本、测试夹具、依赖清单或部署配置。代码分支的可复现性验证应以已跟踪文件和隔离安装/测试为准；历史证据继续保留在原工作区，未经用户单独授权不得加入 Git 或处置。
+
+## 19. 阶段 A 干净检出复现（2026-08-28）
+
+使用系统临时目录的全新浅克隆 `C:\Users\13900\AppData\Local\Temp\infinite-canvas-clean-20260828-0453` 验证 fork 分支 `codex/frameflow-roadmap` 的 `eddb70b`。克隆完成后 Git 工作树为空；该目录不含原工作区的三个未跟踪证据项。
+
+| 子项目 | 锁定安装 | 验证命令 | 结果 |
+| --- | --- | --- | --- |
+| `web/` | `npm ci` | `npm test`、`npm run typecheck`、`npm run build`、`npm run test:e2e` | 49 项 Vitest、类型、生产构建及 15 项 Playwright 均通过；生成 `dist/index.html`。 |
+| `canvas-agent/` | `npm ci` | `npm test`、`npm run build` | 178 项测试与 TypeScript 构建均通过。测试中的 SSE/中断日志来自夹具。 |
+| `docs/` | `bun install --frozen-lockfile` | `bun run check:content`、`bun run types:check`、`bun run build` | 内容清单（英文 25/中文 95/矩阵 95）、类型和 Next 生产构建均通过。 |
+
+说明：Docs 只有 `bun.lock`，因此未使用会被 npm 正确拒绝的 `npm ci`；Bun 冻结安装完成后执行全部 Docs 门禁。验证不构建 Docker/Compose、不访问端口 3000 或 17371、不读取真实 Agent 凭据或用户资产。临时克隆保留在系统临时目录作为本轮可检查证据，未对原工作区执行清理或切换。
