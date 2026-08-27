@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import { AgentDecisionValidationError, buildAgentDecision, type AgentDecisionInput } from "./agent-decision.js";
 import { FrameFlowAssetStore, FrameFlowAssetValidationError } from "./asset-store.js";
+import { autoRunTrajectory } from "./auto-run-trajectory.js";
 import { FrameFlowEventStore } from "./event-store.js";
 import { failedSlotEvents, generationCropPosition } from "./generation-plan.js";
 import { eventHistory } from "./history.js";
@@ -225,7 +226,7 @@ export class FrameFlowCore {
                 canContinueExploration: canContinueExploration(this.projection, autoRun),
             })).filter((autoRun) => parsed.includeArchived || !autoRun.requirementArchived).slice(-parsed.limit).reverse(),
         };
-        if (parsed.type === "auto_run.trajectory") return this.autoRunTrajectory(parsed.autoRunId);
+        if (parsed.type === "auto_run.trajectory") return autoRunTrajectory(this.projection, this.transactions, parsed.autoRunId, (message, statusCode) => new FrameFlowDomainError(message, statusCode));
         if (parsed.type === "run.list") return {
             type: "run.list",
             runs: Object.values(this.projection.runs).map((run) => ({
@@ -972,7 +973,7 @@ export class FrameFlowCore {
         if (!autoRun) throw new FrameFlowDomainError("找不到自动跑", 404);
         this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
         const lifecycleToken = this.requirementLifecycleToken(autoRun.briefId);
-        const trajectory = this.autoRunTrajectory(autoRunId);
+        const trajectory = autoRunTrajectory(this.projection, this.transactions, autoRunId, (message, statusCode) => new FrameFlowDomainError(message, statusCode));
         const reviewedRounds = trajectory.rounds.filter((round) => round.images.length > 0 && round.images.every((item) => item.machineReview));
         if (reviewedRounds.length < 2) throw new FrameFlowDomainError("至少需要两轮完整 Machine Review 才能生成跨轮总结", 409);
         const throughIteration = reviewedRounds.at(-1)!.iteration;
@@ -1012,48 +1013,6 @@ export class FrameFlowCore {
         });
         this.writeQueue = result.catch(() => undefined);
         return await result;
-    }
-
-    private autoRunTrajectory(autoRunId: string): AutoRunTrajectoryResult {
-        const autoRun = this.projection.autoRuns[autoRunId];
-        if (!autoRun) throw new FrameFlowDomainError("找不到自动跑", 404);
-        const brief = this.projection.briefs[autoRun.briefId];
-        if (!brief) throw new FrameFlowDomainError("自动跑缺少 Exploration Direction 血缘", 500);
-        const rounds = this.transactions
-            .flatMap((transaction) => transaction.events)
-            .filter((event) => event.type === "auto_run.iteration_started" && event.autoRunId === autoRunId)
-            .map((event) => {
-                if (event.type !== "auto_run.iteration_started") throw new FrameFlowDomainError("自动跑演化事件无效", 500);
-                const run = this.projection.runs[event.runId];
-                const prompt = run ? this.projection.prompts[run.promptVersionId] : undefined;
-                if (!run || !prompt) throw new FrameFlowDomainError("自动跑演化血缘不完整", 500);
-                return {
-                    iteration: event.iteration,
-                    run: structuredClone(run),
-                    prompt: structuredClone(prompt),
-                    images: run.imageIds.map((imageId) => {
-                        const image = this.projection.images[imageId];
-                        if (!image) throw new FrameFlowDomainError("自动跑演化图片血缘不完整", 500);
-                        const machineReview = this.projection.machineReviewsByImage[imageId];
-                        return {
-                            image: structuredClone(image),
-                            ...(machineReview ? { machineReview: structuredClone(machineReview) } : {}),
-                        };
-                    }),
-                };
-            })
-            .sort((left, right) => left.iteration - right.iteration);
-        return {
-            type: "auto_run.trajectory",
-            autoRun: {
-                ...structuredClone(autoRun),
-                ...requirementState(this.projection, autoRun.briefId),
-                canContinueExploration: canContinueExploration(this.projection, autoRun),
-            },
-            brief: structuredClone(brief),
-            rounds,
-            ...(this.projection.trajectorySummariesByAutoRun[autoRunId] ? { summary: structuredClone(this.projection.trajectorySummariesByAutoRun[autoRunId]) } : {}),
-        };
     }
 
     private async initialize() {

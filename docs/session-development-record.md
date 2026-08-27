@@ -492,3 +492,18 @@
 | `docs/session-development-record.md` | 修改 | 记录测试先行、契约保留、验证结果与文件关联。 |
 
 验证记录：先新增模块导入测试，得到预期 `ERR_MODULE_NOT_FOUND`；实现后聚焦单元测试通过。完整 Canvas Agent `npm test` 190 项及 `npm run build` 均通过。该切片不改变 HTTP 路由、事件格式、持久化、Prompt 版本字段、Agent Decision 字段、外部 Provider 行为或运行服务。
+
+## 37. FrameFlow 自动跑轨迹查询职责拆分（2026-08-28）
+
+本切片继续阶段 C 的只读模型拆分：将自动跑、Brief、事务事件、Run、Prompt、图片和机器审图汇总为演化轨迹的逻辑移出 `FrameFlowCore`；Core 仍负责查询解析、跨轮总结编排和既有领域错误契约。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/auto-run-trajectory.ts` | 新增 | 纯投影函数：从投影和事实事务构造 `auto_run.trajectory`，补齐 Requirement 状态、继续探索能力、轮次、机器审图与摘要快照。 |
+| `canvas-agent/src/frameflow/auto-run-trajectory.test.ts` | 新增 | 验证空轮次稳定输出、继续探索状态及缺失 Auto Run 时的错误工厂委托；复杂多轮和归档路径由既有 Core/HTTP 回归覆盖。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 公开轨迹查询和跨轮总结输入改为调用纯投影函数，保留 404/500 领域错误、写队列和总结器调用。 |
+| `canvas-agent/package.json` | 修改 | 将新增自动跑轨迹单元测试纳入正式 Canvas Agent 测试命令。 |
+| `docs/post-development-roadmap.md` | 修改 | 同步 Canvas Agent 191 项测试基线及阶段 C 当前进展。 |
+| `docs/session-development-record.md` | 修改 | 记录测试先行、依赖边界、验证结果与文件关联。 |
+
+验证记录：先新增模块导入测试，得到预期 `ERR_MODULE_NOT_FOUND`；实现后聚焦测试通过。完整 Canvas Agent `npm test` 191 项与 `npm run build` 均通过。现有 Core 与 HTTP 用例继续覆盖多轮排序、机器审图、归档血缘、摘要和 API 返回结构。该切片不触及运行服务、Web、真实资产、外部 Provider 或 Docker/容器部署。
