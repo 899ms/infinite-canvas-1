@@ -217,3 +217,17 @@
 | `docs/session-development-record.md` | 修改 | 记录此职责边界、文件关联和验证证据。 |
 
 验证记录：先直接导入未创建的恢复模块，得到预期 `ERR_MODULE_NOT_FOUND`；实现后聚焦测试 2 项、`npm run build` 与完整 `npm test` 176 项均通过。该切片不改变 journal 兼容性、运行取消语义或重启时的资产孤儿隔离，仅令恢复决策可脱离 Core 单元测试。
+
+## 17. 阶段 C FrameFlow 事件历史查询解耦（2026-08-28）
+
+本切片将事件历史的资源关联、排序和分页从 `FrameFlowCore` 迁为纯查询模块；命令执行、事件追加、投影更新与 HTTP 响应契约不变。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/history.ts` | 新增 | 纯事件历史查询：依据当前投影解析事件关联资源，按事务顺序附加 sequence/occurredAt，并实现游标分页。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 查询 `event.history` 时传入 Core 持有的事务和投影，保留原有校验、加载和公开 API。 |
+| `canvas-agent/src/frameflow/history.test.ts` | 新增 | 直接验证 Run 关联事件的顺序、分页、事务元数据，以及无关联资源时不泄漏事件。 |
+| `canvas-agent/package.json` | 修改 | 将事件历史查询回归加入正式 Agent 测试。 |
+| `docs/session-development-record.md` | 修改 | 记录查询职责边界、文件关联与验证证据。 |
+
+验证记录：先让测试导入不存在模块，得到预期 `ERR_MODULE_NOT_FOUND`；迁移后聚焦测试 2 项、`npm run build` 和完整 `npm test` 178 项均通过。随后在独立 `127.0.0.1:4173` 服务运行既有 Web Playwright 回归，15 项均通过。该切片没有更改事件数据、顺序、分页格式或用户可见历史，只使投影/查询边界可被独立验证；浏览器回归不外推为 95 项主清单全部人工验收。
