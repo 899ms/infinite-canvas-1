@@ -203,3 +203,17 @@
 | `docs/session-development-record.md` | 修改 | 记录会话级文件关联、职责边界与验证结果。 |
 
 验证记录：先由测试导入尚不存在模块，得到预期 `ERR_MODULE_NOT_FOUND`；迁移后聚焦测试、`npm run build` 和完整 `npm test` 174 项均通过。此处的数量截断与文案完全沿用原行为；没有调用真实外部 ImageGen，也没有读取用户图片或端口 3000/17371 服务。
+
+## 16. 阶段 C FrameFlow 重启恢复策略解耦（2026-08-28）
+
+本切片只将事件加载后的遗留 Run 判定与恢复事务构造移出 `FrameFlowCore`；文件读写、事务追加、投影重放和资产隔离仍由 Core 按原顺序负责。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/recovery.ts` | 新增 | 纯恢复策略：从投影中识别 queued/running/retrying Run，生成带 `agent_restart` 原因的系统取消事务；没有遗留 Run 时返回空。时间和 ID 均由调用方注入。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 初始化时委托恢复策略构造事务，再沿用原有 Event Store 追加、内存重放与资产隔离流程。 |
+| `canvas-agent/src/frameflow/recovery.test.ts` | 新增 | 不使用临时文件或 Provider，直接验证恢复范围、事务序列、系统 actor、原因与无遗留 Run 的空结果。 |
+| `canvas-agent/package.json` | 修改 | 将恢复策略测试加入正式 Agent 测试命令。 |
+| `docs/session-development-record.md` | 修改 | 记录此职责边界、文件关联和验证证据。 |
+
+验证记录：先直接导入未创建的恢复模块，得到预期 `ERR_MODULE_NOT_FOUND`；实现后聚焦测试 2 项、`npm run build` 与完整 `npm test` 176 项均通过。该切片不改变 journal 兼容性、运行取消语义或重启时的资产孤儿隔离，仅令恢复决策可脱离 Core 单元测试。

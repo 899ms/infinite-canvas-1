@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { FrameFlowAssetStore, FrameFlowAssetValidationError } from "./asset-store.js";
 import { FrameFlowEventStore } from "./event-store.js";
 import { applyTransaction, emptyProjection, preferenceDna, type FrameFlowProjection } from "./reducer.js";
+import { staleRunRecoveryTransaction } from "./recovery.js";
 import { autoRunTrajectorySummaryDraftSchema, frameFlowCommandSchema, frameFlowQuerySchema, machineReviewResultSchema, promptPlanSchema, promptTranslationSchema, referenceImportInputSchema } from "./schemas.js";
 import { DEFAULT_CREATIVE_BRIEF_PURPOSE } from "./types.js";
 import type {
@@ -1148,18 +1149,8 @@ export class FrameFlowCore {
     private async initialize() {
         const transactions = await this.store.load();
         for (const transaction of transactions) this.remember(transaction);
-        const staleRuns = Object.values(this.projection.runs).filter((run) => run.status === "queued" || run.status === "running" || run.status === "retrying");
-        if (staleRuns.length) {
-            const occurredAt = new Date().toISOString();
-            const recovery: FrameFlowTransaction = {
-                schemaVersion: 1,
-                sequence: this.projection.sequence + 1,
-                transactionId: crypto.randomUUID(),
-                idempotencyKey: `system:restart-recovery:${crypto.randomUUID()}`,
-                occurredAt,
-                actor: { type: "system" },
-                events: staleRuns.map((run) => ({ type: "run.cancelled", eventId: crypto.randomUUID(), runId: run.id, cancelledAt: occurredAt, reason: "agent_restart" })),
-            };
+        const recovery = staleRunRecoveryTransaction(this.projection, new Date().toISOString(), () => crypto.randomUUID());
+        if (recovery) {
             await this.store.append(recovery);
             this.remember(recovery);
         }
