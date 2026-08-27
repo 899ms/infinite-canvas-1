@@ -350,3 +350,18 @@
 | 离线引导 | 明确显示“先连接 Canvas Agent”及连接入口。 | 仅证明无 Agent 时的可见降级状态。 |
 
 运行结束后已关闭浏览器和本轮 Vite 服务。CLI 生成的 `.playwright-cli/` 快照不属于验收资产，已加入根 `.gitignore`；当前执行环境拒绝删除该目录，故仅保留为被 Git 忽略的无敏感临时文件。该人工检查补强页面离线可见性，不将其外推为 95 项主清单的完整闭环验收。
+
+## 27. 阶段 C FrameFlow Agent Decision 校验解耦（2026-08-28）
+
+本切片将 Planner 对 Preference DNA 的证据完整性校验和 Agent Decision 映射移出 `FrameFlowCore`；Core 继续承担命令编排，并把新模块的校验失败转换为既有 `FrameFlowDomainError` 500 契约。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/agent-decision.ts` | 新增 | 纯领域规则：验证每条可用 Preference DNA 证据被恰好处置一次，并生成可持久化的 Agent Decision。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 调用规则模块并将专用校验错误恢复为原有 500 领域错误，保持自动跑失败处理和 HTTP 语义。 |
+| `canvas-agent/src/frameflow/agent-decision.test.ts` | 新增 | 验证完整映射、可变数组复制，以及重复、不存在、遗漏证据的三种拒绝路径。 |
+| `canvas-agent/package.json` | 修改 | 将 Agent Decision 纯规则回归纳入正式测试命令。 |
+| `docs/post-development-roadmap.md` | 修改 | 将 Canvas Agent 当前测试基线更新为 186 项。 |
+| `docs/session-development-record.md` | 修改 | 记录职责边界、错误契约与验证结果。 |
+
+验证记录：先由测试导入未创建模块，得到预期 `ERR_MODULE_NOT_FOUND`；迁移后聚焦测试 2 项、`npm run build` 与完整 `npm test` 186 项均通过。该切片不改变 Planner 输入、事件格式或错误状态码，只使证据处置规则可脱离 Core 直接测试。

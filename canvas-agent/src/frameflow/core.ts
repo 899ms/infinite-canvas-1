@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 
+import { AgentDecisionValidationError, buildAgentDecision, type AgentDecisionInput } from "./agent-decision.js";
 import { FrameFlowAssetStore, FrameFlowAssetValidationError } from "./asset-store.js";
 import { FrameFlowEventStore } from "./event-store.js";
 import { eventHistory } from "./history.js";
@@ -11,7 +12,6 @@ import { transactionResult } from "./transaction-result.js";
 import { autoRunTrajectorySummaryDraftSchema, frameFlowCommandSchema, frameFlowQuerySchema, machineReviewResultSchema, promptPlanSchema, promptTranslationSchema, referenceImportInputSchema } from "./schemas.js";
 import { DEFAULT_CREATIVE_BRIEF_PURPOSE } from "./types.js";
 import type {
-    AgentDecision,
     AutoRun,
     AutoRunListResult,
     AutoRunTrajectoryResult,
@@ -35,7 +35,6 @@ import type {
     FrameFlowReferenceImportInput,
     FrameFlowTransaction,
     GenerationError,
-    PromptFieldKey,
     PreferenceDnaResult,
     PromptLineageResult,
     PromptVersion,
@@ -669,44 +668,13 @@ export class FrameFlowCore {
         return plannerPreferenceContext(this.projection, briefId);
     }
 
-    private agentDecision(input: {
-        id: string;
-        briefId: string;
-        promptVersionId: string;
-        profileId: string;
-        summary: string;
-        plannedEvidence: Array<{ imageId: string; disposition: "adopted" | "avoided" | "ignored"; affectedFields: PromptFieldKey[]; reason: string }>;
-        preference: FrameFlowPreferenceContext;
-        createdAt: string;
-    }): AgentDecision {
-        const available = [...input.preference.boost, ...input.preference.avoid];
-        const availableByImage = new Map(available.map((evidence) => [evidence.imageId, evidence]));
-        const plannedIds = input.plannedEvidence.map((evidence) => evidence.imageId);
-        if (new Set(plannedIds).size !== plannedIds.length) throw new FrameFlowDomainError("Codex Planner 重复处置了同一条 Preference DNA 证据", 500);
-        if (plannedIds.some((imageId) => !availableByImage.has(imageId))) throw new FrameFlowDomainError("Codex Planner 引用了不存在的 Preference DNA 证据", 500);
-        if (available.some((evidence) => !plannedIds.includes(evidence.imageId))) throw new FrameFlowDomainError("Codex Planner 未完整处置 Preference DNA 证据", 500);
-        return {
-            id: input.id,
-            briefId: input.briefId,
-            promptVersionId: input.promptVersionId,
-            profileId: input.profileId,
-            summary: input.summary,
-            evidence: input.plannedEvidence.map((planned) => {
-                const source = availableByImage.get(planned.imageId)!;
-                return {
-                    imageId: source.imageId,
-                    sourceEventIds: [...source.sourceEventIds],
-                    weight: source.weight,
-                    ...(source.rating ? { rating: source.rating } : {}),
-                    ...(source.comment !== undefined ? { comment: source.comment } : {}),
-                    ...(source.promptVersionId ? { sourcePromptVersionId: source.promptVersionId } : {}),
-                    disposition: planned.disposition,
-                    affectedFields: [...planned.affectedFields],
-                    reason: planned.reason,
-                };
-            }),
-            createdAt: input.createdAt,
-        };
+    private agentDecision(input: AgentDecisionInput) {
+        try {
+            return buildAgentDecision(input);
+        } catch (error) {
+            if (error instanceof AgentDecisionValidationError) throw new FrameFlowDomainError(error.message, 500);
+            throw error;
+        }
     }
 
     private afterCommit(command: FrameFlowCommand, transaction: FrameFlowTransaction) {
