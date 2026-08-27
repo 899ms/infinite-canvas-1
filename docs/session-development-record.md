@@ -365,3 +365,16 @@
 | `docs/session-development-record.md` | 修改 | 记录职责边界、错误契约与验证结果。 |
 
 验证记录：先由测试导入未创建模块，得到预期 `ERR_MODULE_NOT_FOUND`；迁移后聚焦测试 2 项、`npm run build` 与完整 `npm test` 186 项均通过。该切片不改变 Planner 输入、事件格式或错误状态码，只使证据处置规则可脱离 Core 直接测试。
+
+## 28. 阶段 D 生产依赖与凭据边界审计（2026-08-28）
+
+本节只记录只读安全审计和威胁模型澄清，不修改 CORS、连接 Token、认证/授权协议、外部 Provider 或部署配置。
+
+| 范围 | 核验方法 | 结果与边界 |
+| --- | --- | --- |
+| 生产依赖 | 官方 npm registry 的 `npm audit --omit=dev --audit-level=high`（Web/Canvas Agent），以及 `bun audit`（Docs） | 三者均报告 0 个已知漏洞；此前默认 npm 镜像不实现 advisories API，因此没有将该镜像错误误报为审计通过。 |
+| 已跟踪凭据 | 仅按常见硬编码凭据与秘密文件名模式扫描已跟踪源码 | 未发现候选项；未读取用户本地配置、`.env` 或真实 Token。 |
+| 动态执行与浏览器边界 | 检索 `new Function`、HTML 注入入口、Agent Token/CORS 实现 | 动态执行仅发现已知用户模型脚本路径；Agent 以 Token 与已记录 Origin 绑定访问。 |
+| 启动 Token 输出 | 读取启动入口和接入说明 | 直接启动仍为手工/现有启动器配对而输出 Token 到标准输出；该协议风险已写入双语威胁模型，未在缺少授权时改变。 |
+
+关联文件：`docs/content/docs/support/browser-credential-threat-model.mdx` 与 `browser-credential-threat-model.zh-CN.mdx` 新增可复核审计快照和配对协议边界说明；`docs/session-development-record.md` 保留本节的命令、结果与未解决项。验证要求：Docs 内容、类型与生产构建需通过；审计 0 漏洞不外推为深度代码审计、生产部署安全或 Token 协议已消除。
