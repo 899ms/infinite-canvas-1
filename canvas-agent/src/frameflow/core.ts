@@ -7,6 +7,7 @@ import { failedSlotEvents, generationCropPosition } from "./generation-plan.js";
 import { eventHistory } from "./history.js";
 import { plannerPreferenceContext } from "./preference-context.js";
 import { buildPromptDiff } from "./prompt-diff.js";
+import { promptLineage } from "./prompt-lineage.js";
 import { canContinueExploration, currentBriefForRequirement, isBriefActive, requirementState } from "./query-projection.js";
 import { applyTransaction, emptyProjection, preferenceDna, type FrameFlowProjection } from "./reducer.js";
 import { staleRunRecoveryTransaction } from "./recovery.js";
@@ -250,7 +251,7 @@ export class FrameFlowCore {
                 };
             }).filter((item) => parsed.includeArchived || !item.requirementArchived).slice(-parsed.limit).reverse(),
         };
-        if (parsed.type === "prompt.lineage") return this.promptLineage(parsed.promptVersionId);
+        if (parsed.type === "prompt.lineage") return promptLineage(this.projection, parsed.promptVersionId, () => new FrameFlowDomainError("找不到 Prompt Version", 404));
         if (parsed.type === "run.detail") {
             const run = this.projection.runs[parsed.runId];
             if (!run) throw new FrameFlowDomainError("找不到 Generation Run", 404);
@@ -1011,18 +1012,6 @@ export class FrameFlowCore {
         });
         this.writeQueue = result.catch(() => undefined);
         return await result;
-    }
-
-    private promptLineage(promptVersionId: string): PromptLineageResult {
-        const versions = [];
-        let current: PromptVersion | undefined = this.projection.prompts[promptVersionId];
-        if (!current) throw new FrameFlowDomainError("找不到 Prompt Version", 404);
-        while (current) {
-            versions.unshift(structuredClone(current));
-            current = current.parentId ? this.projection.prompts[current.parentId] : undefined;
-        }
-        const decisions = versions.flatMap((version) => version.decisionId && this.projection.decisions[version.decisionId] ? [structuredClone(this.projection.decisions[version.decisionId]!)] : []);
-        return { type: "prompt.lineage", promptVersionId, versions, decisions };
     }
 
     private autoRunTrajectory(autoRunId: string): AutoRunTrajectoryResult {

@@ -477,3 +477,18 @@
 | `docs/session-development-record.md` | 修改 | 记录测试先行、职责边界、验证结果和文件关联。 |
 
 验证记录：先新增测试并导入尚不存在的 `query-projection` 模块，得到预期 `ERR_MODULE_NOT_FOUND`；实现后聚焦测试通过。首次完整 TypeScript 构建暴露 3 处遗留的 Core 私有调用，均替换为同一纯函数入口后，Canvas Agent 完整 `npm test` 189 项与 `npm run build` 通过。该切片不触及 Web、浏览器端口、真实资产、运行中的 Agent、Docker/容器部署或外部服务。
+
+## 36. FrameFlow Prompt 血缘查询职责拆分（2026-08-28）
+
+本切片继续阶段 C 的单一职责拆分：将 Prompt 父子版本链与关联 Agent Decision 的只读投影移出 `FrameFlowCore`；Core 仍负责查询参数解析与将缺失 Prompt 转换为既有 `FrameFlowDomainError` 404 契约。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/prompt-lineage.ts` | 新增 | 纯投影函数：以 FrameFlow 投影和 Prompt ID 生成父子版本链、关联决策快照；通过错误工厂保持调用方错误语义。 |
+| `canvas-agent/src/frameflow/prompt-lineage.test.ts` | 新增 | 验证父子版本按根到叶顺序、只关联命中决策，并验证返回对象不会回写投影。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 公开 `prompt.lineage` 查询委托纯投影函数，保留 schema 解析、等待队列和 404 领域错误。 |
+| `canvas-agent/package.json` | 修改 | 将新增 Prompt 血缘单元测试纳入正式 Canvas Agent 测试命令。 |
+| `docs/post-development-roadmap.md` | 修改 | 同步 Canvas Agent 190 项测试基线和阶段 C 当前进展。 |
+| `docs/session-development-record.md` | 修改 | 记录测试先行、契约保留、验证结果与文件关联。 |
+
+验证记录：先新增模块导入测试，得到预期 `ERR_MODULE_NOT_FOUND`；实现后聚焦单元测试通过。完整 Canvas Agent `npm test` 190 项及 `npm run build` 均通过。该切片不改变 HTTP 路由、事件格式、持久化、Prompt 版本字段、Agent Decision 字段、外部 Provider 行为或运行服务。
