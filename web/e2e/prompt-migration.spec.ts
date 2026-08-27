@@ -24,11 +24,26 @@ test("提示词迁移在页面中保留审核血缘与待修复项", async ({ pa
     await page.getByRole("tab", { name: "PromptFill 自定义提示词" }).click();
     await expect(page.getByText("QA 可变肖像")).toBeVisible();
 
-    const missingReference = JSON.stringify({ captures: [], terms: [{ id: "broken-term", label: "需修复词条", category: "光线", sourceCaptureIds: ["missing-capture"] }], recipes: [], prompts: [] });
-    await page.locator('input[type="file"]').setInputFiles({ name: "missing-reference.json", mimeType: "application/json", buffer: Buffer.from(missingReference) });
-    await expect(page.getByText("迁移完成：新增 0，合并 0，跳过 0，冲突 1")).toBeVisible();
+    const missingReferences = JSON.stringify({
+        captures: [],
+        terms: Array.from({ length: 10 }, (_, index) => ({ id: `broken-term-${index + 1}`, label: `需修复词条 ${String(index + 1).padStart(2, "0")}`, category: "光线", sourceCaptureIds: ["missing-capture"] })),
+        recipes: [],
+        prompts: [],
+    });
+    await page.locator('input[type="file"]').setInputFiles({ name: "missing-references.json", mimeType: "application/json", buffer: Buffer.from(missingReferences) });
+    await expect(page.getByText("迁移完成：新增 0，合并 0，跳过 0，冲突 10")).toBeVisible();
     await page.getByRole("tab", { name: "采集与审核" }).click();
-    await expect(page.getByText("需修复词条")).toBeVisible();
-    await expect(page.getByText("引用待修复")).toBeVisible();
+    const repairItems = page.getByText(/需修复词条 \d{2}/);
+    await expect(repairItems).toHaveCount(10);
+    await expect(page.getByText("引用待修复")).toHaveCount(10);
+    const oldestRepair = page.getByText("需修复词条 01", { exact: true });
+    const reviewList = page.locator(".thin-scrollbar").filter({ has: oldestRepair });
+    expect(await reviewList.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    await oldestRepair.scrollIntoViewIfNeeded();
+    await expect(oldestRepair).toBeVisible();
+    expect(await reviewList.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    const repairRow = oldestRepair.locator("xpath=../..");
+    await expect(repairRow.getByRole("button", { name: "机器校验" })).toBeDisabled();
+    await expect(repairRow.getByRole("button", { name: "人工通过" })).toBeDisabled();
     expect(pageErrors).toEqual([]);
 });

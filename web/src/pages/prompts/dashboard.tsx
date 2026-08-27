@@ -382,11 +382,11 @@ function ReviewList({
                                 {item.reviewState === "machine_passed" ? "机器校验通过" : item.reviewState === "needs_revision" ? "需要返修" : item.reviewState === "human_approved" ? "人工已通过" : item.validationErrors?.length ? "引用待修复" : "待审核"}
                             </Tag>
                             {item.reviewState !== "human_approved" ? (
-                                <Button size="small" onClick={() => onSet(item.id, "machine_passed")}>
+                                <Button size="small" disabled={Boolean(item.validationErrors?.length)} onClick={() => onSet(item.id, "machine_passed")}>
                                     机器校验
                                 </Button>
                             ) : null}
-                            <Button size="small" type="primary" onClick={() => onSet(item.id, "human_approved")}>
+                            <Button size="small" type="primary" disabled={Boolean(item.validationErrors?.length)} onClick={() => onSet(item.id, "human_approved")}>
                                 人工通过
                             </Button>
                             <Button size="small" danger onClick={() => onSet(item.id, "needs_revision")}>

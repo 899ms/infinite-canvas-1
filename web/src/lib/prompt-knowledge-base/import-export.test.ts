@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
-import { createEmptyPromptKnowledgeBase } from "./domain";
+import { createEmptyPromptKnowledgeBase, setReviewState } from "./domain";
 import { createMigrationExport, exportMigrationSnapshot, importMigrationSnapshot } from "./import-export";
 
 it("imports FrameFlow shaped data with remapped references and reports repeated imports", () => {
@@ -47,7 +47,12 @@ it("keeps entries with missing references as pending repair items", () => {
     expect(imported.knowledgeBase.terms).toHaveLength(1);
     expect(imported.knowledgeBase.recipes).toHaveLength(1);
     expect(imported.knowledgeBase.prompts).toHaveLength(1);
+    expect(imported.knowledgeBase.terms[0]).toMatchObject({ reviewState: "pending", validationErrors: ["迁移时原始收录引用缺失"] });
+    expect(imported.knowledgeBase.recipes[0]).toMatchObject({ reviewState: "pending", validationErrors: ["迁移时词条引用不足或缺失", "迁移时原始收录引用缺失"] });
     expect(imported.knowledgeBase.prompts[0]).toMatchObject({ reviewState: "pending", validationErrors: ["迁移时原始收录引用缺失"] });
+    expect(() => setReviewState(imported.knowledgeBase, "term", imported.knowledgeBase.terms[0].id, "machine_passed")).toThrow("校验失败");
+    expect(() => setReviewState(imported.knowledgeBase, "recipe", imported.knowledgeBase.recipes[0].id, "human_approved")).toThrow("校验失败");
+    expect(() => setReviewState(imported.knowledgeBase, "prompt", imported.knowledgeBase.prompts[0].id, "machine_passed")).toThrow("校验失败");
 });
 
 it("imports the checked-in QA migration fixture with approved lineage intact", () => {
