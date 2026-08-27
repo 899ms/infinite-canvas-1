@@ -378,3 +378,16 @@
 | 启动 Token 输出 | 读取启动入口和接入说明 | 直接启动仍为手工/现有启动器配对而输出 Token 到标准输出；该协议风险已写入双语威胁模型，未在缺少授权时改变。 |
 
 关联文件：`docs/content/docs/support/browser-credential-threat-model.mdx` 与 `browser-credential-threat-model.zh-CN.mdx` 新增可复核审计快照和配对协议边界说明；`docs/session-development-record.md` 保留本节的命令、结果与未解决项。验证要求：Docs 内容、类型与生产构建需通过；审计 0 漏洞不外推为深度代码审计、生产部署安全或 Token 协议已消除。
+
+## 29. 提示词迁移 QA 夹具回归绑定（2026-08-28）
+
+本切片不改变迁移实现或用户数据格式，只让已跟踪的隔离 QA 文件成为正式单元回归输入，防止样例与导入语义各自演进而失去关联。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/lib/prompt-knowledge-base/import-export.test.ts` | 修改 | 直接读取 `web/qa-fixtures/prompt-migration.json`，验证收录、两个已审核术语、配方、Prompt、模板及重映射后的引用血缘；与既有缺失引用用例共同覆盖正常迁入和待修复保留。 |
+| `web/qa-fixtures/prompt-migration.json` | 既有夹具（未修改） | 提供不含真实资产或凭据的确定性迁移输入。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 第 20 项补充可复核的自动化局部证据，状态仍保持“未验证”。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关联、边界及验证要求。 |
+
+验证要求：运行聚焦 Vitest、完整 Web 单元测试、类型检查和生产构建。该回归只证明迁移领域语义；缺失引用在实际导入页面的可见待修复状态、审核列表超过 8 条时的滚动访问，仍须隔离浏览器验收，不能据此将第 20 项标记为通过。

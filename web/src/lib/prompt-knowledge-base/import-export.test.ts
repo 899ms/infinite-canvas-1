@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 import { createEmptyPromptKnowledgeBase } from "./domain";
 import { createMigrationExport, exportMigrationSnapshot, importMigrationSnapshot } from "./import-export";
@@ -47,4 +48,22 @@ it("keeps entries with missing references as pending repair items", () => {
     expect(imported.knowledgeBase.recipes).toHaveLength(1);
     expect(imported.knowledgeBase.prompts).toHaveLength(1);
     expect(imported.knowledgeBase.prompts[0]).toMatchObject({ reviewState: "pending", validationErrors: ["迁移时原始收录引用缺失"] });
+});
+
+it("imports the checked-in QA migration fixture with approved lineage intact", () => {
+    const raw = readFileSync(new URL("../../../qa-fixtures/prompt-migration.json", import.meta.url), "utf8");
+    const imported = importMigrationSnapshot(raw);
+
+    expect(imported.report).toMatchObject({ added: 5, conflicts: 0, failed: 0 });
+    expect(imported.knowledgeBase.captures).toHaveLength(1);
+    expect(imported.knowledgeBase.terms).toHaveLength(2);
+    expect(imported.knowledgeBase.recipes).toHaveLength(1);
+    expect(imported.knowledgeBase.prompts).toHaveLength(1);
+    expect(imported.knowledgeBase.terms.every((term) => term.reviewState === "human_approved" && term.sourceCaptureIds.length === 1)).toBe(true);
+    expect(imported.knowledgeBase.recipes[0]).toMatchObject({ reviewState: "human_approved" });
+    expect(imported.knowledgeBase.recipes[0].termIds).toHaveLength(2);
+    expect(imported.knowledgeBase.recipes[0].sourceCaptureIds).toHaveLength(1);
+    expect(imported.knowledgeBase.prompts[0]).toMatchObject({ reviewState: "human_approved", recipeId: imported.knowledgeBase.recipes[0].id });
+    expect(imported.knowledgeBase.prompts[0].sourceCaptureIds).toHaveLength(1);
+    expect(imported.promptFillTemplates).toMatchObject([{ id: "qa-template", custom: true }]);
 });
