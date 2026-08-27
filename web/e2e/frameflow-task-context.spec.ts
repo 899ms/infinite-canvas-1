@@ -83,6 +83,34 @@ test("FrameFlow 待审页把人工隐藏与恢复保持为独立反馈", async (
     expect(commands.map((command) => command.feedback?.kind)).toEqual(["soft_delete", "restore"]);
 });
 
+test("FrameFlow 自动跑失败后在原任务继续审图", async ({ page }) => {
+    let resumed = false;
+    const failedAutoRun = { ...autoRun("auto-run-recovery", "审图失败恢复", "brief-recovery", "run-recovery"), state: "failed", lastStartedAt: now, lastError: "审图 Provider 暂时不可用" };
+    const recoveryBrief = { id: "brief-recovery", profileId: "default", subject: "恢复同一批机器审图", purpose: "隔离浏览器验收", aspectRatio: "4:5", constraints: { keep: [], avoid: [] }, referenceImageIds: [], strategy: "balanced", createdAt: now };
+    await page.addInitScript(() => {
+        localStorage.setItem("canvas-agent-url", "http://127.0.0.1:4173");
+        localStorage.setItem("canvas-agent-token", "frameflow-auto-run-recovery-token");
+    });
+    await page.route("**/agent/frameflow/query?**", async (route) => {
+        const query = route.request().postDataJSON() as { type?: string };
+        const data = query.type === "brief.list"
+            ? { type: "brief.list", briefs: [recoveryBrief] }
+            : { type: "auto_run.list", autoRuns: [{ ...failedAutoRun, state: resumed ? "completed" : "failed", lastError: resumed ? undefined : failedAutoRun.lastError }] };
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data }) });
+    });
+    await page.route("**/agent/frameflow/auto-runs/auto-run-recovery/start**", async (route) => {
+        resumed = true;
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data: { resource: { type: "auto_run", id: failedAutoRun.id } } }) });
+    });
+
+    await page.goto("/frameflow?view=auto-run");
+    await expect(page.getByText("审图 Provider 暂时不可用", { exact: true })).toBeVisible();
+    await expect(page.getByText("当前批次：run-reco", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "继续自动跑" }).click();
+    await expect(page.getByText("已完成 1/1 轮", { exact: true })).toBeVisible();
+    expect(resumed).toBe(true);
+});
+
 function autoRun(id: string, name: string, briefId: string, runId: string) {
     return { id, name, briefId, count: 1, maxIterations: 1, canContinueExploration: false, state: "completed", iteration: 1, currentRunId: runId, lastRunId: runId, requirementArchived: false, briefSuperseded: false, createdAt: now, updatedAt: now };
 }

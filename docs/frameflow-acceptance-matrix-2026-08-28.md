@@ -15,7 +15,7 @@
 | 05 | FrameFlow 图片预览 | 未验证 | 主清单 05；隔离图片；预览不改变审核状态 | `web/e2e/frameflow-preview.spec.ts` 仅覆盖同轮切换 |
 | 06 | FrameFlow Prompt 中英审核 | 未验证 | 主清单 06；隔离 Prompt；翻译不改变英文执行原文 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
 | 07 | FrameFlow Prompt 长文本布局 | 未验证 | 主清单 07；长 Prompt 与三种断点；不横向溢出 | — |
-| 08 | FrameFlow 自动跑风格 | 未验证 | 主清单 08；临时 Auto Run；规划、生成、评审、停止与恢复一致 | HTTP 隔离闭环覆盖停止、迟到结果、恢复与评审；`canvas-agent/src/frameflow/core.test.ts` 覆盖机器审图失败后在原任务恢复。页面刷新与完整 UI 设置流程仍待验收 |
+| 08 | FrameFlow 自动跑风格 | 未验证 | 主清单 08；临时 Auto Run；规划、生成、评审、停止与恢复一致 | HTTP 隔离闭环覆盖停止、迟到结果、恢复与评审；核心测试覆盖机器审图失败后原任务恢复；`web/e2e/frameflow-task-context.spec.ts` 覆盖失败原因、原批次与“继续自动跑”UI 回写。页面刷新与完整 UI 设置流程仍待验收 |
 | 09 | FrameFlow 演化轨迹 | 未验证 | 主清单 09；临时多轮 Run；只聚合同一 Auto Run | `web/e2e/frameflow-preview.spec.ts` 仅覆盖预览分组 |
 | 10 | FrameFlow 跨轮总结 | 未验证 | 主清单 10；两轮机器评审；真实证据可追溯 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
 | 11 | FrameFlow 创建页 | 未验证 | 主清单 11；隔离参考图与 Brief；批准和生成独立 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
@@ -111,5 +111,6 @@
 - 未验证：92 项。虽然其中若干项已有单元或局部浏览器回归，其范围不足以覆盖主清单对应的完整可见行为，仍需逐项人工或补充自动化验收。
 - 本次新增的 `FrameFlow HTTP 隔离夹具覆盖停止、恢复、反馈、血缘与 Requirement 归档闭环` 是阶段 B 的 P0 自动化证据；其余仍按本矩阵继续关闭，不将它外推为 95 项全部通过。
 - `canvas-agent/src/frameflow/core.test.ts` 以一次性工作区验证机器审图失败后原 Auto Run 进入失败态，原生成批次保持可追溯；重新启动后只补充缺失审图并在同一任务完成。该证据不覆盖页面刷新或 UI 设置交互。
+- `web/e2e/frameflow-task-context.spec.ts` 以隔离浏览器 origin 验证自动跑失败卡片保留失败原因与原批次，点击“继续自动跑”后调用该任务的恢复端点并回写完成态；不包含真实模型调用。
 - `web/e2e/frameflow-task-context.spec.ts` 现以隔离浏览器 origin 和路由夹具验证待审页的隐藏与恢复：只有右侧检查器确实回显“已隐藏”后才执行恢复，并验证“已恢复”及两条反馈命令。该证据不覆盖评分、Comment 或永久删除。
 - 内置浏览器已在隔离 Web 服务 `127.0.0.1:3013/frameflow` 完成人工只读检查：页头导航、中文标题、8 个工作标签和“先连接 Canvas Agent”离线引导均正常渲染，控制台没有 error/warn。该服务未接入 Agent，因此此证据只覆盖离线可见状态，不覆盖创建、自动跑或人工反馈闭环。
