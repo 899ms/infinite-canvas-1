@@ -30,3 +30,20 @@ test("生图和视频工作台共享已审核的个人提示词运行时", async
     await expectPersonalPromptLibrary(page, "/image");
     await expectPersonalPromptLibrary(page, "/video");
 });
+
+test("画布图片节点共享已审核的个人提示词运行时", async ({ page }) => {
+    await seedPersonalRuntime(page);
+    await page.goto("/canvas?mode=new");
+    await page.waitForURL(/\/canvas\/[^/?]+/);
+    await page
+        .locator("div.relative.h-full.w-full.select-none.overflow-hidden")
+        .first()
+        .dblclick({ position: { x: 360, y: 320 } });
+    await page.getByRole("button", { name: "图片", exact: true }).first().click();
+    await page.getByLabel("提示词库", { exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.locator(".ant-segmented-item").filter({ hasText: "我的可用库" }).click();
+    await expect(dialog.locator(".ant-segmented-item").filter({ hasText: "我的可用库 (4)" })).toBeVisible();
+    await expect(dialog.getByText("QA 雨夜肖像", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("不应进入个人库", { exact: true })).toHaveCount(0);
+});
