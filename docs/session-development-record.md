@@ -640,3 +640,17 @@
 | `docs/session-development-record.md` | 修改 | 记录本次夹具范围、文件关联、浏览器尺寸和质量门禁，满足对话级可追溯要求。 |
 
 验证记录：夹具使用重复 12 次的无空格英文 `cinematic-reference-token-0123456789-`，填充主体、构图、色彩、光线、材质、布局、氛围、呈现方式、技术参数与避免项共 10 个字段，并将同一长 Token 写入含显式换行的完整 Prompt。真实 Chromium 在 1280px、768px、390px 下分别读到 3、2、1 条计算后的栅格列；每个字段卡、每个 Ant Design Tag、完整 Prompt 的 `scrollWidth` 均不大于 `clientWidth`，根文档同样没有横向滚动。完整 Web 浏览器套件为 22 项通过，Web 单元测试为 15 个文件/50 项通过，生产构建通过。`npx playwright-cli --help` 在当前依赖中没有可执行入口，因此本项使用仓库既有 `@playwright/test` 隔离夹具；该选择不影响真实端口、Agent 或用户资产。文档内容、类型与生产构建门禁均已通过；`format:check` 已知仍保留 6 项非本切片格式基线问题，不为消除它们改写或删除用户/既有文件。
+
+## 47. FrameFlow 自动跑首轮设置与停止隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 08 项的 UI 设置缺口。浏览器测试以本地路由夹具返回内存 Brief 与 Auto Run，不访问真实 Canvas Agent、3000/17371、外部 Provider、用户资产或 Docker/容器；Core 测试仍使用系统临时目录，负责验证异步状态机而非浏览器呈现。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-auto-run.spec.ts` | 新增 | 通过自动跑页的真实表单输入自由方向、可选任务名称、画幅、探索方式、每轮数量和最大轮数；验证首轮立刻呈现“Codex 规划第 1 轮”和“停止自动跑”，停止后保留同一任务的“继续自动跑”入口与精确命令顺序。 |
+| `web/src/pages/frameflow/daily-view.tsx` | 既有实现（未修改） | 提供自由方向表单、1–8/1–20 边界、即时启动/停止/恢复控件与“人工反馈可选”提示。 |
+| `canvas-agent/src/frameflow/core.test.ts` | 既有实现（未修改） | 已直接覆盖自动迭代至上限、机器审图失败恢复、完成态 `vary` 的 `auto_run.extended`、规划/生成/审图期间停止、迟到结果与重启持久化。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 08 项记为“自动化通过”，同步自动化通过数为 7 项、未验证数为 81 项和浏览器回归基线。 |
+| `docs/session-development-record.md` | 修改 | 记录夹具范围、文件关联、失败诊断和质量门禁，满足对话级可追溯要求。 |
+
+验证记录：首次测试把 Ant Design 虚拟 Select 直接定位到未进入可视窗口的 `9:16` 选项，导致 30 秒定位超时；页面快照证明自动跑页面和首轮卡片均已正确渲染，失败仅来自测试选择器。改为在实际可见下拉层选择 `4:5` 与“大胆探索”后，通过自由方向提交精确发出 `brief.create`、`auto_run.create`，后者包含同一 Brief、每轮 2 张和最大 3 轮。启动请求返回 Auto Run 资源时页面不跳转，真实可见 `Codex 规划第 1 轮`、`停止自动跑`；停止后显示“已停止”和“继续自动跑”，命令序列追加唯一 `auto_run.stop`。完整 Web 门禁为 23 项 Playwright、15 个文件/50 项单元测试和生产构建通过；Canvas Agent 为 191 项测试与生产构建通过；Docs 内容、类型与生产构建通过。格式基线和真实服务边界继续按第 46 节保留，不将路由夹具外推为外部模型生产调用。

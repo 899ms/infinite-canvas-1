@@ -15,7 +15,7 @@
 | 05 | FrameFlow 图片预览 | 自动化通过 | 主清单 05；隔离图片；预览不改变审核状态 | `web/e2e/frameflow-preview.spec.ts` 以隔离路由夹具覆盖运行与血缘、演化轨迹、待审检查器、Preference DNA 的强化/规避/Comment 证据图；验证当前组切换、缩放、旋转、翻转、关闭，以及预览期间零反馈命令写入。 |
 | 06 | FrameFlow Prompt 中英审核 | 自动化通过 | 主清单 06；隔离 Prompt；翻译不改变英文执行原文 | `frameflow-prompt-language.spec.ts` 覆盖默认中文、English/中英对照、无横向溢出、补译后刷新保留与零重复翻译；Core 持久化回归及 `codex-frameflow-requests.test.ts` 证明 ImageGen 请求只使用英文 `compiledPrompt`、技术与负面字段。 |
 | 07 | FrameFlow Prompt 长文本布局 | 自动化通过 | 主清单 07；隔离超长英文 Tag 与完整 Prompt；三种断点均不横向溢出 | `web/e2e/frameflow-prompt-language.spec.ts` 以固定无空格长 Token 填充 10 个字段和完整 Prompt，在 1280px、768px、390px 分别断言三/二/一列、字段卡片与 Tag 不溢出、完整 Prompt 不溢出，且根文档没有横向滚动。 |
-| 08 | FrameFlow 自动跑风格 | 未验证 | 主清单 08；临时 Auto Run；规划、生成、评审、停止与恢复一致 | HTTP 隔离闭环覆盖停止、迟到结果、恢复与评审；核心测试覆盖机器审图失败后原任务恢复；浏览器用例覆盖失败原因、原批次、刷新后仍可继续自动跑。完整 UI 设置流程仍待验收 |
+| 08 | FrameFlow 自动跑风格 | 自动化通过 | 主清单 08；隔离 Auto Run；规划、生成、评审、停止与恢复一致 | `web/e2e/frameflow-auto-run.spec.ts` 覆盖自由方向、名称、画幅、探索方式、每轮数量与最大轮数的创建设置，以及“Codex 规划第 1 轮”即时状态、停止和同一任务恢复入口；`core.test.ts` 覆盖逐轮规划/生成/机器审图、停止于规划/生成/审图、迟到结果、失败恢复、重启与 `auto_run.extended` 原血缘追加。 |
 | 09 | FrameFlow 演化轨迹 | 未验证 | 主清单 09；临时多轮 Run；只聚合同一 Auto Run | `web/e2e/frameflow-preview.spec.ts` 仅覆盖预览分组 |
 | 10 | FrameFlow 跨轮总结 | 未验证 | 主清单 10；两轮机器评审；真实证据可追溯 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
 | 11 | FrameFlow 创建页 | 未验证 | 主清单 11；隔离参考图与 Brief；批准和生成独立 | 核心测试有领域局部覆盖；`web/e2e/frameflow-task-context.spec.ts` 覆盖空用途创建 Brief、先规划/批准 Prompt、后独立提交 Run。参考图导入与刷新恢复仍待验收 |
@@ -106,10 +106,10 @@
 
 ## 当前结论
 
-- 已自动化通过：6 项（05、06、07、16、19、20）。
+- 已自动化通过：7 项（05、06、07、08、16、19、20）。
 - 人工通过：5 项（04、17、21、23、25）。
 - 阻塞：2 项（01、18），原因均为当前明确排除 Docker/容器部署。
-- 未验证：82 项。虽然其中若干项已有单元或局部浏览器回归，其范围不足以覆盖主清单对应的完整可见行为，仍需逐项人工或补充自动化验收。
+- 未验证：81 项。虽然其中若干项已有单元或局部浏览器回归，其范围不足以覆盖主清单对应的完整可见行为，仍需逐项人工或补充自动化验收。
 - 本次新增的 `FrameFlow HTTP 隔离夹具覆盖停止、恢复、反馈、血缘与 Requirement 归档闭环` 是阶段 B 的 P0 自动化证据；其余仍按本矩阵继续关闭，不将它外推为 95 项全部通过。
 - `canvas-agent/src/frameflow/core.test.ts` 以一次性工作区验证机器审图失败后原 Auto Run 进入失败态，原生成批次保持可追溯；重新启动后只补充缺失审图并在同一任务完成。该证据不覆盖页面刷新或 UI 设置交互。
 - `web/e2e/frameflow-task-context.spec.ts` 以隔离浏览器 origin 验证自动跑失败卡片在刷新后仍保留失败原因与原批次，点击“继续自动跑”后调用该任务的恢复端点并回写完成态；不包含真实模型调用。
