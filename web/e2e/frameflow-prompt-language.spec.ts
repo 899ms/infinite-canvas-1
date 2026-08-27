@@ -104,6 +104,38 @@ test("历史 Prompt 补译后保持中文展示且不会重复翻译", async ({ 
     expect(commands.map((command) => command.type)).toEqual(["brief.create", "round.plan", "prompt.translate"]);
 });
 
+test("FrameFlow Prompt 长文本在桌面、平板和移动端均不横向溢出", async ({ page }) => {
+    const longToken = "cinematic-reference-token-0123456789-".repeat(12);
+    const longFields: typeof fields = Object.fromEntries(Object.keys(fields).map((field) => [field, [`${field}-${longToken}`]])) as typeof fields;
+    const longPrompt = `A detailed visual direction using ${longToken}\nAvoid ${longToken}`;
+
+    await mountPromptFixture(page, {
+        translated: true,
+        commands: [],
+        fields: longFields,
+        compiledPrompt: longPrompt,
+    });
+    await createPrompt(page);
+    await page.getByRole("radiogroup", { name: "Prompt 展示语言" }).getByText("English", { exact: true }).click();
+
+    const grid = page.locator("div.mt-5.grid.items-start");
+    const fullPrompt = page.getByText(longPrompt, { exact: true });
+    for (const { width, columns } of [
+        { width: 1280, columns: 3 },
+        { width: 768, columns: 2 },
+        { width: 390, columns: 1 },
+    ]) {
+        await page.setViewportSize({ width, height: 900 });
+        await expect(grid).toBeVisible();
+        await expect(fullPrompt).toBeVisible();
+        expect(await grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length)).toBe(columns);
+        expect(await page.locator("html").evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+        expect(await grid.evaluate((element) => [...element.children].every((card) => card.scrollWidth <= card.clientWidth))).toBe(true);
+        expect(await page.locator(".ant-tag").evaluateAll((tags) => tags.every((tag) => tag.scrollWidth <= tag.clientWidth))).toBe(true);
+        expect(await fullPrompt.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    }
+});
+
 async function createPrompt(page: Page) {
     await page.goto("/frameflow?view=create");
     await page.getByLabel("主体").fill(brief.subject);
@@ -111,7 +143,17 @@ async function createPrompt(page: Page) {
     await expect(page.getByRole("heading", { name: "Prompt Version 1" })).toBeVisible();
 }
 
-async function mountPromptFixture(page: Page, options: { translated: boolean; commands: Array<{ type?: string; promptVersionId?: string }>; onApprove?: () => void; onTranslate?: () => void }) {
+async function mountPromptFixture(
+    page: Page,
+    options: {
+        translated: boolean;
+        commands: Array<{ type?: string; promptVersionId?: string }>;
+        fields?: typeof fields;
+        compiledPrompt?: string;
+        onApprove?: () => void;
+        onTranslate?: () => void;
+    },
+) {
     let hasTranslation = options.translated;
     await page.addInitScript(() => {
         localStorage.setItem("canvas-agent-url", "http://127.0.0.1:4173");
@@ -119,7 +161,13 @@ async function mountPromptFixture(page: Page, options: { translated: boolean; co
     });
     await page.route("**/agent/frameflow/query?**", async (route) => {
         const query = route.request().postDataJSON() as { type?: string };
-        const prompt = { ...basePrompt, status: options.commands.some((command) => command.type === "prompt.approve") ? ("approved" as const) : ("draft" as const), ...(hasTranslation ? { translations: { "zh-CN": translation } } : {}) };
+        const prompt = {
+            ...basePrompt,
+            fields: options.fields ?? basePrompt.fields,
+            compiledPrompt: options.compiledPrompt ?? basePrompt.compiledPrompt,
+            status: options.commands.some((command) => command.type === "prompt.approve") ? ("approved" as const) : ("draft" as const),
+            ...(hasTranslation ? { translations: { "zh-CN": translation } } : {}),
+        };
         const data =
             query.type === "brief.detail"
                 ? { type: "brief.detail", brief }

@@ -627,3 +627,16 @@
 | `docs/session-development-record.md` | 修改 | 记录浏览器/Agent 夹具、文件关联、测试结论和真实服务边界。 |
 
 验证记录：新 Prompt 夹具带有中文展示稿时，创建页默认可见“陶瓷花瓶”且英文完整执行 Prompt 不显示；切换 English 后显示 `A matte ceramic vase, centered product shot, softbox lighting, warm white background.`，切换“中英对照”后两种语言并存，根文档的 `scrollWidth <= clientWidth`。批准与“开始生成 4 张”依次发出 `prompt.approve`、`run.start`，二者均指向同一英文 Prompt Version。历史 Prompt 夹具初始无翻译时显示“旧版本尚无中文展示稿”，点击“生成中文版本”后展示中文完整 Prompt、按钮消失；刷新页面后中文仍在，命令序列只有一次 `prompt.translate`。纯 Agent 请求测试把同一 Prompt 加入中文展示翻译后，断言 ImageGen 请求仍包含 `已批准 Prompt：a red chair`、英文 Negative，且不包含中文翻译。加上既有 Core 翻译测试，覆盖翻译的幂等、英文原文稳定与重启持久化；本切片完整回归为 Agent 191 项、Web 单测 15 文件/50 项、Playwright 21 项和 Docs 内容/类型/生产构建通过。`format:check` 继续仅报告保留 `.playwright-cli` 证据及既有两个文件的 6 项基线外问题，不包含本次新文件；不将隔离夹具外推为真实 Codex/外部模型生产调用。
+
+## 46. FrameFlow Prompt 长文本响应式隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 07 项。由于不应连接真实 Canvas Agent、读取用户 Token 或触碰 3000/17371 服务，浏览器回归沿用既有 FrameFlow Prompt 路由夹具，在内存中返回固定 Brief、Prompt 和中文展示翻译；只新增超长英文返回值，不写入用户工作区、真实资产或 Docker/容器环境。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-prompt-language.spec.ts` | 修改 | 为既有隔离 Prompt 夹具增加可选字段与完整 Prompt 注入，并新增超长英文 Tag/完整 Prompt 的响应式回归；在 1280px、768px、390px 验证三/二/一列布局及所有溢出边界。 |
+| `web/src/pages/frameflow/create-view.tsx` | 既有实现（未修改） | 以 `min-w-0` 栅格卡片、`overflow-wrap:anywhere` Tag 与完整 Prompt 的保留换行样式承载长文本。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 07 项记为“自动化通过”，同步自动化通过数为 6 项、未验证数为 82 项和浏览器回归基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本次夹具范围、文件关联、浏览器尺寸和质量门禁，满足对话级可追溯要求。 |
+
+验证记录：夹具使用重复 12 次的无空格英文 `cinematic-reference-token-0123456789-`，填充主体、构图、色彩、光线、材质、布局、氛围、呈现方式、技术参数与避免项共 10 个字段，并将同一长 Token 写入含显式换行的完整 Prompt。真实 Chromium 在 1280px、768px、390px 下分别读到 3、2、1 条计算后的栅格列；每个字段卡、每个 Ant Design Tag、完整 Prompt 的 `scrollWidth` 均不大于 `clientWidth`，根文档同样没有横向滚动。完整 Web 浏览器套件为 22 项通过，Web 单元测试为 15 个文件/50 项通过，生产构建通过。`npx playwright-cli --help` 在当前依赖中没有可执行入口，因此本项使用仓库既有 `@playwright/test` 隔离夹具；该选择不影响真实端口、Agent 或用户资产。文档内容、类型与生产构建门禁均已通过；`format:check` 已知仍保留 6 项非本切片格式基线问题，不为消除它们改写或删除用户/既有文件。
