@@ -99,3 +99,19 @@
 
 下一步只能在用户确认后进行：以第 4.1 节的代码/测试/工程/计划文档集合为候选，先制作可恢复检查点，再在隔离副本或全新检出中安装依赖并验证。第 4.2 节证据、4.3 节缓存/构建物/日志继续原位保留，不能在未授权时清理。
 
+## 8. 授权后的阶段 A 实施与可复现验证
+
+用户随后明确授权以当前 GitHub 账户 `899ms` 建立 fork、创建分支并推送候选源码检查点。实施范围严格限于第 4.1 节候选内容和本记录；第 4.2 节的 18 项验收证据及第 4.3 节的忽略项始终未被暂存、提交、移动或删除。
+
+| 项目 | 结果与用途 |
+| --- | --- |
+| fork 与分支 | 新建 `899ms/infinite-canvas-1` fork，并推送 `codex/frameflow-roadmap`；未向 `basketikun/infinite-canvas` 原始仓库推送，未创建 PR。 |
+| 可恢复检查点 | `1639b338728b2b5f3269d6e4f8ff7e276cbc7901`（`chore: checkpoint FrameFlow development baseline`）纳入运行源码、测试、工程基础设施和计划文档。 |
+| 可复现性修正 | 全新 Windows 检出中发现 `core.autocrlf=true` 会使 Prettier 的 LF 规则失败；新增根目录 `.gitattributes`（`* text=auto eol=lf`），提交 `6de5e97`（`fix: enforce LF text checkouts`），使文本检出与 CI 规则一致。 |
+| 隔离检出 | 在 `basketikun-infinite-canvas-stage-a-verify-lf` 对 `6de5e97` 进行独立依赖安装与验证；不使用原工作树的依赖、构建物或服务进程。 |
+| Web 门禁 | `npm run format:check`、`npm run typecheck`、`npm test`（15 文件、47 项）、`npm run build`、`npm run check:bundle` 和 `npm run test:e2e`（Chromium 11 项）均通过。 |
+| Canvas Agent 门禁 | `npm test`（168 项）、`npm run build` 通过；使用 npm 官方 registry 的生产依赖审计为 0 漏洞。默认镜像的 audit 端点不支持审计，并非漏洞结果。 |
+| 文档门禁 | `bun run check:content`（英文摘要 25 项、中文权威清单 95 项）、`bun run types:check`、`bun run build` 通过；使用 npm 官方 registry 的 `bun audit` 为 0 漏洞。 |
+| 浏览器人工检查 | 在隔离 Web 服务 `127.0.0.1:3013/frameflow` 只读访问：页头导航、中文 FrameFlow 文案、8 个工作标签和“先连接 Canvas Agent”离线引导均正常渲染；控制台无 error/warn。未点击连接、未写入本地数据。隔离服务未启动 Agent，因此该离线引导为预期结果。 |
+
+阶段 A 的“可恢复检查点 + 独立检出门禁”退出条件已满足。下一阶段是路线图阶段 B：为中文 95 项待测试主清单建立状态矩阵，并以可清理的隔离夹具补齐 FrameFlow 全闭环的自动化与人工证据；这不等同于已完成该阶段。
