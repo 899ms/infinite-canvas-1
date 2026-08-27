@@ -682,3 +682,7 @@
 | `docs/session-development-record.md` | 修改 | 记录隔离范围、测试失败诊断和回归证据。 |
 
 验证记录：初次总结路由的精确 URL 模式未覆盖实际请求，页面按安全错误提示“本地 Agent 请求失败”停留；扩展为 Auto Run summarize URL 匹配后通过。用例在两轮完整审图时点击“生成跨轮总结”，显示“推荐第 2 轮”、改善项“主体层次”和持续问题“霓虹控制”；刷新后该总结仍由查询响应呈现。模拟第三轮完成后，旧总结明确标记“有新轮次待分析”；点击“更新到最新轮”后显示“推荐第 3 轮”、移除待分析标记，并记录请求参数顺序 `[false, true]`。完整质量门禁在提交前执行；格式基线继续保留既有 6 项，不改写用户文件。
+
+## 50. FrameFlow 参考图隔离资产选择回归（2026-08-28）
+
+`web/e2e/frameflow-reference-picker.spec.ts` 新增：在浏览器原生 IndexedDB 的 `infinite-canvas/app_state` 写入仅含 1×1 PNG 的合成资产，使 localForage/Zustand 正常水合；创建页打开“选择 FrameFlow 参考图”，选中“隔离参考图”并确认后，页面显示该缩略图。该夹具不访问真实资产、Agent、3000/17371 或 Docker。首次尝试 localStorage 回退未被 localForage 已选定的 IndexedDB 驱动读取；改用原生 IndexedDB 后通过。此证据只覆盖选择和回写，参考图上传校验、刷新恢复及重新填写仍待验收，主清单第 11 项继续保持“未验证”。
