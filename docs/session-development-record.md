@@ -612,3 +612,18 @@
 | `docs/session-development-record.md` | 修改 | 记录夹具、操作范围、无写入断言和质量门禁边界。 |
 
 验证记录：新用例先在演化轨迹点击“第 1 轮图片 1”，验证仅在该轮 2 张图片间从 `1 / 2` 切换到 `2 / 2`，随后实际执行 `zoomIn`、`zoomOut`、`rotateLeft`、`rotateRight`、`flipX`、`flipY` 与关闭操作。它再分别从运行与血缘的“生成结果 1”、待审检查器的“当前审核图片”、偏好页的“强化方向图片 image-a”“规避方向图片 image-b”“Comment 证据 image-a”打开预览；预览关闭后仍可见原始血缘结果、评分 `5 星`、Comment 与对应证据卡。所有命令路由均被收集并最终断言为空数组，因此放大、浏览和变换不会写入评分、Comment、soft delete 或其他反馈。该用例及同文件的既有同轮切换用例在 Chromium 中共 2 项通过，完整 Playwright 套件为 19 项通过；Web 单测 15 文件/50 项、生产构建和文档内容/类型/生产构建均通过。`format:check` 已不报告本次的预览用例，但仍因保留的 `.playwright-cli` 证据文件及既有 `e2e/frameflow-task-context.spec.ts`、`scripts/check-csp-report-only.mjs` 报告 6 项基线外格式问题；本切片不格式化、更改或删除这些用户/既有内容。不将夹具图片或浏览器回归外推为真实外部模型、Agent SSE 或生产部署验收。
+
+## 45. FrameFlow Prompt 中英审核与执行原文隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 06 项。浏览器测试只使用被 Playwright 路由拦截的固定 Prompt、Brief 与命令响应；Agent 测试为纯请求构建器测试。两者都不连接真实 Agent、调用外部模型、读取 Token、写入用户工作区或使用 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-prompt-language.spec.ts` | 新增 | 使用隔离浏览器验证新 Prompt 默认中文审核、English/中英对照切换、无页面横向溢出、批准/提交仍使用同一 Prompt Version，以及历史 Prompt 的补译、刷新保留和不重复调用。 |
+| `canvas-agent/src/agent/codex-frameflow-requests.test.ts` | 修改 | 为含中文展示翻译的 Prompt 加入 ImageGen 请求断言，确保执行请求保留英文 `compiledPrompt`、技术/负面字段且不携带中文展示文案。 |
+| `canvas-agent/src/frameflow/core.test.ts` | 既有实现（未修改） | 已验证翻译事件幂等、英文原文不变，并在 Core 重启后保留中文翻译。 |
+| `web/src/pages/frameflow/create-view.tsx`、`canvas-agent/src/frameflow/core.ts`、`canvas-agent/src/agent/codex-frameflow-requests.ts` | 既有实现（未修改） | 分别提供中文默认审核视图、翻译持久化及执行请求只读取英文原文的边界。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 06 项记为“自动化通过”，并同步未验证项总数为 83。 |
+| `docs/session-development-record.md` | 修改 | 记录浏览器/Agent 夹具、文件关联、测试结论和真实服务边界。 |
+
+验证记录：新 Prompt 夹具带有中文展示稿时，创建页默认可见“陶瓷花瓶”且英文完整执行 Prompt 不显示；切换 English 后显示 `A matte ceramic vase, centered product shot, softbox lighting, warm white background.`，切换“中英对照”后两种语言并存，根文档的 `scrollWidth <= clientWidth`。批准与“开始生成 4 张”依次发出 `prompt.approve`、`run.start`，二者均指向同一英文 Prompt Version。历史 Prompt 夹具初始无翻译时显示“旧版本尚无中文展示稿”，点击“生成中文版本”后展示中文完整 Prompt、按钮消失；刷新页面后中文仍在，命令序列只有一次 `prompt.translate`。纯 Agent 请求测试把同一 Prompt 加入中文展示翻译后，断言 ImageGen 请求仍包含 `已批准 Prompt：a red chair`、英文 Negative，且不包含中文翻译。加上既有 Core 翻译测试，覆盖翻译的幂等、英文原文稳定与重启持久化；本切片完整回归为 Agent 191 项、Web 单测 15 文件/50 项、Playwright 21 项和 Docs 内容/类型/生产构建通过。`format:check` 继续仅报告保留 `.playwright-cli` 证据及既有两个文件的 6 项基线外问题，不包含本次新文件；不将隔离夹具外推为真实 Codex/外部模型生产调用。
