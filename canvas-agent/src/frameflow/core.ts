@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { FrameFlowAssetStore, FrameFlowAssetValidationError } from "./asset-store.js";
 import { FrameFlowEventStore } from "./event-store.js";
 import { eventHistory } from "./history.js";
+import { buildPromptDiff } from "./prompt-diff.js";
 import { applyTransaction, emptyProjection, preferenceDna, type FrameFlowProjection } from "./reducer.js";
 import { staleRunRecoveryTransaction } from "./recovery.js";
 import { transactionResult } from "./transaction-result.js";
@@ -34,8 +35,6 @@ import type {
     FrameFlowTransaction,
     GenerationError,
     PreferenceDnaResult,
-    PromptFieldChange,
-    PromptFields,
     PromptFieldKey,
     PromptLineageResult,
     PromptVersion,
@@ -1191,44 +1190,6 @@ function generationCropPosition(prompt: PromptVersion): "top" | "attention" {
 
 function failedSlotEvents(runId: string, slotIds: string[], error: GenerationError): FrameFlowEvent[] {
     return slotIds.map((slotId) => ({ type: "run.slot_failed", eventId: crypto.randomUUID(), runId, slotId, error: structuredClone(error) }));
-}
-
-function buildPromptDiff(previous: PromptFields | undefined, fields: PromptFields, reason: string, decision: AgentDecision, preference: FrameFlowPreferenceContext) {
-    const diff: import("./types.js").PromptDiff = { keep: [], add: [], change: [], remove: [], avoid: [] };
-    for (const [field, values] of Object.entries(fields) as Array<[PromptFieldKey, string[]]>) {
-        const before = previous?.[field] || [];
-        const evidence = decision.evidence.filter((item) => item.affectedFields.includes(field));
-        const change: PromptFieldChange = {
-            field,
-            before: [...before],
-            after: [...values],
-            reason,
-            evidenceEventIds: unique(evidence.flatMap((item) => item.sourceEventIds)),
-            evidenceImageIds: unique(evidence.map((item) => item.imageId)),
-        };
-        if (sameValues(before, values)) diff.keep.push(change);
-        else if (!before.length) diff.add.push(change);
-        else if (!values.length) diff.remove.push(change);
-        else diff.change.push(change);
-    }
-    for (const evidence of decision.evidence.filter((item) => item.disposition === "avoided")) {
-        const source = [...preference.boost, ...preference.avoid].find((item) => item.imageId === evidence.imageId);
-        for (const field of evidence.affectedFields) {
-            diff.avoid.push({
-                field,
-                before: [...(source?.fields?.[field] || [])],
-                after: [...fields[field]],
-                reason: evidence.reason,
-                evidenceEventIds: [...evidence.sourceEventIds],
-                evidenceImageIds: [evidence.imageId],
-            });
-        }
-    }
-    return diff;
-}
-
-function sameValues(left: string[], right: string[]) {
-    return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function unique(values: string[]) {

@@ -308,3 +308,18 @@
 | `docs/session-development-record.md` | 修改 | 记录文档状态更新依据和未完成边界。 |
 
 验证要求：文档变更需继续通过内容清单、类型和生产构建；路线图中的“已完成”仅对应明确列出的隔离证据，不代表生产部署或主清单全量完成。
+
+## 24. 阶段 C FrameFlow Prompt Diff 解耦（2026-08-28）
+
+本切片将 Prompt 版本的差异分类与证据归属移出 `FrameFlowCore`；规划调用、偏好上下文组装、事件写入与 Prompt API 均保留在原职责边界。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/prompt-diff.ts` | 新增 | 纯函数：按字段生成 keep/add/change/remove/avoid Diff，并保留已采用/规避证据的去重与来源字段。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 规划 Prompt 时委托 Diff 模块，同时保留偏好上下文仍需的私有去重工具。 |
+| `canvas-agent/src/frameflow/prompt-diff.test.ts` | 新增 | 直接验证五类分类中的 keep/add/change/remove/avoid、决策证据去重与规避来源字段。 |
+| `canvas-agent/package.json` | 修改 | 将 Prompt Diff 纯函数回归纳入正式 Agent 测试命令。 |
+| `docs/post-development-roadmap.md` | 修改 | 将 Agent 当前测试基线从 181 项更新为 183 项，并关联本节记录。 |
+| `docs/session-development-record.md` | 修改 | 记录职责边界、失败诊断、文件关联和验证证据。 |
+
+验证记录：先让测试导入未创建模块，得到预期 `ERR_MODULE_NOT_FOUND`；首次迁移后，TypeScript 构建和两项既有 Core 测试提示 `unique` 仍被偏好上下文组装使用，因此恢复该 Core 私有工具后重跑。最终聚焦测试 2 项、`npm run build` 与完整 `npm test` 183 项均通过。该切片未修改 Prompt Diff 协议、偏好事实或存储格式。
