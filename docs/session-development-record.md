@@ -462,3 +462,18 @@
 | `docs/session-development-record.md` | 修改 | 记录画布交互时序、覆盖边界与文档关联。 |
 
 验证记录：画布路径使用独立浏览器 origin 和一次性迁移夹具，依次进入 `/canvas?mode=new`、等待新建画布 URL、双击可编辑画布、选择“图片”、点击节点“提示词库”，再切换“我的可用库”。聚焦浏览器用例 2 项通过，个人偏好排序单元测试通过；后续完整 Web、Docs 门禁见本次提交记录。该证据不访问 3000/17371、真实个人数据、资产或凭据，也不包含真实 Provider、Canvas Agent SSE 或 Docker/容器部署验收。
+
+## 35. FrameFlow Requirement 查询投影职责拆分（2026-08-28）
+
+本切片落实阶段 C 的单一职责约束：将 Requirement 当前修订、归档/替代状态和可继续探索判定从 `FrameFlowCore` 提取为无副作用的查询投影函数；命令编排、事件写入、持久化与公开 `FrameFlowCore` API 保持不变。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/query-projection.ts` | 新增 | 纯函数：计算 Requirement 的当前 Brief、查询状态和 Auto Run 是否可继续探索；输入仅为投影与领域对象。 |
+| `canvas-agent/src/frameflow/query-projection.test.ts` | 新增 | 在不创建工作区、不访问存储的条件下，验证当前修订、归档/替代状态与 `vary` 机器审图的继续探索条件。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 改用查询投影函数；保持命令、查询、错误消息、事件和文件读写路径不变。 |
+| `canvas-agent/package.json` | 修改 | 将新增纯函数测试加入正式 Canvas Agent 测试命令。 |
+| `docs/post-development-roadmap.md` | 修改 | 同步 Canvas Agent 189 项测试基线及阶段 C 当前进展。 |
+| `docs/session-development-record.md` | 修改 | 记录测试先行、职责边界、验证结果和文件关联。 |
+
+验证记录：先新增测试并导入尚不存在的 `query-projection` 模块，得到预期 `ERR_MODULE_NOT_FOUND`；实现后聚焦测试通过。首次完整 TypeScript 构建暴露 3 处遗留的 Core 私有调用，均替换为同一纯函数入口后，Canvas Agent 完整 `npm test` 189 项与 `npm run build` 通过。该切片不触及 Web、浏览器端口、真实资产、运行中的 Agent、Docker/容器部署或外部服务。

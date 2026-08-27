@@ -7,6 +7,7 @@ import { failedSlotEvents, generationCropPosition } from "./generation-plan.js";
 import { eventHistory } from "./history.js";
 import { plannerPreferenceContext } from "./preference-context.js";
 import { buildPromptDiff } from "./prompt-diff.js";
+import { canContinueExploration, currentBriefForRequirement, isBriefActive, requirementState } from "./query-projection.js";
 import { applyTransaction, emptyProjection, preferenceDna, type FrameFlowProjection } from "./reducer.js";
 import { staleRunRecoveryTransaction } from "./recovery.js";
 import { transactionResult } from "./transaction-result.js";
@@ -83,7 +84,7 @@ export class FrameFlowCore {
         this.ready = this.initialize();
         void this.ready.then(() => {
             for (const autoRun of Object.values(this.projection.autoRuns)) {
-                const requirement = this.requirementState(autoRun.briefId);
+                const requirement = requirementState(this.projection, autoRun.briefId);
                 if (requirement.requirementArchived || requirement.briefSuperseded) continue;
                 if (autoRun.state === "reviewing" && autoRun.currentRunId) this.launchMachineReview(autoRun.id, autoRun.currentRunId);
                 if (autoRun.state === "generating" && !autoRun.currentRunId) this.launchAutoRunPlanning(autoRun.id);
@@ -208,7 +209,7 @@ export class FrameFlowCore {
         }
         if (parsed.type === "brief.list") return {
             type: "brief.list",
-            briefs: structuredClone(Object.values(this.projection.briefs).filter((brief) => parsed.includeArchived || this.isBriefActive(brief)).slice(-parsed.limit).reverse()),
+            briefs: structuredClone(Object.values(this.projection.briefs).filter((brief) => parsed.includeArchived || isBriefActive(brief)).slice(-parsed.limit).reverse()),
         };
         if (parsed.type === "brief.detail") {
             const brief = this.projection.briefs[parsed.briefId];
@@ -219,8 +220,8 @@ export class FrameFlowCore {
             type: "auto_run.list",
             autoRuns: Object.values(this.projection.autoRuns).map((autoRun) => ({
                 ...structuredClone(autoRun),
-                ...this.requirementState(autoRun.briefId),
-                canContinueExploration: this.canContinueExploration(autoRun),
+                ...requirementState(this.projection, autoRun.briefId),
+                canContinueExploration: canContinueExploration(this.projection, autoRun),
             })).filter((autoRun) => parsed.includeArchived || !autoRun.requirementArchived).slice(-parsed.limit).reverse(),
         };
         if (parsed.type === "auto_run.trajectory") return this.autoRunTrajectory(parsed.autoRunId);
@@ -228,7 +229,7 @@ export class FrameFlowCore {
             type: "run.list",
             runs: Object.values(this.projection.runs).map((run) => ({
                 ...structuredClone(run),
-                ...this.requirementState(run.briefId),
+                ...requirementState(this.projection, run.briefId),
             })).filter((run) => parsed.includeArchived || !run.requirementArchived).slice(-parsed.limit).reverse(),
         };
         if (parsed.type === "review.queue") return {
@@ -238,7 +239,7 @@ export class FrameFlowCore {
                 const briefId = this.projection.runs[image.runId]?.briefId ?? this.projection.prompts[image.promptVersionId]?.briefId ?? "";
                 return {
                     briefId,
-                    ...this.requirementState(briefId),
+                    ...requirementState(this.projection, briefId),
                     image: structuredClone(image),
                     feedback: {
                         ...(feedback?.rating ? { rating: feedback.rating } : {}),
@@ -354,7 +355,7 @@ export class FrameFlowCore {
         if (command.type === "brief.archive") {
             const requested = this.projection.briefs[command.briefId];
             if (!requested) throw new FrameFlowDomainError("找不到 Creative Brief", 404);
-            const brief = this.currentBriefForRequirement(requested);
+            const brief = currentBriefForRequirement(this.projection, requested);
             if (brief.archivedAt) throw new FrameFlowDomainError("该 Requirement 已归档", 409);
             this.assertRequirementIsNotRunning(brief);
             return [{ type: "brief.archived", eventId, briefId: brief.id, requirementId: brief.requirementId ?? brief.id, archivedAt: occurredAt }];
@@ -362,7 +363,7 @@ export class FrameFlowCore {
         if (command.type === "brief.restore") {
             const requested = this.projection.briefs[command.briefId];
             if (!requested) throw new FrameFlowDomainError("找不到 Creative Brief", 404);
-            const brief = this.currentBriefForRequirement(requested);
+            const brief = currentBriefForRequirement(this.projection, requested);
             if (!brief.archivedAt) throw new FrameFlowDomainError("该 Requirement 未归档", 409);
             return [{ type: "brief.restored", eventId, briefId: brief.id, requirementId: brief.requirementId ?? brief.id, restoredAt: occurredAt }];
         }
@@ -408,7 +409,7 @@ export class FrameFlowCore {
             if (!autoRun) throw new FrameFlowDomainError("找不到自动跑", 404);
             this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
             if (autoRun.state !== "completed") throw new FrameFlowDomainError("只有已完成的自动跑可以继续探索", 409);
-            if (!this.canContinueExploration(autoRun)) throw new FrameFlowDomainError("最后一轮没有可继续探索的 vary 机器审图，或已达到 20 轮上限", 409);
+            if (!canContinueExploration(this.projection, autoRun)) throw new FrameFlowDomainError("最后一轮没有可继续探索的 vary 机器审图，或已达到 20 轮上限", 409);
             const maxIterations = autoRun.maxIterations + command.additionalIterations;
             if (maxIterations > 20) throw new FrameFlowDomainError("自动跑最多可累计 20 轮", 409);
             const otherActive = Object.values(this.projection.autoRuns).find((item) => item.id !== autoRun.id && (item.state === "generating" || item.state === "reviewing"));
@@ -605,28 +606,10 @@ export class FrameFlowCore {
         if (activeRun) throw new FrameFlowDomainError(`请先停止正在生成的批次 ${activeRun.id.slice(0, 8)}`, 409);
     }
 
-    private currentBriefForRequirement(brief: CreativeBrief) {
-        const requirementId = brief.requirementId ?? brief.id;
-        const revisions = Object.values(this.projection.briefs)
-            .filter((item) => (item.requirementId ?? item.id) === requirementId)
-            .sort((left, right) => (left.revision ?? 1) - (right.revision ?? 1));
-        return revisions.filter((item) => !item.supersededAt && !item.supersededByBriefId).at(-1) ?? revisions.at(-1) ?? brief;
-    }
-
-    private requirementState(briefId: string) {
-        const brief = this.projection.briefs[briefId];
-        if (!brief) return { requirementArchived: false, briefSuperseded: false };
-        const current = this.currentBriefForRequirement(brief);
-        return {
-            requirementArchived: Boolean(current.archivedAt),
-            briefSuperseded: current.id !== brief.id || Boolean(brief.supersededAt || brief.supersededByBriefId),
-        };
-    }
-
     private requireRequirementActive(briefId: string) {
         const brief = this.projection.briefs[briefId];
         if (!brief) throw new FrameFlowDomainError("找不到 Creative Brief", 404);
-        if (this.currentBriefForRequirement(brief).archivedAt) throw new FrameFlowDomainError("该 Requirement 已归档，历史血缘只读", 409);
+        if (currentBriefForRequirement(this.projection, brief).archivedAt) throw new FrameFlowDomainError("该 Requirement 已归档，历史血缘只读", 409);
         return brief;
     }
 
@@ -651,15 +634,11 @@ export class FrameFlowCore {
         if (this.requirementLifecycleToken(briefId) !== token) throw new FrameFlowDomainError("Requirement 生命周期已变更，已丢弃归档前启动的迟到结果", 409);
     }
 
-    private isBriefActive(brief: CreativeBrief) {
-        return !brief.archivedAt && !brief.supersededAt && !brief.supersededByBriefId;
-    }
-
     private requireActiveBrief(briefId: string, missingMessage = "找不到 Creative Brief") {
         const brief = this.projection.briefs[briefId];
         if (!brief) throw new FrameFlowDomainError(missingMessage, 404);
         this.requireRequirementActive(brief.id);
-        if (this.currentBriefForRequirement(brief).id !== brief.id || brief.supersededAt || brief.supersededByBriefId) {
+        if (currentBriefForRequirement(this.projection, brief).id !== brief.id || brief.supersededAt || brief.supersededByBriefId) {
             throw new FrameFlowDomainError("该 Brief 不是当前 Brief 修订，已归档或已被新修订取代", 409);
         }
         return brief;
@@ -979,14 +958,6 @@ export class FrameFlowCore {
         return await result;
     }
 
-    private canContinueExploration(autoRun: AutoRun) {
-        const brief = this.projection.briefs[autoRun.briefId];
-        if (!brief || !this.isBriefActive(brief)) return false;
-        if (autoRun.state !== "completed" || autoRun.maxIterations >= 20 || !autoRun.currentRunId) return false;
-        const run = this.projection.runs[autoRun.currentRunId];
-        return Boolean(run?.imageIds.some((imageId) => this.projection.machineReviewsByImage[imageId]?.decision === "vary"));
-    }
-
     private launchTrajectorySummary(autoRunId: string) {
         if (!this.trajectorySummarizer) return;
         void this.summarizeAutoRunTrajectory(autoRunId).catch(() => undefined);
@@ -1087,8 +1058,8 @@ export class FrameFlowCore {
             type: "auto_run.trajectory",
             autoRun: {
                 ...structuredClone(autoRun),
-                ...this.requirementState(autoRun.briefId),
-                canContinueExploration: this.canContinueExploration(autoRun),
+                ...requirementState(this.projection, autoRun.briefId),
+                canContinueExploration: canContinueExploration(this.projection, autoRun),
             },
             brief: structuredClone(brief),
             rounds,
