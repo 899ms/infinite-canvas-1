@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { FrameFlowAssetStore, FrameFlowAssetValidationError } from "./asset-store.js";
 import { FrameFlowEventStore } from "./event-store.js";
 import { eventHistory } from "./history.js";
+import { plannerPreferenceContext } from "./preference-context.js";
 import { buildPromptDiff } from "./prompt-diff.js";
 import { applyTransaction, emptyProjection, preferenceDna, type FrameFlowProjection } from "./reducer.js";
 import { staleRunRecoveryTransaction } from "./recovery.js";
@@ -34,8 +35,8 @@ import type {
     FrameFlowReferenceImportInput,
     FrameFlowTransaction,
     GenerationError,
-    PreferenceDnaResult,
     PromptFieldKey,
+    PreferenceDnaResult,
     PromptLineageResult,
     PromptVersion,
     QuarantineListResult,
@@ -665,28 +666,7 @@ export class FrameFlowCore {
     }
 
     private plannerPreference(briefId: string): FrameFlowPreferenceContext {
-        const dna = preferenceDna(this.projection, briefId);
-        const evidence = (signal: PreferenceDnaResult["boost"][number]) => {
-            const image = this.projection.images[signal.imageId];
-            const prompt = image ? this.projection.prompts[image.promptVersionId] : undefined;
-            const feedback = this.projection.feedbackByImage[signal.imageId];
-            return {
-                imageId: signal.imageId,
-                sourceEventIds: unique([...signal.sourceEventIds, ...(feedback?.commentEventId ? [feedback.commentEventId] : [])]),
-                weight: signal.weight,
-                ...(feedback?.rating ? { rating: feedback.rating } : {}),
-                ...(feedback?.comment !== undefined ? { comment: feedback.comment } : {}),
-                ...(prompt ? { promptVersionId: prompt.id, fields: structuredClone(prompt.fields) } : {}),
-            };
-        };
-        return {
-            briefId,
-            totalWeight: dna.totalWeight,
-            sampleSize: dna.sampleSize,
-            qualityRejections: dna.qualityRejections,
-            boost: dna.boost.map(evidence),
-            avoid: dna.avoid.map(evidence),
-        };
+        return plannerPreferenceContext(this.projection, briefId);
     }
 
     private agentDecision(input: {
@@ -1190,8 +1170,4 @@ function generationCropPosition(prompt: PromptVersion): "top" | "attention" {
 
 function failedSlotEvents(runId: string, slotIds: string[], error: GenerationError): FrameFlowEvent[] {
     return slotIds.map((slotId) => ({ type: "run.slot_failed", eventId: crypto.randomUUID(), runId, slotId, error: structuredClone(error) }));
-}
-
-function unique(values: string[]) {
-    return [...new Set(values)];
 }

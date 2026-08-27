@@ -323,3 +323,18 @@
 | `docs/session-development-record.md` | 修改 | 记录职责边界、失败诊断、文件关联和验证证据。 |
 
 验证记录：先让测试导入未创建模块，得到预期 `ERR_MODULE_NOT_FOUND`；首次迁移后，TypeScript 构建和两项既有 Core 测试提示 `unique` 仍被偏好上下文组装使用，因此恢复该 Core 私有工具后重跑。最终聚焦测试 2 项、`npm run build` 与完整 `npm test` 183 项均通过。该切片未修改 Prompt Diff 协议、偏好事实或存储格式。
+
+## 25. 阶段 C FrameFlow 偏好上下文解耦（2026-08-28）
+
+本切片将“投影中的 Preference DNA → Planner 输入上下文”从 `FrameFlowCore` 移为纯模块；公开 `preference.dna` 查询、命令编排和 Agent Decision 校验仍保留在 Core。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/preference-context.ts` | 新增 | 纯函数：依托现有投影/Preference DNA，补齐评分、Comment 事件、Prompt 字段快照和同 Requirement 的证据上下文。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | Planner 上下文委托新模块；公开查询继续直接调用 `preferenceDna`，避免改变已有查询契约。 |
+| `canvas-agent/src/frameflow/preference-context.test.ts` | 新增 | 验证跨 Brief 修订聚合、跨 Requirement 隔离、5 星权重、规避反馈、Comment 事件、Prompt 字段克隆。 |
+| `canvas-agent/package.json` | 修改 | 将偏好上下文纯函数回归纳入正式 Agent 测试命令。 |
+| `docs/post-development-roadmap.md` | 修改 | 干净检出证据更新到 `723b093`，并将 Agent 当前测试基线更新为 184 项。 |
+| `docs/session-development-record.md` | 修改 | 记录职责边界、失败诊断、文件关联和验证证据。 |
+
+验证记录：先导入未创建模块，得到预期 `ERR_MODULE_NOT_FOUND`。首次迁移时，测试错误地将 5 星当作 `+5`，实际领域权重为 `+3`；同时构建/全量测试显示 `preferenceDna` 仍被公开查询使用。修正测试期望并恢复该查询依赖后，聚焦测试 1 项、`npm run build` 与完整 `npm test` 184 项均通过。此前 `723b093` 已在独立干净克隆通过 Web、Agent、Docs 和浏览器门禁；本切片新增后仍需在后续干净检出刷新中复核当前提交。
