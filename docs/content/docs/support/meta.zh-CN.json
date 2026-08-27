@@ -4,6 +4,7 @@
   "defaultOpen": true,
   "pages": [
     "security",
+    "browser-credential-threat-model",
     "sponsor"
   ]
 }

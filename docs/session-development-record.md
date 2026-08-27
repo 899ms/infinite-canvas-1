@@ -141,3 +141,14 @@
 | `docs/session-development-record.md` | 修改 | 记录本次安全边界、文件关联与验证结果，满足会话可追溯要求。 |
 
 验证记录：先新增直接导入 `sanitizeLogDetails` 的测试，确认实现尚未导出该安全边界时失败；补齐实现后聚焦测试与 `npm run build` 通过，完整 `npm test` 为 171 项通过。该证据覆盖待测清单中 Canvas Agent Debug 的凭据/Data URL 脱敏子项；Codex stderr ANSI 时间规范化、网页诊断日志与浏览器人工验收仍按矩阵保留未验证。
+
+## 11. 阶段 D 浏览器凭据威胁模型（2026-08-28）
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `docs/content/docs/support/browser-credential-threat-model.mdx` | 新增 | 英文权威说明：浏览器本地 API Key、WebDAV、Agent URL/Token、一次性 URL 参数、会话身份和不可信外部内容的边界、已知限制与 CSP 前置门禁。 |
+| `docs/content/docs/support/browser-credential-threat-model.zh-CN.mdx` | 新增 | 与英文同范围的中文用户说明。 |
+| `docs/content/docs/support/meta.json` / `meta.zh-CN.json` | 修改 | 将双语威胁模型加入支持与安全导航。 |
+| `docs/session-development-record.md` | 修改 | 记录基于当前实现核验得到的边界，避免把 CSP 计划误写成已实施的 CSP。 |
+
+文档事实依据：Agent URL/Token 显式连接后进入 `localStorage`，标签页身份进入 `sessionStorage`；一次性 `baseUrl`/`apiKey` 参数读取后通过 `history.replaceState` 从 URL 移除；第三方插件按可读取当前页面本地数据的高信任代码处理。该文档不改变浏览器存储模型，也不声称 CSP 已实施。
