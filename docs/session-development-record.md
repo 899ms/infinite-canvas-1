@@ -128,3 +128,16 @@
 | `canvas-agent/src/agent/codex-client.test.ts` | 修改 | 既有安全回归改为直接导入新模块，覆盖匿名节点引用、敏感信息清除、截断优先级和草稿拒绝规则，防止后续重新耦合到 Codex 编排层。 |
 
 验证记录：先将既有测试切换到新模块路径，确认模块不存在时得到预期的 `ERR_MODULE_NOT_FOUND`；迁移同一段纯逻辑后，聚焦测试 `npx tsx --test src/agent/codex-client.test.ts` 40 项通过，`npm run build` 通过，完整 `npm test` 170 项通过。测试日志中的中断/SSE 文本来自既有测试夹具，不是本机 Agent 服务操作。
+
+## 10. 阶段 D 日志脱敏切片（2026-08-28）
+
+本切片只收紧 Canvas Agent 的普通日志详情；不读取、打印或改变任何真实 Token、图片、浏览器存储或运行服务。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/utils/logger.ts` | 修改 | 导出可独立验证的日志详情清理入口；除既有 token、authorization、apiKey、Data URL 外，统一遮蔽 password、secret、credential 字段，并清理 Error 的 message/stack 中 Bearer 与常见赋值式凭据。 |
+| `canvas-agent/src/utils/logger.test.ts` | 新增 | 以虚构值验证字段级凭据、嵌套 Data URL 和 Error 文本中的 Bearer 值均不会进入序列化日志。 |
+| `canvas-agent/package.json` | 修改 | 将日志脱敏回归纳入 Canvas Agent 的正式 `npm test` 命令，避免只作为一次性本地检查。 |
+| `docs/session-development-record.md` | 修改 | 记录本次安全边界、文件关联与验证结果，满足会话可追溯要求。 |
+
+验证记录：先新增直接导入 `sanitizeLogDetails` 的测试，确认实现尚未导出该安全边界时失败；补齐实现后聚焦测试与 `npm run build` 通过，完整 `npm test` 为 171 项通过。该证据覆盖待测清单中 Canvas Agent Debug 的凭据/Data URL 脱敏子项；Codex stderr ANSI 时间规范化、网页诊断日志与浏览器人工验收仍按矩阵保留未验证。
