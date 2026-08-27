@@ -97,12 +97,14 @@
 | 文件 | 变更类型 | 关联与用途 |
 | --- | --- | --- |
 | `web/e2e/frameflow-task-context.spec.ts` | 修改 | 使用隔离浏览器 origin、路由响应夹具和内存状态，验证待审页的“隐藏并学习 → 状态回写 → 恢复 → 状态回写”闭环；断言限定在审核检查器，避免误把静态统计标题当作状态证据。 |
+| `canvas-agent/src/frameflow/core.test.ts` | 修改 | 使用一次性 Agent 工作区模拟一次机器审图 Provider 失败；验证同一 Auto Run 的已生成批次不丢失，显式恢复后只补齐缺失审图并完成。 |
 | `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 为主清单 12 补充上述局部浏览器证据及剩余未覆盖范围，维持该项“未验证”，不外推为完整验收。 |
 | `docs/session-development-record.md` | 修改 | 记录本次新增测试、文件关联、验证结果和边界，满足对话级可追溯要求。 |
 
 本次验证结果：
 
 - `web`：`npm run test:e2e` 13 项通过；`npm run typecheck` 通过。
+- `canvas-agent`：`npm test` 170 项通过，其中包括机器审图失败后的原任务恢复回归。
 - 仓库根目录：`node docs/scripts/check-pending-test-locales.mjs` 通过（英文摘要 25 项、中文主清单 95 项、状态矩阵 95 项）。
 - 测试请求仅命中 Playwright 本地路由夹具；未读取或使用本机 Canvas Agent 的真实 Token、真实图片或端口 3000/17371 服务。
 

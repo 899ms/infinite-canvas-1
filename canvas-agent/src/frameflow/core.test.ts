@@ -245,6 +245,51 @@ test("自动跑由 Codex 逐张审图并自动迭代，到达最大轮数后完�
     assert.equal((await restarted.query({ type: "auto_run.trajectory", autoRunId: autoRun.id })).summary?.bestIteration, 2);
 });
 
+test("机器审图失败后可在原自动跑恢复，且保留已生成批次", async (context) => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "frameflow-auto-run-review-recovery-"));
+    context.after(() => fs.rm(workspace, { recursive: true, force: true }));
+    const generatedFile = path.join(workspace, "review-recovery.png");
+    await sharp({ create: { width: 8, height: 8, channels: 3, background: { r: 220, g: 210, b: 200 } } }).png().toFile(generatedFile);
+    let reviewAttempts = 0;
+    const core = new FrameFlowCore(workspace, {
+        planner: { plan: async () => testPlan },
+        imageGenerator: { generate: async () => [generatedFile] },
+        imageReviewer: { review: async ({ images }) => {
+            reviewAttempts += 1;
+            if (reviewAttempts === 1) throw new Error("审图 Provider 暂时不可用");
+            return images.map(({ imageId }) => ({ imageId, rating: 4 as const, comment: "恢复后仅补充缺失审图。", decision: "vary" as const, strengths: ["主体明确"], issues: [] }));
+        } },
+    });
+    const brief = await core.execute({
+        type: "brief.create",
+        input: { subject: "机器审图恢复", aspectRatio: "1:1", constraints: { keep: [], avoid: [] }, referenceImageIds: [], strategy: "balanced", profileId: "default" },
+        idempotencyKey: "review-recovery-brief",
+    });
+    const created = await core.execute({
+        type: "auto_run.create",
+        input: { name: "机器审图恢复", briefId: brief.resource!.id, count: 1, maxIterations: 1 },
+        idempotencyKey: "review-recovery-auto-run",
+    });
+
+    await core.triggerAutoRun(created.resource!.id, "start");
+    await waitFor(async () => (await core.query({ type: "auto_run.list", limit: 20 })).autoRuns[0]?.state === "failed");
+    const failed = (await core.query({ type: "auto_run.list", limit: 20 })).autoRuns[0]!;
+    const firstRun = await core.query({ type: "run.detail", runId: failed.currentRunId! });
+    assert.equal(firstRun.run.status, "succeeded");
+    assert.equal(firstRun.run.imageIds.length, 1);
+    assert.equal((await core.query({ type: "review.queue", limit: 20 })).items[0]?.machineReview, undefined);
+
+    await core.triggerAutoRun(created.resource!.id, "start");
+    await waitFor(async () => (await core.query({ type: "auto_run.list", limit: 20 })).autoRuns[0]?.state === "completed");
+    const recovered = (await core.query({ type: "auto_run.list", limit: 20 })).autoRuns[0]!;
+    const recoveredRun = await core.query({ type: "run.detail", runId: recovered.currentRunId! });
+    const reviewed = await core.query({ type: "review.queue", limit: 20 });
+    assert.equal(reviewAttempts, 2);
+    assert.equal(recovered.currentRunId, failed.currentRunId);
+    assert.equal(recoveredRun.run.imageIds.length, 1);
+    assert.equal(reviewed.items[0]?.machineReview?.decision, "vary");
+});
+
 test("完成态的 vary 机器审图可在原血缘上继续探索一轮", async (context) => {
     const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "frameflow-auto-run-extend-"));
     context.after(() => fs.rm(workspace, { recursive: true, force: true }));
