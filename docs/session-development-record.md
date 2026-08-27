@@ -686,3 +686,16 @@
 ## 50. FrameFlow 参考图隔离资产选择回归（2026-08-28）
 
 `web/e2e/frameflow-reference-picker.spec.ts` 新增：在浏览器原生 IndexedDB 的 `infinite-canvas/app_state` 写入仅含 1×1 PNG 的合成资产，使 localForage/Zustand 正常水合；创建页打开“选择 FrameFlow 参考图”，选中“隔离参考图”并确认后，页面显示该缩略图。该夹具不访问真实资产、Agent、3000/17371 或 Docker。首次尝试 localStorage 回退未被 localForage 已选定的 IndexedDB 驱动读取；改用原生 IndexedDB 后通过。此证据只覆盖选择和回写，参考图上传校验、刷新恢复及重新填写仍待验收，主清单第 11 项继续保持“未验证”。
+
+## 51. FrameFlow 受控参考图导入、绑定与刷新恢复隔离回归（2026-08-28）
+
+本切片扩展第 50 节的浏览器夹具，但不关闭中文主清单第 11 项。它只通过 Playwright 路由返回内存响应，不访问真实 Canvas Agent、用户资产、3000/17371、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-reference-picker.spec.ts` | 修改 | 在合成 1×1 PNG 资产被选择后，验证浏览器以 `image/png` 调用参考图导入，后续 `brief.create` 输入绑定受控 Reference Asset ID，`round.plan` 得到同样绑定的 Prompt；刷新后由会话恢复 Brief、Prompt 和“已恢复/已绑定 1 张受控参考图”提示。 |
+| `web/src/pages/frameflow/create-view.tsx` | 既有实现（未修改） | 负责浏览器资产 PNG 化、导入、Brief/Prompt 创建、会话写入及重载恢复。 |
+| `web/src/services/api/frameflow.ts` | 既有实现（未修改） | 提供参考图导入、Brief/Prompt 命令与查询边界。 |
+| `docs/session-development-record.md` | 修改 | 记录本次测试夹具、修正过的测试时序和验收边界，满足对话级可追溯要求。 |
+
+验证记录：第一次扩展后，`/agent/frameflow/commands` 和 `/agent/frameflow/query` 的拦截模式错误地要求 URL 带查询字符串，造成请求没有命中、界面安全地吞下错误并停留在填写页；改为覆盖无查询参数路径后，发现原生 IndexedDB 写入与应用首次 localForage 水合的竞态。用例现先在页面内确认 `infinite-canvas/app_state` 的 `infinite-canvas:asset_store` 已存在，再重载后打开选择器，因此不把夹具初始化时序误判为产品缺陷。最终断言命令顺序为 `brief.create`、`round.plan`，并确认第一个命令的 `referenceImageIds` 为 `controlled-reference`；首次与刷新后的 Prompt 均显示受控绑定。目标用例和本文件格式检查通过。图片超过 20MB/非法格式、1–4 上限、搜索/取消/空资产、重新填写的全新幂等键，以及批准后真实 ImageGen 路径仍未覆盖，故第 11 项状态继续保持“未验证”，不将该隔离夹具外推为真实生成或生产部署验收。
