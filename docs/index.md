@@ -35,6 +35,11 @@
 - [Pending Tests](/docs/progress/pending-test)
 - [TODO](/docs/progress/todo)
 
+## Engineering Governance
+
+- [Post-development Roadmap](./post-development-roadmap.md)
+- [Current Review and File Association Record](./session-development-record.md)
+
 ## Notes
 
 - Canvas projects and My Assets are primarily stored in the browser. WebDAV can be configured for cross-device synchronization.

@@ -5,20 +5,22 @@ description: Deploy Infinite Canvas with Docker Compose
 
 # Docker Deployment
 
-## Use the published image
+## Build the current checkout
 
 ```bash
 git clone git@github.com:basketikun/infinite-canvas.git
 cd infinite-canvas
-docker compose up -d
+docker compose up -d --build
 ```
 
 Open `http://localhost:3000`.
 
-## Build locally
+The root Compose file builds the current source and tags it as `infinite-canvas-local`. Use this path when validating local changes.
+
+## Use the published image
 
 ```bash
-docker compose -f docker-compose.local.yml up -d --build
+docker run -d --name infinite-canvas -p 3000:3000 ghcr.io/basketikun/infinite-canvas:latest
 ```
 
 ## Documentation image
@@ -37,7 +39,7 @@ cd docs
 docker compose -f docker-compose.local.yml up -d --build
 ```
 
-The main application container only runs Next.js. Canvases, My Assets, generation history, and API keys are stored in the browser by default, while prompt repositories are fetched directly by the frontend. No persistent data volume is required for this data.
+The main application container serves the Vite static build through Nginx. Canvases, My Assets, generation history, and API keys are stored in the browser by default, while prompt repositories are fetched directly by the frontend. No persistent data volume is required for this data.
 
 ## Optional analytics
 
@@ -51,7 +53,8 @@ No analytics are enabled by default. A deployment can enable GA4, Baidu Analytic
 ```yaml
 services:
   app:
-    image: ghcr.io/basketikun/infinite-canvas:latest
+    build: .
+    image: infinite-canvas-local
     ports:
       - "3000:3000"
     environment:

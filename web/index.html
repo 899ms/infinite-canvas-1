@@ -4,6 +4,7 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="description" content="一个无限画布创作工具" />
+        <meta name="theme-color" content="#171717" />
         <link rel="icon" href="/logo.svg" />
         <title>无限画布</title>
         <script>
@@ -11,7 +12,10 @@
                 var s = JSON.parse(localStorage.getItem("infinite-canvas:theme_store") || "{}");
                 var t = s.state && s.state.theme === "light" ? "light" : "dark";
                 document.documentElement.classList.toggle("dark", t === "dark");
+                document.documentElement.classList.toggle("ds-theme-dark", t === "dark");
+                document.documentElement.dataset.dsTheme = t;
                 document.documentElement.style.colorScheme = t;
+                document.querySelector('meta[name="theme-color"]').setAttribute("content", t === "dark" ? "#171717" : "#fafaf9");
             } catch (e) {}
         </script>
     </head>

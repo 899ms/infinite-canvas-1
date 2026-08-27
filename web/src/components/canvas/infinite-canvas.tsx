@@ -18,6 +18,13 @@ type InfiniteCanvasProps = {
     children: React.ReactNode;
 };
 
+const interactiveKeyboardTarget =
+    "input,textarea,select,[contenteditable='true'],[role='switch'],[role='checkbox'],[role='radio'],[role='tab'],[role='menuitem'],[role='option'],[role='slider'],[role='spinbutton'],[role='combobox']";
+
+function isInteractiveKeyboardTarget(target: EventTarget | null) {
+    return target instanceof Element && Boolean(target.closest(interactiveKeyboardTarget));
+}
+
 export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = "lines", onViewportChange, onCanvasMouseDown, onCanvasDeselect, onCanvasDoubleClick, onContextMenu, onDrop, children }: InfiniteCanvasProps) {
     const theme = canvasThemes[useThemeStore((state) => state.theme)];
     const panState = useRef({
@@ -51,16 +58,14 @@ export function InfiniteCanvas({ containerRef, viewport, tool, backgroundMode = 
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Control") setIsControlPressed(true);
             if (event.code !== "Space") return;
-            const target = event.target instanceof Element ? event.target : null;
-            if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || target?.closest("[contenteditable='true']")) return;
+            if (isInteractiveKeyboardTarget(event.target)) return;
             event.preventDefault();
             setIsSpacePressed(true);
         };
 
         const handleKeyUp = (event: KeyboardEvent) => {
             if (event.code === "Space") {
-                const target = event.target instanceof Element ? event.target : null;
-                if (!(event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement || target?.closest("[contenteditable='true']"))) event.preventDefault();
+                if (!isInteractiveKeyboardTarget(event.target)) event.preventDefault();
                 setIsSpacePressed(false);
             }
             if (event.key === "Control") setIsControlPressed(false);

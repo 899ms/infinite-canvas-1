@@ -80,7 +80,9 @@
 
 ## 项目注意事项
 
+- FrameFlow 待审、偏好、演化和血缘等上下文页面必须直接显示当前 Creative Requirement 或 Auto Run 的可读名称与状态；父子型列表必须先选择 Requirement/Auto Run，再展示其图片或批次，不得把所有子项混在一起，也不得只依赖 URL 参数、Brief/Run ID 或批次号让用户自行推断当前对象。
 - 当前画布项目和“我的素材”主要保存在浏览器本地，不要在文档中误写成已支持云同步。
+- 无限画布内所有生图入口都必须调用本地 Canvas Agent 的 Codex ImageGen，不得按节点类型回退到通用图片 API 或打开渠道配置；室内设计的 `white-result` / `design-result` 保留专用约束路由，并兼容缺少 `imageProvider` 的已有画布。
 - 当前 AI API Key 存在浏览器本地，并由前端直接请求 OpenAI 兼容接口；涉及安全说明时要写清楚。
 - Docker 静态资源路径目前仍是待办项，文档中不要过度承诺生产部署已经完全验证。
 - Agent 对话消息必须同时按 `threadId`、`turnId` 和 `itemId` 归属；实时事件只用于补充未物化的 turn，历史快照成为权威后不得重复合并同一条消息。

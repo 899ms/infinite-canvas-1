@@ -1,6 +1,6 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 
-import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasThemes, withAlpha } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import type { CanvasConnection, CanvasNodeData, ConnectionHandle, Position } from "@/types/canvas";
 
@@ -53,7 +53,7 @@ export function ConnectionPath({
                 strokeWidth={active ? 3 : 2}
                 strokeOpacity={active ? 1 : 0.82}
                 fill="none"
-                style={{ filter: active ? `drop-shadow(0 0 8px ${theme.node.activeStroke}66)` : undefined, pointerEvents: "none" }}
+                style={{ filter: active ? `drop-shadow(0 0 8px ${withAlpha(theme.node.activeStroke, 0.4)})` : undefined, pointerEvents: "none" }}
             />
         </g>
     );

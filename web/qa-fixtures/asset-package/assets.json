@@ -1,0 +1,21 @@
+{
+  "app": "infinite-canvas",
+  "version": 1,
+  "exportedAt": "2026-08-09T00:00:00.000Z",
+  "assets": [
+    {
+      "id": "qa-imported-text",
+      "kind": "text",
+      "title": "QA 导入文本资产",
+      "coverUrl": "",
+      "tags": ["QA", "迁移"],
+      "source": "99% 浏览器验收",
+      "note": "可删除测试数据",
+      "createdAt": "2026-08-09T00:00:00.000Z",
+      "updatedAt": "2026-08-09T00:00:00.000Z",
+      "metadata": { "source": "qa" },
+      "data": { "content": "QA imported prompt asset" }
+    }
+  ],
+  "files": []
+}

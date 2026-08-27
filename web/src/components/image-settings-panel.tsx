@@ -93,7 +93,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 {t("settingsPanels.image.align16")}
                             </span>
                             <span title={t("settingsPanels.image.align16Hint")} onMouseDown={(event) => event.stopPropagation()}>
-                                <Switch size="small" checked={snapDimensionToStep} onChange={setSnapDimensionToStep} />
+                                <Switch aria-label={t("settingsPanels.image.align16")} size="small" checked={snapDimensionToStep} onChange={setSnapDimensionToStep} />
                             </span>
                         </div>
                     </div>
@@ -129,7 +129,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                         </div>
                     </div>
                     <span onMouseDown={(event) => event.stopPropagation()}>
-                        <Switch size="small" checked={transparentBackground} onChange={(checked) => onConfigChange("background", checked ? "transparent" : "")} />
+                        <Switch aria-label={t("settingsPanels.image.transparent")} size="small" checked={transparentBackground} onChange={(checked) => onConfigChange("background", checked ? "transparent" : "")} />
                     </span>
                 </div>
                 <div className="space-y-2.5">
@@ -140,7 +140,7 @@ export function ImageSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 {t("settingsPanels.image.images", { count: value })}
                             </OptionPill>
                         ))}
-                        <CountInput value={count} max={maxCount} theme={theme} onChange={(value) => onConfigChange("count", String(value || 1))} />
+                        <CountInput ariaLabel={t("settingsPanels.image.count")} value={count} max={maxCount} theme={theme} onChange={(value) => onConfigChange("count", String(value || 1))} />
                     </div>
                 </div>
             </div>
@@ -173,7 +173,7 @@ function OptionPill({ selected, theme, onClick, children }: { selected: boolean;
     return (
         <button
             type="button"
-            className="h-9 cursor-pointer rounded-full border px-2 text-sm transition hover:opacity-80"
+            className="h-9 cursor-pointer rounded-full border px-2 text-sm transition hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)] focus-visible:ring-offset-2"
             style={{ background: "transparent", borderColor: selected ? theme.node.text : theme.node.stroke, color: theme.node.text }}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={onClick}
@@ -199,7 +199,7 @@ function DimensionInput({ prefix, value, disabled, theme, alignToStep, onChange 
                 type="number"
                 min={1}
                 disabled={disabled}
-                className="min-w-0 flex-1 bg-transparent px-2 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="min-w-0 flex-1 bg-transparent px-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 defaultValue={value || ""}
                 key={`${prefix}-${value}`}
                 onBlur={(event) => commit(event.currentTarget)}
@@ -212,14 +212,15 @@ function DimensionInput({ prefix, value, disabled, theme, alignToStep, onChange 
     );
 }
 
-function CountInput({ value, max, theme, onChange }: { value: number; max: number; theme: CanvasTheme; onChange: (value: number | null) => void }) {
+function CountInput({ ariaLabel, value, max, theme, onChange }: { ariaLabel: string; value: number; max: number; theme: CanvasTheme; onChange: (value: number | null) => void }) {
     return (
         <label className="col-span-2 flex h-9 overflow-hidden rounded-full border text-sm" style={{ borderColor: theme.node.stroke, color: theme.node.text }}>
             <input
                 type="number"
+                aria-label={ariaLabel}
                 min={1}
                 max={max}
-                className="min-w-0 flex-1 bg-transparent px-3 text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="min-w-0 flex-1 bg-transparent px-3 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 style={{ color: theme.node.text, WebkitTextFillColor: theme.node.text }}
                 value={value || ""}
                 onChange={(event) => onChange(Number(event.target.value) || null)}

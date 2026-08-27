@@ -1,0 +1,32 @@
+{
+    "name": "@shared-ui/design-tokens",
+    "version": "0.1.3",
+    "description": "Portable DTCG design tokens, CSS adapters, and product design specifications for shared web interfaces.",
+    "private": false,
+    "type": "module",
+    "license": "MIT",
+    "style": "./css/tokens.css",
+    "sideEffects": [
+        "./css/*.css"
+    ],
+    "files": [
+        "css",
+        "tokens",
+        "README.md",
+        "SPECIFICATION.md",
+        "COMPONENT_CONTRACTS.md",
+        "ADOPTION_CHECKLIST.md",
+        "CHANGELOG.md",
+        "LICENSE"
+    ],
+    "exports": {
+        ".": "./css/tokens.css",
+        "./css/tokens.css": "./css/tokens.css",
+        "./css/tailwind-theme.css": "./css/tailwind-theme.css",
+        "./tokens/*": "./tokens/*",
+        "./package.json": "./package.json"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}

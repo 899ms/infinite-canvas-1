@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "exportedAt": "2026-08-09T00:00:00.000Z",
+  "captures": [
+    {
+      "id": "qa-capture",
+      "sourceText": "QA 迁移：雨夜街道中的电影感人物肖像",
+      "sourceType": "manual",
+      "sourceLabel": "99% 浏览器验收"
+    }
+  ],
+  "terms": [
+    {
+      "id": "qa-term-light",
+      "label": "雨夜霓虹",
+      "category": "光线",
+      "visualDuty": "塑造夜间环境光",
+      "sourceCaptureIds": ["qa-capture"],
+      "reviewState": "human_approved"
+    },
+    {
+      "id": "qa-term-subject",
+      "label": "街头人物",
+      "category": "主体",
+      "visualDuty": "定义画面主体",
+      "sourceCaptureIds": ["qa-capture"],
+      "reviewState": "human_approved"
+    }
+  ],
+  "recipes": [
+    {
+      "id": "qa-recipe",
+      "title": "雨夜街头肖像",
+      "termIds": ["qa-term-light", "qa-term-subject"],
+      "sourceCaptureIds": ["qa-capture"],
+      "reviewState": "human_approved"
+    }
+  ],
+  "prompts": [
+    {
+      "id": "qa-prompt",
+      "title": "QA 雨夜肖像",
+      "content": "cinematic street portrait in neon rain, natural pose",
+      "sourceCaptureIds": ["qa-capture"],
+      "recipeId": "qa-recipe",
+      "reviewState": "human_approved"
+    }
+  ],
+  "promptFillTemplates": [
+    {
+      "id": "qa-template",
+      "title": "QA 可变肖像",
+      "content": "{{subject: 一位创作者}} in {{scene: 雨夜街道}}, {{lighting: 霓虹侧光}}",
+      "category": "我的模板",
+      "description": "99% 浏览器验收模板",
+      "custom": true
+    }
+  ],
+  "imageFeedback": {}
+}

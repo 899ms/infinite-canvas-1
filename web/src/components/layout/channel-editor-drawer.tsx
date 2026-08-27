@@ -1,11 +1,12 @@
 import { Button, Drawer, Input, Segmented, Select, Space } from "antd";
 import { ListPlus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { defaultBaseUrlForApiFormat, guessCapability, normalizeChannelModels, type ApiCallFormat, type ChannelModel, type ModelCapability, type ModelChannel } from "@/stores/use-config-store";
-import { ModelScriptEditor } from "./model-script-editor";
 import { ModelSelectModal } from "./model-select-modal";
+
+const ModelScriptEditor = lazy(() => import("./model-script-editor").then((module) => ({ default: module.ModelScriptEditor })));
 
 type ScriptTarget = { name: string; capability: ModelCapability; value: string };
 
@@ -52,7 +53,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
     return (
         <Drawer
             open={open}
-            width={640}
+            size={640}
             title={t("config.channelEditor.title")}
             onClose={onClose}
             styles={{ body: { paddingTop: 16 } }}
@@ -106,7 +107,7 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
                                 <Button size="small" type={model.script ? "primary" : "default"} ghost={Boolean(model.script)} onClick={() => setScriptTarget({ name: model.name, capability: model.capability, value: model.script || "" })}>
                                     {t(model.script ? "config.channelEditor.scriptReady" : "config.channelEditor.script")}
                                 </Button>
-                                <Button size="small" danger type="text" icon={<Trash2 className="size-3.5" />} onClick={() => removeModel(model.name)} />
+                                <Button aria-label={`${t("common.delete")} ${model.name}`} size="small" danger type="text" icon={<Trash2 className="size-3.5" />} onClick={() => removeModel(model.name)} />
                             </div>
                         </div>
                     ))
@@ -117,14 +118,18 @@ export function ChannelEditorDrawer({ open, channel, onSave, onClose }: { open: 
 
             <ModelSelectModal open={selectOpen} channel={draft} selectedNames={draft.models.map((model) => model.name)} onConfirm={applySelection} onClose={() => setSelectOpen(false)} />
 
-            <ModelScriptEditor
-                open={Boolean(scriptTarget)}
-                capability={scriptTarget?.capability || "text"}
-                modelName={scriptTarget?.name || ""}
-                value={scriptTarget?.value || ""}
-                onSave={(script) => scriptTarget && setScript(scriptTarget.name, script)}
-                onClose={() => setScriptTarget(null)}
-            />
+            {scriptTarget ? (
+                <Suspense fallback={null}>
+                    <ModelScriptEditor
+                        open
+                        capability={scriptTarget.capability}
+                        modelName={scriptTarget.name}
+                        value={scriptTarget.value}
+                        onSave={(script) => setScript(scriptTarget.name, script)}
+                        onClose={() => setScriptTarget(null)}
+                    />
+                </Suspense>
+            ) : null}
         </Drawer>
     );
 }

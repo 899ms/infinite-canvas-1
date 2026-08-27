@@ -86,7 +86,7 @@ export function CanvasPluginManagerModal({ open, onClose }: { open: boolean; onC
     // Highlight the update action when a newer remote version is available.
     const installedControls = (record: InstalledPlugin, upgradable = false) => (
         <>
-            <Switch size="small" checked={record.enabled} loading={busyId === record.id} onChange={(checked) => runOnPlugin(record, () => setPluginEnabled(record, checked), t(checked ? "canvas.plugins.enabled" : "canvas.plugins.disabled"))} />
+            <Switch aria-label={`${record.name} · ${t(record.enabled ? "canvas.plugins.enabled" : "canvas.plugins.disabled")}`} size="small" checked={record.enabled} loading={busyId === record.id} onChange={(checked) => runOnPlugin(record, () => setPluginEnabled(record, checked), t(checked ? "canvas.plugins.enabled" : "canvas.plugins.disabled"))} />
             {!record.local && (
                 <>
                     <Button
@@ -98,7 +98,7 @@ export function CanvasPluginManagerModal({ open, onClose }: { open: boolean; onC
                         onClick={() => runOnPlugin(record, async () => void (await updatePlugin(record)), t("canvas.plugins.updated"))}
                     />
                     <Popconfirm title={t("canvas.plugins.uninstallTitle")} okText={t("canvas.plugins.uninstall")} cancelText={t("canvas.editors.cancel")} onConfirm={() => uninstallPlugin(record.id)}>
-                        <Button type="text" size="small" danger icon={<Trash2 className="size-4" />} title={t("canvas.plugins.uninstall")} />
+                        <Button aria-label={`${t("canvas.plugins.uninstall")} ${record.name}`} type="text" size="small" danger icon={<Trash2 className="size-4" />} title={t("canvas.plugins.uninstall")} />
                     </Popconfirm>
                 </>
             )}

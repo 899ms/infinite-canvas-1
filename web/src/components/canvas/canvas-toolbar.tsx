@@ -260,7 +260,7 @@ export function CanvasToolbar({
                             <Info className="size-3.5" />
                             {t("canvas.toolbar.imageInfo")}
                         </span>
-                        <Switch size="small" checked={showImageInfo} onChange={onShowImageInfoChange} />
+                        <Switch aria-label={t("canvas.toolbar.imageInfo")} size="small" checked={showImageInfo} onChange={onShowImageInfoChange} />
                     </div>
                 </div>
             ) : null}

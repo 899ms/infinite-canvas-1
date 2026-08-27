@@ -51,9 +51,19 @@ export async function setImageBlob(storageKey: string, blob: Blob) {
 }
 
 export async function imageToDataUrl(image: { url?: string; dataUrl?: string; storageKey?: string }) {
-    const url = image.dataUrl || (await resolveImageUrl(image.storageKey, image.url || ""));
+    // Persisted canvas nodes keep their old blob: URL as a fallback. After a page reload that URL is invalid,
+    // so a storage key must always win and recreate a fresh object URL from IndexedDB.
+    const fallback = image.dataUrl || image.url || "";
+    const url = image.storageKey ? await resolveImageUrl(image.storageKey, fallback) : fallback;
     if (!url || url.startsWith("data:")) return url;
-    return blobToDataUrl(await (await fetch(url)).blob());
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return blobToDataUrl(await response.blob());
+    } catch (error) {
+        if (url.startsWith("blob:")) throw new Error("参考图片的本地文件已失效，请先替换或重新上传该图片");
+        throw error;
+    }
 }
 
 export async function deleteStoredImages(keys: Iterable<string>) {

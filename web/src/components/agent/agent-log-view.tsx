@@ -193,7 +193,7 @@ export function AgentLogView({
                             ref={textareaRef}
                             readOnly
                             value={content}
-                            className="thin-scrollbar min-h-0 flex-1 resize-none rounded-md border bg-transparent p-3 font-mono text-xs leading-5 outline-none"
+                            className="thin-scrollbar min-h-0 flex-1 resize-none rounded-md border bg-transparent p-3 font-mono text-xs leading-5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)] focus-visible:ring-offset-2"
                             style={{ borderColor: theme.node.stroke, color: theme.node.text }}
                             onFocus={(event) => event.currentTarget.select()}
                         />

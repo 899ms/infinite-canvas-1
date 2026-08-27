@@ -1,17 +1,40 @@
+import { lazy, Suspense, type ComponentType } from "react";
 import { createBrowserRouter, Outlet } from "react-router-dom";
 
 import { AnalyticsTracker } from "@/components/layout/analytics-tracker";
 import UserLayout from "@/layouts/user-layout";
-import AssetsPage from "@/pages/assets";
-import CanvasPage from "@/pages/canvas";
-import CanvasProjectPage from "@/pages/canvas/project";
-import ConfigPage from "@/pages/config";
-import HomePage from "@/pages/home";
-import ImagePage from "@/pages/image";
-import NotFound from "@/pages/not-found";
-import PromptsPage from "@/pages/prompts";
-import VideoPage from "@/pages/video";
-import FrameFlowPage from "@/pages/frameflow";
+
+const HomePage = lazy(() => import("@/pages/home"));
+const ImagePage = lazy(() => import("@/pages/image"));
+const VideoPage = lazy(() => import("@/pages/video"));
+const InteriorDesignPage = lazy(() => import("@/pages/interior"));
+const FrameFlowPage = lazy(() => import("@/pages/frameflow"));
+const AssetsPage = lazy(() => import("@/pages/assets"));
+const PromptsPage = lazy(() => import("@/pages/prompts"));
+const CanvasPage = lazy(() => import("@/pages/canvas"));
+const CanvasProjectPage = lazy(() => import("@/pages/canvas/project"));
+const ConfigPage = lazy(() => import("@/pages/config"));
+const NotFound = lazy(() => import("@/pages/not-found"));
+
+function PageLoadingFallback() {
+    return (
+        <main className="h-full overflow-y-auto bg-background" aria-busy="true" aria-live="polite">
+            <span className="sr-only">页面加载中…</span>
+            <div className="mx-auto max-w-6xl space-y-6 px-6 py-8 motion-reduce:animate-none">
+                <div className="h-8 w-52 animate-pulse rounded-md bg-muted" />
+                <div className="h-5 w-80 max-w-full animate-pulse rounded-md bg-muted" />
+                <div className="h-11 w-full animate-pulse rounded-md bg-muted" />
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {[0, 1, 2].map((index) => <div key={index} className="h-44 animate-pulse rounded-lg bg-muted" />)}
+                </div>
+            </div>
+        </main>
+    );
+}
+
+function lazyPage(Page: ComponentType) {
+    return <Suspense fallback={<PageLoadingFallback />}><Page /></Suspense>;
+}
 
 export const router = createBrowserRouter([
     {
@@ -22,16 +45,17 @@ export const router = createBrowserRouter([
             </UserLayout>
         ),
         children: [
-            { path: "/", element: <HomePage /> },
-            { path: "/image", element: <ImagePage /> },
-            { path: "/video", element: <VideoPage /> },
-            { path: "/frameflow", element: <FrameFlowPage /> },
-            { path: "/assets", element: <AssetsPage /> },
-            { path: "/prompts", element: <PromptsPage /> },
-            { path: "/canvas", element: <CanvasPage /> },
-            { path: "/canvas/:id", element: <CanvasProjectPage /> },
-            { path: "/config", element: <ConfigPage /> },
+            { path: "/", element: lazyPage(HomePage) },
+            { path: "/image", element: lazyPage(ImagePage) },
+            { path: "/video", element: lazyPage(VideoPage) },
+            { path: "/interior", element: lazyPage(InteriorDesignPage) },
+            { path: "/frameflow", element: lazyPage(FrameFlowPage) },
+            { path: "/assets", element: lazyPage(AssetsPage) },
+            { path: "/prompts", element: lazyPage(PromptsPage) },
+            { path: "/canvas", element: lazyPage(CanvasPage) },
+            { path: "/canvas/:id", element: lazyPage(CanvasProjectPage) },
+            { path: "/config", element: lazyPage(ConfigPage) },
         ],
     },
-    { path: "*", element: <NotFound /> },
+    { path: "*", element: lazyPage(NotFound) },
 ]);

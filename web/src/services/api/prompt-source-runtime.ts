@@ -1,4 +1,5 @@
 import i18n from "@/i18n";
+import { sanitizePromptImageUrl, sanitizePromptImageUrls } from "./prompt-image-url";
 import type { PromptSource } from "./prompt-source-presets";
 
 export type RawPrompt = {
@@ -59,8 +60,8 @@ function normalizeItems(values: unknown[], source: PromptSource) {
         const id = stringValue(record.id).trim() || `${source.id}-${leftPad(index + 1)}`;
         if (seen.has(id)) return;
         seen.add(id);
-        const referenceImageUrls = stringArray(record.referenceImageUrls).map((url) => absoluteUrl(source.url, url));
-        const coverUrl = absoluteUrl(source.url, stringValue(record.coverUrl)) || referenceImageUrls[0] || "";
+        const referenceImageUrls = sanitizePromptImageUrls(stringArray(record.referenceImageUrls).map((url) => absoluteUrl(source.url, url)));
+        const coverUrl = sanitizePromptImageUrl(absoluteUrl(source.url, stringValue(record.coverUrl))) || referenceImageUrls[0] || "";
         items.push({
             id,
             title,
@@ -92,7 +93,12 @@ function stringValue(value: unknown) {
 }
 
 function stringArray(value: unknown) {
-    return Array.isArray(value) ? value.map(stringValue).map((item) => item.trim()).filter(Boolean) : [];
+    return Array.isArray(value)
+        ? value
+              .map(stringValue)
+              .map((item) => item.trim())
+              .filter(Boolean)
+        : [];
 }
 
 function optionalString(value: unknown) {

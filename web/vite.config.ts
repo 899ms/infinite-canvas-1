@@ -50,4 +50,16 @@ export default defineConfig({
         __APP_VERSION__: JSON.stringify(localVersion),
         __APP_RELEASES__: JSON.stringify(parseChangelog(localChangelog)),
     },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    const normalized = id.replaceAll("\\", "/");
+                    if (normalized.includes("/node_modules/react/") || normalized.includes("/node_modules/react-dom/") || normalized.includes("/node_modules/scheduler/")) return "react-vendor";
+                    if (normalized.includes("/node_modules/@ant-design/icons/")) return "ant-icons-vendor";
+                },
+            },
+        },
+        chunkSizeWarningLimit: 1000,
+    },
 });

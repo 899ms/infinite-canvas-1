@@ -30,7 +30,7 @@ export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { op
     return (
         <Drawer
             open={open}
-            width={560}
+            size={560}
             title={t(source?.name ? "config.promptSources.editor.editTitle" : "config.promptSources.editor.addTitle")}
             onClose={onClose}
             styles={{ body: { paddingTop: 16 } }}
@@ -58,7 +58,7 @@ export function PromptSourceEditorDrawer({ open, source, onSave, onClose }: { op
                 </label>
                 <div className="flex items-center justify-between border-y border-stone-200 py-3 dark:border-stone-800">
                     <span className="text-sm font-medium">{t("config.promptSources.editor.enabled")}</span>
-                    <Switch checked={draft.enabled} onChange={(enabled) => patch({ enabled })} />
+                    <Switch aria-label={t("config.promptSources.editor.enabled")} checked={draft.enabled} onChange={(enabled) => patch({ enabled })} />
                 </div>
                 <div>
                     <div className="mb-2 text-sm font-medium">{t("config.promptSources.editor.jsonFormat")}</div>

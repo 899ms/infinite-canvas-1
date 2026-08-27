@@ -121,15 +121,18 @@ export function CanvasConfigComposer({ value, inputs, onChange, onClose }: Canva
                     <div className="shrink-0 text-xs font-semibold">{t("canvas.composer.title")}</div>
                     <div className="truncate text-[11px] opacity-55">{t("canvas.composer.description")}</div>
                 </div>
-                <Button size="small" type="text" className="!h-7 !w-7 !min-w-7 !p-0" icon={<X className="size-3.5" />} onClick={onClose} />
+                <Button aria-label={t("canvas.createMenu.close")} size="small" type="text" className="!h-7 !w-7 !min-w-7 !p-0" icon={<X className="size-3.5" />} onClick={onClose} />
             </div>
             <div className="relative rounded-xl">
                 {!value.trim() ? <div className="pointer-events-none absolute left-3 top-2 text-sm leading-7" style={{ color: theme.node.placeholder }}>{t("canvas.composer.placeholder")}</div> : null}
                 <div
                     ref={editorRef}
                     contentEditable
+                    role="textbox"
+                    aria-label={t("canvas.composer.title")}
+                    aria-multiline="true"
                     suppressContentEditableWarning
-                    className="thin-scrollbar min-h-28 max-h-72 w-full overflow-y-auto overscroll-contain whitespace-pre-wrap break-words px-3 py-2 text-sm leading-7 outline-none"
+                    className="thin-scrollbar min-h-28 max-h-72 w-full overflow-y-auto overscroll-contain whitespace-pre-wrap break-words px-3 py-2 text-sm leading-7 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)] focus-visible:ring-offset-2"
                     style={{ color: theme.node.text }}
                     onInput={() => {
                         if (!composingRef.current) syncFromEditor();

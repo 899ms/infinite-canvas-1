@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 
-import { requestEdit, requestGeneration, requestImageQuestion, type AiTextMessage } from "@/services/api/image";
+import { requestImageQuestion, type AiTextMessage } from "@/services/api/image";
+import { requestCanvasImages } from "@/services/api/canvas-imagegen";
+import { imageToDataUrl, uploadImage } from "@/services/image-storage";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
 import { decodeChannelModel, selectableModelsByCapability, type AiConfig, type ModelCapability } from "@/stores/use-config-store";
 import { buildGenerationConfig } from "@/lib/canvas/canvas-generation-helpers";
@@ -13,6 +15,7 @@ import type { CanvasNodeToolbarItem, CanvasPluginAi, CanvasPluginHost } from "@/
 import type { ReferenceImage } from "@/types/image";
 import type { CanvasAgentOp } from "@/lib/canvas/canvas-agent-ops";
 import type { CanvasConnection, CanvasNodeData, ViewportTransform } from "@/types/canvas";
+import { useAgentStore } from "@/stores/use-agent-store";
 
 type CanvasTheme = (typeof canvasThemes)[keyof typeof canvasThemes];
 
@@ -51,10 +54,21 @@ export function usePluginHost(params: PluginHostParams) {
         return {
             generateImage: async (prompt, options) => {
                 const config = { ...buildGenerationConfig(effectiveConfig, undefined, "image"), count: String(options?.count || 1), ...(options?.model ? { model: options.model } : {}), ...(options?.size ? { size: options.size } : {}) };
-                ensureReady(config);
                 const references = toReferences(options?.references);
-                const items = references.length ? await requestEdit(config, prompt, references, undefined, { signal: options?.signal }) : await requestGeneration(config, prompt, { signal: options?.signal });
-                return { images: items.map((item) => item.dataUrl) };
+                const agent = useAgentStore.getState();
+                if (!agent.token.trim()) {
+                    agent.openPanel();
+                    throw new Error("请先连接 Canvas Agent，画布图片统一由 Codex ImageGen 生成");
+                }
+                const preparedReferences = await Promise.all(references.map(async (reference) => ({ ...reference, dataUrl: await imageToDataUrl(reference) })));
+                const blobs = await requestCanvasImages(
+                    agent.url.trim().replace(/\/$/, ""),
+                    agent.token.trim(),
+                    { prompt, count: Number(config.count) || 1, aspectRatio: config.size, references: preparedReferences, model: agent.model || undefined, effort: agent.reasoningEffort || "high" },
+                    { signal: options?.signal },
+                );
+                const images = await Promise.all(blobs.map((blob) => uploadImage(blob)));
+                return { images: images.map((item) => item.url) };
             },
             generateVideo: async (prompt, options) => {
                 const config = {

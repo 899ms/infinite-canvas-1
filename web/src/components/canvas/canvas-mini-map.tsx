@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { canvasThemes } from "@/lib/canvas-theme";
+import { canvasThemes, withAlpha } from "@/lib/canvas-theme";
 import { getNodeDefinition } from "@/lib/canvas/node-registry";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { type CanvasNodeData, type ViewportTransform } from "@/types/canvas";
@@ -130,7 +130,7 @@ export function Minimap({ nodes, viewport, viewportSize, onViewportChange }: { n
                         />
                     );
                 })}
-                <div className="pointer-events-none absolute border" style={{ left: viewportRect.x, top: viewportRect.y, width: viewportRect.w, height: viewportRect.h, borderColor: theme.node.activeStroke, background: `${theme.node.activeStroke}18` }} />
+                <div className="pointer-events-none absolute border" style={{ left: viewportRect.x, top: viewportRect.y, width: viewportRect.w, height: viewportRect.h, borderColor: theme.node.activeStroke, background: withAlpha(theme.node.activeStroke, 0.09) }} />
             </div>
         </div>
     );

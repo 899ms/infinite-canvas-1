@@ -133,7 +133,7 @@ export function ImageToolSettingsModal({
                 <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                         <span>{t("canvas.imageTools.showLabels")}</span>
-                        <Switch checked={showLabels} onChange={onShowLabelsChange} />
+                        <Switch aria-label={t("canvas.imageTools.showLabels")} checked={showLabels} onChange={onShowLabelsChange} />
                     </div>
                     <Space>
                         <Button onClick={onCancel}>{t("common.cancel")}</Button>

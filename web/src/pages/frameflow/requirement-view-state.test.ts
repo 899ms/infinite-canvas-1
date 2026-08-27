@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { canWriteRequirement, createLatestRequestGate, mergeRequestedAutoRun, requirementHasActiveWork } from "./requirement-view-state";
+import { canWriteRequirement, createLatestRequestGate, mergeRequestedAutoRun, requirementHasActiveWork, resolveAutoRunSelection } from "./requirement-view-state";
 
 describe("FrameFlow Requirement 视图状态", () => {
     it("只允许最新的刷新请求回写页面", () => {
@@ -27,6 +27,15 @@ describe("FrameFlow Requirement 视图状态", () => {
 
         expect(mergeRequestedAutoRun(listed, requested)).toEqual([requested, ...listed]);
         expect(mergeRequestedAutoRun([requested, ...listed], requested)).toEqual([requested, ...listed]);
+    });
+
+    it("无 URL 任务时默认选择第一条当前任务，并保留显式全部选择", () => {
+        const candidates = [{ id: "current" }, { id: "older" }];
+
+        expect(resolveAutoRunSelection(undefined, candidates, "all")).toBe("current");
+        expect(resolveAutoRunSelection("missing", candidates, "all")).toBe("current");
+        expect(resolveAutoRunSelection("older", candidates, "all")).toBe("older");
+        expect(resolveAutoRunSelection("all", candidates, "all")).toBe("all");
     });
 
     it("修改与归档闸门覆盖同一 Requirement 的全部 Revision 和 Run", () => {

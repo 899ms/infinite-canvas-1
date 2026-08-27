@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, Bot, Download, Home, Images, Menu, PanelLeftClose, PanelLeftOpen, Plus, Redo2, Trash2, Undo2, Upload } from "lucide-react";
+import { BookOpen, Bot, Download, Home, Images, Menu, PanelLeftOpen, Plus, Redo2, Trash2, Undo2, Upload } from "lucide-react";
 import { Button, Dropdown, Modal, Tooltip } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -59,8 +59,8 @@ export function CanvasTopBar({
     const theme = canvasThemes[colorTheme];
     const titleRef = useRef<HTMLDivElement>(null);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
-    const sidePanelOpen = useCanvasSidePanelStore((state) => state.panelOpen);
-    const toggleSidePanel = useCanvasSidePanelStore((state) => state.togglePanel);
+    const sidePanelMounted = useCanvasSidePanelStore((state) => state.panelMounted);
+    const openSidePanel = useCanvasSidePanelStore((state) => state.openPanel);
 
     useEffect(() => {
         if (!isTitleEditing) return;
@@ -75,17 +75,19 @@ export function CanvasTopBar({
         <>
             <div className="pointer-events-none absolute left-0 right-0 top-0 z-50 flex h-16 items-center justify-between pl-1 pr-4">
                 <div className="pointer-events-auto flex min-w-0 items-center gap-2">
-                    <Tooltip title={sidePanelOpen ? t("canvas.collapsePanel") : t("canvas.expandPanel")}>
-                        <button
-                            type="button"
-                            onClick={toggleSidePanel}
-                            aria-label={sidePanelOpen ? t("canvas.collapsePanel") : t("canvas.expandPanel")}
-                            className="grid size-7 place-items-center rounded-full transition hover:bg-black/5 dark:hover:bg-white/10"
-                            style={{ color: theme.node.text }}
-                        >
-                            {sidePanelOpen ? <PanelLeftClose className="size-4" /> : <PanelLeftOpen className="size-4" />}
-                        </button>
-                    </Tooltip>
+                    {!sidePanelMounted ? (
+                        <Tooltip title={t("canvas.expandPanel")}>
+                            <button
+                                type="button"
+                                onClick={openSidePanel}
+                                aria-label={t("canvas.expandPanel")}
+                                className="grid size-8 place-items-center rounded-md transition-[background-color,color,transform] hover:bg-black/5 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)] dark:hover:bg-white/10"
+                                style={{ color: theme.node.text }}
+                            >
+                                <PanelLeftOpen aria-hidden="true" className="size-4" />
+                            </button>
+                        </Tooltip>
+                    ) : null}
                     <Dropdown
                         trigger={["click"]}
                         menu={{
@@ -121,7 +123,7 @@ export function CanvasTopBar({
                                     if (event.key === "Enter") onFinishTitleEditing();
                                     if (event.key === "Escape") onCancelTitleEditing();
                                 }}
-                                className="max-w-[280px] bg-transparent p-0 text-left text-lg font-semibold tracking-normal outline-none"
+                                className="max-w-[280px] bg-transparent p-0 text-left text-lg font-semibold tracking-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)]"
                                 style={{ color: theme.node.text }}
                             />
                         ) : (
@@ -144,7 +146,7 @@ export function CanvasTopBar({
                     <Button
                         type="text"
                         className="!h-10 !rounded-xl !px-3 !font-medium"
-                        style={{ background: agentOpen ? theme.toolbar.activeBg : theme.toolbar.panel, color: theme.node.text, boxShadow: "0 10px 30px rgba(28,25,23,.10)" }}
+                        style={{ background: agentOpen ? theme.toolbar.activeBg : theme.toolbar.panel, color: theme.node.text, boxShadow: theme.toolbar.shadow }}
                         icon={<Bot className="size-4" />}
                         onClick={onToggleAgent}
                     >

@@ -1,6 +1,6 @@
 import { Archive, AlertTriangle, CheckCircle2, Clock3, ImageOff, RefreshCw, RotateCcw, ShieldAlert, Sparkles, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, App, Button, Checkbox, Empty, Image, Popconfirm, Spin, Tabs, Tag, Tooltip } from "antd";
+import { Alert, App, Button, Checkbox, Empty, Image, Popconfirm, Select, Spin, Tabs, Tag, Tooltip } from "antd";
 
 import { cn } from "@/lib/utils";
 import {
@@ -8,11 +8,14 @@ import {
     frameFlowImageUrl,
     getFrameFlowBrief,
     getFrameFlowCurrentBrief,
+    getFrameFlowAutoRunTrajectory,
     getFrameFlowPromptLineage,
     getFrameFlowRun,
+    listFrameFlowAutoRuns,
     listFrameFlowRuns,
     listFrameFlowQuarantine,
     retryFrameFlowSlots,
+    type FrameFlowAutoRun,
     type FrameFlowGenerationSlot,
     type FrameFlowPromptLineage,
     type FrameFlowQuarantineRecord,
@@ -26,6 +29,7 @@ import { FrameFlowAutoRunView } from "./daily-view";
 import { FrameFlowDecisionTrace } from "./decision-trace";
 import { FrameFlowPreferenceView } from "./preference-view";
 import { FrameFlowReviewView } from "./review-view";
+import { resolveAutoRunSelection } from "./requirement-view-state";
 import { FrameFlowTrajectoryView } from "./trajectory-view";
 
 const views = [
@@ -38,6 +42,7 @@ const views = [
     { key: "preference", label: "需求内偏好" },
     { key: "lineage", label: "运行与血缘" },
 ];
+const ALL_LINEAGE_RUNS = "all";
 
 export default function FrameFlowPage() {
     const { message } = App.useApp();
@@ -47,6 +52,9 @@ export default function FrameFlowPage() {
     const token = useAgentStore((state) => state.token).trim();
     const openAgent = useAgentStore((state) => state.openPanel);
     const [runs, setRuns] = useState<FrameFlowRun[]>([]);
+    const [autoRuns, setAutoRuns] = useState<FrameFlowAutoRun[]>([]);
+    const [selectedAutoRunId, setSelectedAutoRunId] = useState(() => new URLSearchParams(window.location.search).get("autoRunId") || "");
+    const [selectedAutoRunRunIds, setSelectedAutoRunRunIds] = useState<string[]>([]);
     const [selectedRunId, setSelectedRunId] = useState(() => new URLSearchParams(window.location.search).get("runId") || "");
     const [detail, setDetail] = useState<FrameFlowRunDetail | null>(null);
     const [lineage, setLineage] = useState<FrameFlowPromptLineage | null>(null);
@@ -92,16 +100,18 @@ export default function FrameFlowPage() {
     );
 
     const loadRuns = useCallback(
-        async (preferredRunId?: string, silent = false) => {
+        async (preferredRunId?: string, silent = false, preferredAutoRunId?: string) => {
             if (!endpoint || !token) return;
             if (!silent) {
                 setLoading(true);
                 setError("");
             }
             try {
-                const requestedRunId = preferredRunId || selectedRunId || new URLSearchParams(window.location.search).get("runId") || "";
-                const [listedRuns, nextQuarantine, requestedDetail] = await Promise.all([
+                const requestedRunId = preferredRunId !== undefined ? preferredRunId : selectedRunId || new URLSearchParams(window.location.search).get("runId") || "";
+                const requestedAutoRunId = preferredAutoRunId ?? new URLSearchParams(window.location.search).get("autoRunId");
+                const [listedRuns, listedAutoRuns, nextQuarantine, requestedDetail] = await Promise.all([
                     listFrameFlowRuns(endpoint, token, 100, true),
+                    listFrameFlowAutoRuns(endpoint, token, 200, true),
                     listFrameFlowQuarantine(endpoint, token),
                     requestedRunId ? getFrameFlowRun(endpoint, token, requestedRunId).catch(() => undefined) : undefined,
                 ]);
@@ -117,11 +127,27 @@ export default function FrameFlowPage() {
                         briefSuperseded: Boolean(sourceBrief.supersededAt || sourceBrief.supersededByBriefId),
                     }, ...listedRuns];
                 }
+                const activeAutoRuns = listedAutoRuns.filter((autoRun) => !autoRun.requirementArchived && !autoRun.briefSuperseded);
+                let resolvedAutoRunId = resolveAutoRunSelection(requestedAutoRunId, activeAutoRuns.length ? activeAutoRuns : listedAutoRuns, ALL_LINEAGE_RUNS);
+                let selectedAutoRun = listedAutoRuns.find((autoRun) => autoRun.id === resolvedAutoRunId);
+                let selectedTrajectory = selectedAutoRun ? await getFrameFlowAutoRunTrajectory(endpoint, token, selectedAutoRun.id) : undefined;
+                let nextAutoRunRunIds = selectedTrajectory?.rounds.map((round) => round.run.id) || [];
+                if (requestedRunId && selectedAutoRun && !nextAutoRunRunIds.includes(requestedRunId)) {
+                    selectedAutoRun = undefined;
+                    resolvedAutoRunId = ALL_LINEAGE_RUNS;
+                    selectedTrajectory = undefined;
+                    nextAutoRunRunIds = [];
+                }
+                const visibleRuns = selectedAutoRun ? next.filter((run) => nextAutoRunRunIds.includes(run.id)) : next;
                 setRuns(next);
+                setAutoRuns(listedAutoRuns);
+                setSelectedAutoRunId(resolvedAutoRunId);
+                setSelectedAutoRunRunIds(nextAutoRunRunIds);
                 setQuarantine(nextQuarantine);
-                const nextId = requestedRunId && next.some((run) => run.id === requestedRunId) ? requestedRunId : next[0]?.id || "";
+                const nextId = requestedRunId && visibleRuns.some((run) => run.id === requestedRunId) ? requestedRunId : visibleRuns[0]?.id || "";
                 setSelectedRunId(nextId);
                 const url = new URL(window.location.href);
+                url.searchParams.set("autoRunId", resolvedAutoRunId);
                 if (nextId) url.searchParams.set("runId", nextId);
                 else url.searchParams.delete("runId");
                 window.history.replaceState({}, "", url);
@@ -138,6 +164,16 @@ export default function FrameFlowPage() {
         },
         [endpoint, loadDetail, selectedRunId, token],
     );
+
+    const selectAutoRun = (autoRunId: string) => {
+        setSelectedAutoRunId(autoRunId);
+        setSelectedRunId("");
+        const url = new URL(window.location.href);
+        url.searchParams.set("autoRunId", autoRunId);
+        url.searchParams.delete("runId");
+        window.history.replaceState({}, "", url);
+        void loadRuns("", false, autoRunId);
+    };
 
     useEffect(() => {
         if (activeView === "lineage") void loadRuns();
@@ -192,14 +228,18 @@ export default function FrameFlowPage() {
             setCancelling(false);
         }
     };
+    const visibleRuns = useMemo(
+        () => selectedAutoRunId === ALL_LINEAGE_RUNS ? runs : runs.filter((run) => selectedAutoRunRunIds.includes(run.id)),
+        [runs, selectedAutoRunId, selectedAutoRunRunIds],
+    );
     const summary = useMemo(
         () => ({
-            total: runs.length,
-            succeeded: runs.filter((run) => run.status === "succeeded").length,
-            partial: runs.filter((run) => run.status === "partially_succeeded").length,
-            failed: runs.filter((run) => run.status === "failed").length,
+            total: visibleRuns.length,
+            succeeded: visibleRuns.filter((run) => run.status === "succeeded").length,
+            partial: visibleRuns.filter((run) => run.status === "partially_succeeded").length,
+            failed: visibleRuns.filter((run) => run.status === "failed").length,
         }),
-        [runs],
+        [visibleRuns],
     );
     const openRun = (runId: string) => {
         setActiveView("lineage");
@@ -283,7 +323,7 @@ export default function FrameFlowPage() {
                 {token && activeView === "lineage" ? (
                     <>
                         <section className="grid grid-cols-2 gap-3 sm:grid-cols-5" aria-label="运行概览">
-                            <Metric label="全部运行" value={summary.total} />
+                            <Metric label={selectedAutoRunId === ALL_LINEAGE_RUNS ? "全部运行" : "当前任务运行"} value={summary.total} />
                             <Metric label="全部成功" value={summary.succeeded} tone="success" />
                             <Metric label="部分成功" value={summary.partial} tone="warning" />
                             <Metric label="失败" value={summary.failed} tone="danger" />
@@ -303,18 +343,32 @@ export default function FrameFlowPage() {
 
                         <section className="mt-5 grid min-h-[480px] gap-5 lg:grid-cols-[340px_minmax(0,1fr)]">
                             <div className="min-w-0 rounded-xl bg-card p-2 shadow-card ring-1 ring-border">
+                                <div className="px-2 pb-3 pt-1">
+                                    <label htmlFor="frameflow-lineage-auto-run" className="text-sm font-semibold">选择当前任务</label>
+                                    <Select
+                                        id="frameflow-lineage-auto-run"
+                                        aria-label="选择当前任务"
+                                        className="mt-2 w-full"
+                                        value={selectedAutoRunId}
+                                        options={[
+                                            { value: ALL_LINEAGE_RUNS, label: "全部运行与手动生成" },
+                                            ...autoRuns.map((autoRun) => ({ value: autoRun.id, label: `${autoRun.name} · ${autoRun.iteration}/${autoRun.maxIterations} 轮${autoRun.requirementArchived ? " · 已归档" : autoRun.briefSuperseded ? " · 旧修订" : ""}` })),
+                                        ]}
+                                        onChange={selectAutoRun}
+                                    />
+                                </div>
                                 <div className="flex items-center justify-between px-2 pb-2 pt-1">
                                     <h2 className="text-sm font-semibold">生成批次</h2>
-                                    <span className="text-xs tabular-nums text-muted-foreground">{runs.length} 条</span>
+                                    <span className="text-xs tabular-nums text-muted-foreground">{visibleRuns.length} 条</span>
                                 </div>
-                                {loading && !runs.length ? (
+                                {loading && !visibleRuns.length ? (
                                     <div className="flex h-72 items-center justify-center">
                                         <Spin />
                                     </div>
                                 ) : null}
-                                {!loading && !runs.length ? <Empty className="my-20" image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有 FrameFlow 运行记录" /> : null}
+                                {!loading && !visibleRuns.length ? <Empty className="my-20" image={Empty.PRESENTED_IMAGE_SIMPLE} description={selectedAutoRunId === ALL_LINEAGE_RUNS ? "还没有 FrameFlow 运行记录" : "当前任务还没有生成批次"} /> : null}
                                 <div className="thin-scrollbar max-h-[620px] space-y-1 overflow-y-auto">
-                                    {runs.map((run) => (
+                                    {visibleRuns.map((run) => (
                                         <RunRow key={run.id} run={run} active={run.id === selectedRunId} onClick={() => selectRun(run.id)} />
                                     ))}
                                 </div>

@@ -1,14 +1,15 @@
 import { Archive, Eye, EyeOff, MessageSquareText, RefreshCw, RotateCcw, ThumbsDown, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, App, Button, Empty, Image, Input, Popconfirm, Segmented, Spin, Tag } from "antd";
+import { Alert, App, Button, Empty, Image, Input, Popconfirm, Segmented, Select, Spin, Tag } from "antd";
 
 import { ImageFeedbackRating } from "@/components/image-feedback-rating";
 import { cn } from "@/lib/utils";
 import { commentFrameFlowImage, deleteFrameFlowImage, frameFlowImageUrl, getFrameFlowAutoRun, getFrameFlowRun, hideFrameFlowImage, listFrameFlowAutoRuns, listFrameFlowReviewQueue, rateFrameFlowImage, restoreFrameFlowImage, type FrameFlowAutoRun, type FrameFlowImageStatus, type FrameFlowReviewItem, type FrameFlowRunDetail } from "@/services/api/frameflow";
 import { useAgentStore } from "@/stores/use-agent-store";
-import { canWriteRequirement, createLatestRequestGate, mergeRequestedAutoRun, type FrameFlowRequirementScope } from "./requirement-view-state";
+import { canWriteRequirement, createLatestRequestGate, mergeRequestedAutoRun, resolveAutoRunSelection, type FrameFlowRequirementScope } from "./requirement-view-state";
 
 type ReviewFilter = "all" | "pending" | "reviewed" | "hidden";
+const ALL_REVIEW_SOURCES = "all";
 export function FrameFlowReviewView() {
     const { message } = App.useApp();
     const endpoint = useAgentStore((state) => state.url)
@@ -18,6 +19,7 @@ export function FrameFlowReviewView() {
     const [items, setItems] = useState<FrameFlowReviewItem[]>([]);
     const [autoRuns, setAutoRuns] = useState<FrameFlowAutoRun[]>([]);
     const [activeRun, setActiveRun] = useState<FrameFlowRunDetail | null>(null);
+    const [selectedAutoRunId, setSelectedAutoRunId] = useState(() => new URLSearchParams(window.location.search).get("autoRunId") || "");
     const [selectedId, setSelectedId] = useState("");
     const [filter, setFilter] = useState<ReviewFilter>("all");
     const [commentDraft, setCommentDraft] = useState("");
@@ -35,6 +37,7 @@ export function FrameFlowReviewView() {
         setItems([]);
         setAutoRuns([]);
         setActiveRun(null);
+        setSelectedAutoRunId(ALL_REVIEW_SOURCES);
         setSelectedId("");
         setFilter("all");
         const url = new URL(window.location.href);
@@ -52,11 +55,11 @@ export function FrameFlowReviewView() {
             setError("");
             try {
                 const requestedAutoRunId = new URLSearchParams(window.location.search).get("autoRunId");
-                const includeArchived = scope === "archived" || Boolean(requestedAutoRunId);
+                const includeArchived = scope === "archived" || Boolean(requestedAutoRunId && requestedAutoRunId !== ALL_REVIEW_SOURCES);
                 const [allItems, listedAutoRuns, requestedAutoRun] = await Promise.all([
                     listFrameFlowReviewQueue(endpoint, token, 200, includeArchived),
                     listFrameFlowAutoRuns(endpoint, token, 200, includeArchived),
-                    requestedAutoRunId ? getFrameFlowAutoRun(endpoint, token, requestedAutoRunId).catch(() => undefined) : undefined,
+                    requestedAutoRunId && requestedAutoRunId !== ALL_REVIEW_SOURCES ? getFrameFlowAutoRun(endpoint, token, requestedAutoRunId).catch(() => undefined) : undefined,
                 ]);
                 if (!requestGate.isLatest(request)) return;
                 const allAutoRuns = mergeRequestedAutoRun(listedAutoRuns, requestedAutoRun);
@@ -68,17 +71,23 @@ export function FrameFlowReviewView() {
                 }
                 const next = allItems.filter((item) => item.requirementArchived === (resolvedScope === "archived"));
                 const nextAutoRuns = allAutoRuns.filter((item) => item.requirementArchived === (resolvedScope === "archived"));
-                const activeAutoRun = nextAutoRuns.find((item) => item.state === "generating" || item.state === "reviewing");
+                const resolvedAutoRunId = resolveAutoRunSelection(requestedAutoRunId, nextAutoRuns, ALL_REVIEW_SOURCES);
+                const activeAutoRun = nextAutoRuns.find((item) => item.id === resolvedAutoRunId && (item.state === "generating" || item.state === "reviewing"))
+                    || (resolvedAutoRunId === ALL_REVIEW_SOURCES ? nextAutoRuns.find((item) => item.state === "generating" || item.state === "reviewing") : undefined);
                 const nextActiveRun = activeAutoRun?.currentRunId ? await getFrameFlowRun(endpoint, token, activeAutoRun.currentRunId) : null;
                 if (!requestGate.isLatest(request)) return;
-                const requestedRunIds = new Set([requested?.currentRunId, requested?.lastRunId].filter((value): value is string => Boolean(value)));
-                const requestedImageId = next.find((item) => requestedRunIds.has(item.image.runId))?.image.id;
+                const requestedImageId = next.find((item) => reviewItemAutoRunId(item, nextAutoRuns) === resolvedAutoRunId)?.image.id;
                 setItems(next);
                 setAutoRuns(nextAutoRuns);
                 setActiveRun(nextActiveRun);
+                setSelectedAutoRunId(resolvedAutoRunId);
+                const url = new URL(window.location.href);
+                url.searchParams.set("autoRunId", resolvedAutoRunId);
+                window.history.replaceState({}, "", url);
                 setSelectedId((current) => {
-                    const candidate = [preferredId, current, requestedImageId].find((id) => id && next.some((item) => item.image.id === id));
-                    return candidate || next[0]?.image.id || "";
+                    const visible = resolvedAutoRunId === ALL_REVIEW_SOURCES ? next : next.filter((item) => reviewItemAutoRunId(item, nextAutoRuns) === resolvedAutoRunId);
+                    const candidate = [preferredId, current, requestedImageId].find((id) => id && visible.some((item) => item.image.id === id));
+                    return candidate || visible[0]?.image.id || "";
                 });
             } catch (reason) {
                 if (requestGate.isLatest(request)) setError(errorMessage(reason));
@@ -88,6 +97,16 @@ export function FrameFlowReviewView() {
         },
         [endpoint, requestGate, scope, token],
     );
+
+    const selectAutoRun = useCallback((autoRunId: string) => {
+        setSelectedAutoRunId(autoRunId);
+        setSelectedId("");
+        setFilter("all");
+        const url = new URL(window.location.href);
+        url.searchParams.set("autoRunId", autoRunId);
+        window.history.replaceState({}, "", url);
+        void loadQueue();
+    }, [loadQueue]);
 
     useEffect(() => {
         void loadQueue();
@@ -99,24 +118,28 @@ export function FrameFlowReviewView() {
         return () => window.clearInterval(timer);
     }, [autoRuns, loadQueue, selectedId]);
 
+    const visibleItems = useMemo(
+        () => selectedAutoRunId === ALL_REVIEW_SOURCES ? items : items.filter((item) => reviewItemAutoRunId(item, autoRuns) === selectedAutoRunId),
+        [autoRuns, items, selectedAutoRunId],
+    );
     const counts = useMemo(
         () => ({
-            all: items.length,
-            pending: items.filter((item) => item.image.status === "pending_review").length,
-            reviewed: items.filter((item) => item.image.status === "reviewed" || item.image.status === "restored").length,
-            hidden: items.filter((item) => item.image.status === "hidden").length,
+            all: visibleItems.length,
+            pending: visibleItems.filter((item) => item.image.status === "pending_review").length,
+            reviewed: visibleItems.filter((item) => item.image.status === "reviewed" || item.image.status === "restored").length,
+            hidden: visibleItems.filter((item) => item.image.status === "hidden").length,
         }),
-        [items],
+        [visibleItems],
     );
     const filtered = useMemo(
         () =>
-            items.filter((item) => {
+            visibleItems.filter((item) => {
                 if (filter === "all") return true;
                 if (filter === "pending") return item.image.status === "pending_review";
                 if (filter === "hidden") return item.image.status === "hidden";
                 return item.image.status === "reviewed" || item.image.status === "restored";
             }),
-        [filter, items],
+        [filter, visibleItems],
     );
 
     useEffect(() => {
@@ -124,9 +147,10 @@ export function FrameFlowReviewView() {
         setSelectedId(filtered[0]?.image.id || "");
     }, [filtered, selectedId]);
 
-    const selected = items.find((item) => item.image.id === selectedId) || null;
+    const selected = visibleItems.find((item) => item.image.id === selectedId) || null;
     const selectedReadOnly = !canWriteRequirement(scope, Boolean(selected?.requirementArchived));
-    const activeAutoRun = autoRuns.find((item) => item.state === "generating" || item.state === "reviewing") || null;
+    const activeAutoRun = autoRuns.find((item) => item.id === selectedAutoRunId && (item.state === "generating" || item.state === "reviewing"))
+        || (selectedAutoRunId === ALL_REVIEW_SOURCES ? autoRuns.find((item) => item.state === "generating" || item.state === "reviewing") : null);
     const selectedMachineReviewPending = Boolean(selected && activeAutoRun?.state === "reviewing" && activeAutoRun.currentRunId === selected.image.runId);
     const activeImageIds = activeRun?.run.imageIds || [];
     const machineReviewedCount = activeImageIds.filter((imageId) => items.some((item) => item.image.id === imageId && item.machineReview)).length;
@@ -150,17 +174,30 @@ export function FrameFlowReviewView() {
 
     return (
         <div>
-            <section className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card p-4 shadow-card ring-1 ring-border" aria-label="待审需求范围">
-                <div>
-                    <h2 className="text-sm font-semibold">{scope === "archived" ? "已归档需求的审图历史" : "活动需求待审"}</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">{scope === "archived" ? "历史图片、机器审图与人工反馈均保留，但不能再修改。" : "默认只统计活动 Requirement；旧修订图片的反馈仍归入同一 Requirement。"}</p>
+            <section className="mb-5 rounded-xl bg-card p-4 shadow-card ring-1 ring-border" aria-label="待审需求范围">
+                <h2 className="text-sm font-semibold">{scope === "archived" ? "选择已归档自动跑任务" : "选择自动跑任务"}</h2>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                    <Select
+                        aria-label="选择自动跑任务"
+                        className="min-w-[min(100%,18rem)] w-full max-w-xl flex-1"
+                        value={selectedAutoRunId}
+                        options={[
+                            { value: ALL_REVIEW_SOURCES, label: scope === "archived" ? "全部已归档任务与手动生成" : "全部任务与手动生成" },
+                            ...autoRuns.map((autoRun) => ({ value: autoRun.id, label: `${autoRun.name} · ${autoRun.iteration}/${autoRun.maxIterations} 轮${autoRun.briefSuperseded ? " · 旧修订" : ""}` })),
+                        ]}
+                        onChange={selectAutoRun}
+                    />
+                    <div className="flex shrink-0 items-center gap-3">
+                            <Segmented
+                                aria-label="待审需求范围"
+                                size="small"
+                                value={scope}
+                                onChange={(value) => changeScope(value as FrameFlowRequirementScope)}
+                                options={[{ label: "活动需求", value: "active" }, { label: "查看已归档", value: "archived" }]}
+                            />
+                        <Button className="active:!scale-[.96] !transition-transform" icon={<RefreshCw className="size-4" strokeWidth={2} />} loading={loading} onClick={() => void loadQueue(selectedId)}>刷新待审</Button>
+                    </div>
                 </div>
-                <Segmented
-                    aria-label="待审需求范围"
-                    value={scope}
-                    onChange={(value) => changeScope(value as FrameFlowRequirementScope)}
-                    options={[{ label: "活动需求", value: "active" }, { label: "查看已归档", value: "archived" }]}
-                />
             </section>
             {activeAutoRun ? (
                 <Alert
@@ -178,7 +215,7 @@ export function FrameFlowReviewView() {
                 <ReviewMetric label="已隐藏" value={counts.hidden} tone="danger" />
             </section>
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
                 <Segmented
                     aria-label="审核状态筛选"
                     value={filter}
@@ -190,9 +227,6 @@ export function FrameFlowReviewView() {
                         { label: `已隐藏 ${counts.hidden}`, value: "hidden" },
                     ]}
                 />
-                <Button className="active:!scale-[.96] !transition-transform" icon={<RefreshCw className="size-4" strokeWidth={2} />} loading={loading} onClick={() => void loadQueue(selectedId)}>
-                    刷新
-                </Button>
             </div>
 
             {error ? <Alert className="mt-4" showIcon type="error" title="待审队列读取失败" description={error} action={<Button onClick={() => void loadQueue(selectedId)}>重试</Button>} /> : null}
@@ -405,6 +439,10 @@ function ReviewStatus({ status }: { status: FrameFlowImageStatus }) {
             {meta[status].label}
         </Tag>
     );
+}
+
+function reviewItemAutoRunId(item: FrameFlowReviewItem, autoRuns: FrameFlowAutoRun[]) {
+    return item.machineReview?.autoRunId || autoRuns.find((autoRun) => autoRun.currentRunId === item.image.runId || autoRun.lastRunId === item.image.runId)?.id;
 }
 
 function emptyLabel(filter: ReviewFilter) {

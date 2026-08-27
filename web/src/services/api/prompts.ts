@@ -1,6 +1,7 @@
 import localforage from "localforage";
 
 import { runPromptSource, type RawPrompt } from "./prompt-source-runtime";
+import { sanitizePromptImageUrl, sanitizePromptImageUrls } from "./prompt-image-url";
 import { usePromptSourceStore } from "@/stores/use-prompt-source-store";
 import i18n from "@/i18n";
 import type { PromptSource } from "./prompt-source-presets";
@@ -65,14 +66,18 @@ function sourceSignature(source: PromptSource) {
 }
 
 function withSourceMeta(source: PromptSource, items: RawPrompt[]): Prompt[] {
-    return items.map((item) => ({
-        ...item,
-        description: item.description || "",
-        referenceImageUrls: Array.isArray(item.referenceImageUrls) ? item.referenceImageUrls : [],
-        sourceId: source.id,
-        category: source.name,
-        githubUrl: item.sourceUrl || source.homepage,
-    }));
+    return items.map((item) => {
+        const referenceImageUrls = sanitizePromptImageUrls(Array.isArray(item.referenceImageUrls) ? item.referenceImageUrls : []);
+        return {
+            ...item,
+            description: item.description || "",
+            coverUrl: sanitizePromptImageUrl(item.coverUrl) || referenceImageUrls[0] || "",
+            referenceImageUrls,
+            sourceId: source.id,
+            category: source.name,
+            githubUrl: item.sourceUrl || source.homepage,
+        };
+    });
 }
 
 async function readSourceCache(sourceId: string) {

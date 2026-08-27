@@ -20,6 +20,12 @@ export function mergeRequestedAutoRun<T extends { id: string }>(listed: T[], req
     return [requested, ...listed];
 }
 
+export function resolveAutoRunSelection<T extends { id: string }>(requestedId: string | null | undefined, candidates: T[], allId: string) {
+    if (requestedId === allId) return allId;
+    if (requestedId && candidates.some((item) => item.id === requestedId)) return requestedId;
+    return candidates[0]?.id || allId;
+}
+
 export function requirementHasActiveWork(requirementId: string | undefined, briefs: Array<{ id: string; requirementId?: string }>, autoRuns: Array<{ briefId: string; state: string }>, runs: Array<{ briefId: string; status: string }>) {
     if (!requirementId) return false;
     const briefIds = new Set(briefs.filter((brief) => (brief.requirementId || brief.id) === requirementId).map((brief) => brief.id));

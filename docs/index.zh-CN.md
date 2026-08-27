@@ -34,6 +34,11 @@
 - [待测试](/zh-CN/docs/progress/pending-test)
 - [TODO](/zh-CN/docs/progress/todo)
 
+## 工程治理
+
+- [后期开发路线图](./post-development-roadmap.md)
+- [本轮审查与文件关联记录](./session-development-record.md)
+
 ## 说明
 
 - 当前画布项目和“我的素材”主要保存在浏览器本地，跨设备可自行配置 WebDAV 同步。

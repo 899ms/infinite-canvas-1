@@ -1547,7 +1547,7 @@ async function importGeneratedImages(endpoint: string, token: string, item: Agen
             const blob = await response.blob();
             const upload = await uploadImage(blob);
             const dataUrl = await readDataUrl(blob);
-            const name = source.startsWith("/") ? source.split("/").at(-1) || rt("generatedImageName", { index: index + 1 }) : rt("generatedImageName", { index: index + 1 });
+            const name = /^(?:[A-Za-z]:[\\/]|\/)/.test(source) ? source.split(/[\\/]/).at(-1) || rt("generatedImageName", { index: index + 1 }) : rt("generatedImageName", { index: index + 1 });
             return { upload, name, attachment: { id: createId(), name, type: blob.type || upload.mimeType, size: blob.size, width: upload.width, height: upload.height, url: upload.url, dataUrl } };
         }),
     );
@@ -1555,7 +1555,7 @@ async function importGeneratedImages(endpoint: string, token: string, item: Agen
 
 function generatedImageSources(value: unknown, result = new Set<string>()) {
     if (typeof value === "string") {
-        if (value.startsWith("data:image/") || (/^\/.+\.(?:avif|gif|jpe?g|png|webp)$/i.test(value) && !value.includes("\n"))) result.add(value);
+        if (value.startsWith("data:image/") || (/^(?:[A-Za-z]:[\\/]|\/).+\.(?:avif|gif|jpe?g|png|webp)$/i.test(value) && !value.includes("\n"))) result.add(value);
         return result;
     }
     if (Array.isArray(value)) value.forEach((item) => generatedImageSources(item, result));

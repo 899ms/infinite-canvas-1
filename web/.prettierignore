@@ -3,6 +3,8 @@ node_modules
 dist
 build
 coverage
+test-results
+playwright-report
 bun.lock
 *.log
 *.ico
@@ -12,3 +14,4 @@ bun.lock
 *.gif
 *.webp
 *.svg
+*.zip

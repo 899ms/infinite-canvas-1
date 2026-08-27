@@ -5,7 +5,7 @@ import { Group, Video } from "lucide-react";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 
-import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
+import { requestImageQuestion } from "@/services/api/image";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { requestVideoGeneration, storeGeneratedVideo } from "@/services/api/video";
 import { defaultConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
@@ -13,6 +13,10 @@ import { uploadImage } from "@/services/image-storage";
 import { uploadMediaFile } from "@/services/file-storage";
 import { nanoid } from "nanoid";
 import { getDataUrlByteSize, readImageMeta } from "@/lib/image-utils";
+import { generateInteriorCanvasCandidates } from "@/lib/canvas/interior-canvas-generation";
+import { generateInteriorCanvasPrompt } from "@/lib/canvas/interior-canvas-prompt-generation";
+import { applyCodexCanvasImageSlotFailure, applyCodexCanvasImageSlotSuccess, finalizeCodexCanvasImageGeneration, initializeCodexCanvasImageGenerationNodes, prepareCodexCanvasImageReferences, requestCodexCanvasImages, runCodexCanvasImageSlots } from "@/lib/canvas/canvas-image-generation";
+import { resolveInteriorImageGenerationContext, usesCodexImageGen } from "@/lib/canvas/interior-canvas-workflow";
 import { canvasThemes, type CanvasBackgroundMode } from "@/lib/canvas-theme";
 import { useAssetStore } from "@/stores/use-asset-store";
 import { useThemeStore } from "@/stores/use-theme-store";
@@ -1698,8 +1702,10 @@ function InfiniteCanvasPage() {
         async (node: CanvasNodeData, payload: CanvasImageMaskEditPayload) => {
             if (!node.metadata?.content) return;
             const generationConfig = { ...buildGenerationConfig(effectiveConfig, node, "image"), count: "1", size: node.metadata?.size || "auto" };
-            if (!isAiConfigReady(generationConfig, generationConfig.model)) {
-                openConfigDialog(true);
+            const agent = useAgentStore.getState();
+            if (!agent.token.trim()) {
+                agent.openPanel();
+                message.warning("请先连接 Canvas Agent，画布图片统一由 Codex ImageGen 生成");
                 return;
             }
             const userPrompt = payload.prompt.trim();
@@ -1727,8 +1733,9 @@ function InfiniteCanvasPage() {
             setDialogNodeId(childId);
             const controller = startGenerationRequest(childId, node.id, childId);
             try {
-                const image = await requestEdit(generationConfig, prompt, [source], { id: `${node.id}-mask`, name: "mask.png", type: "image/png", dataUrl: payload.maskDataUrl }, { signal: controller.signal }).then((items) => items[0]);
-                const uploaded = await uploadImage(image.dataUrl);
+                const image = (await requestCodexCanvasImages(prompt, [source, { id: `${node.id}-mask`, name: "mask.png", type: "image/png", dataUrl: payload.maskDataUrl }], 1, generationConfig.size, controller.signal))[0];
+                if (!image) throw new Error("Codex ImageGen 没有返回图片");
+                const uploaded = await uploadImage(image);
                 const size = fitNodeSize(uploaded.width, uploaded.height, node.width, node.height);
                 setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, width: size.width, height: size.height, metadata: { ...item.metadata, ...imageMetadata(uploaded), prompt, ...generationMetadata } } : item)));
             } catch (error) {
@@ -1741,7 +1748,7 @@ function InfiniteCanvasPage() {
                 setRunningNodeId(null);
             }
         },
-        [effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, startGenerationRequest, t],
+        [effectiveConfig, finishGenerationRequest, message, startGenerationRequest, t],
     );
 
     const upscaleImageNode = useCallback(async (node: CanvasNodeData, params: CanvasImageUpscaleParams) => {
@@ -1773,8 +1780,10 @@ function InfiniteCanvasPage() {
         async (node: CanvasNodeData, params: CanvasImageAngleParams) => {
             if (!node.metadata?.content) return;
             const generationConfig = { ...buildGenerationConfig(effectiveConfig, node, "image"), count: "1" };
-            if (!isAiConfigReady(generationConfig, generationConfig.model)) {
-                openConfigDialog(true);
+            const agent = useAgentStore.getState();
+            if (!agent.token.trim()) {
+                agent.openPanel();
+                message.warning("请先连接 Canvas Agent，画布图片统一由 Codex ImageGen 生成");
                 return;
             }
             const childId = nanoid();
@@ -1803,14 +1812,17 @@ function InfiniteCanvasPage() {
             setDialogNodeId(childId);
             const controller = startGenerationRequest(childId, node.id, childId);
             try {
-                const image = await requestEdit(
-                    generationConfig,
-                    prompt,
-                    [{ id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, storageKey: node.metadata.storageKey }],
-                    undefined,
-                    { signal: controller.signal },
-                ).then((items) => items[0]);
-                const uploaded = await uploadImage(image.dataUrl);
+                const image = (
+                    await requestCodexCanvasImages(
+                        prompt,
+                        [{ id: node.id, name: `${node.title || node.id}.png`, type: node.metadata.mimeType || "image/png", dataUrl: node.metadata.content, storageKey: node.metadata.storageKey }],
+                        1,
+                        generationConfig.size,
+                        controller.signal,
+                    )
+                )[0];
+                if (!image) throw new Error("Codex ImageGen 没有返回图片");
+                const uploaded = await uploadImage(image);
                 const size = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
                 setNodes((prev) => prev.map((item) => (item.id === childId ? { ...item, width: size.width, height: size.height, metadata: { ...item.metadata, ...imageMetadata(uploaded), prompt, ...generationMetadata } } : item)));
             } catch (error) {
@@ -1822,7 +1834,7 @@ function InfiniteCanvasPage() {
                 setRunningNodeId(null);
             }
         },
-        [effectiveConfig, finishGenerationRequest, openConfigDialog, startGenerationRequest, t],
+        [effectiveConfig, finishGenerationRequest, message, startGenerationRequest, t],
     );
 
     const handleFontSizeChange = useCallback((nodeId: string, fontSize: number) => {
@@ -2011,8 +2023,150 @@ function InfiniteCanvasPage() {
     const handleGenerateNode = useCallback(
         async (nodeId: string, mode: CanvasNodeGenerationMode, prompt: string) => {
             const sourceNode = nodesRef.current.find((node) => node.id === nodeId);
+            const interiorPrompt = sourceNode?.metadata?.interiorWorkflow;
+            if (mode === "image") {
+                const agent = useAgentStore.getState();
+                if (!agent.token.trim()) {
+                    agent.openPanel();
+                    message.warning("请先连接 Canvas Agent，画布图片统一由 Codex ImageGen 生成");
+                    return;
+                }
+            }
+            if (mode === "text" && interiorPrompt?.promptStage) {
+                const input = buildNodeGenerationInputs(nodeId, nodesRef.current, connectionsRef.current).find((item) => item.image)?.image;
+                if (!input) {
+                    message.warning("请先完成并选择上游空间图像");
+                    return;
+                }
+                const agent = useAgentStore.getState();
+                if (!agent.token.trim()) {
+                    agent.openPanel();
+                    message.warning("请先连接 Canvas Agent，室内提示词由 Codex 生成");
+                    return;
+                }
+
+                setRunningNodeId(nodeId);
+                const controller = startGenerationRequest(nodeId, nodeId, nodeId);
+                setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined } } : node)));
+                try {
+                    const { draft, content } = await generateInteriorCanvasPrompt({
+                        endpoint: agent.url.trim().replace(/\/$/, ""),
+                        token: agent.token.trim(),
+                        stage: interiorPrompt.promptStage,
+                        workflow: interiorPrompt,
+                        reference: input,
+                        model: agent.model || undefined,
+                        effort: agent.reasoningEffort || "high",
+                        signal: controller.signal,
+                    });
+                    setNodes((prev) =>
+                        prev.map((node) =>
+                            node.id === nodeId
+                                ? {
+                                      ...node,
+                                      metadata: {
+                                          ...node.metadata,
+                                          content,
+                                          status: NODE_STATUS_SUCCESS,
+                                          errorDetails: undefined,
+                                          interiorWorkflow: {
+                                              ...interiorPrompt,
+                                              promptTitle: draft.title,
+                                              promptSummary: draft.summary,
+                                              negativePrompt: draft.negativePrompt,
+                                          },
+                                      },
+                                  }
+                                : node,
+                        ),
+                    );
+                    message.success("Codex 室内提示词已写入节点");
+                } catch (error) {
+                    if (!isGenerationCanceled(error)) {
+                        const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
+                        message.error(errorDetails);
+                        setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_ERROR, errorDetails } } : node)));
+                    }
+                } finally {
+                    finishGenerationRequest(nodeId, controller);
+                    setRunningNodeId(null);
+                }
+                return;
+            }
+            if (mode === "image" && usesCodexImageGen(interiorPrompt)) {
+                const context = resolveInteriorImageGenerationContext(nodeId, nodesRef.current, connectionsRef.current);
+                if (!context.ok && context.reason === "missing_prompt") {
+                    message.warning("请先点击上游 Codex 提示词节点生成并确认提示词");
+                    return;
+                }
+                if (!context.ok && context.reason === "missing_reference") {
+                    message.warning("请先完成并选择上游空间参考图");
+                    return;
+                }
+                if (!context.ok) return;
+                const imagePrompt = context.prompt;
+                const agent = useAgentStore.getState();
+                if (!agent.token.trim()) {
+                    agent.openPanel();
+                    message.warning("请先连接 Canvas Agent，室内图片由 Codex ImageGen 生成");
+                    return;
+                }
+
+                setRunningNodeId(nodeId);
+                const controller = startGenerationRequest(nodeId, nodeId, nodeId);
+                setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined } } : node)));
+                try {
+                    const images = await generateInteriorCanvasCandidates({
+                        endpoint: agent.url.trim().replace(/\/$/, ""),
+                        token: agent.token.trim(),
+                        context,
+                        model: agent.model || undefined,
+                        effort: agent.reasoningEffort || "high",
+                        signal: controller.signal,
+                    });
+                    const primary = images[0];
+                    const imageSize = fitNodeSize(primary.naturalWidth, primary.naturalHeight, NODE_DEFAULT_SIZE[CanvasNodeType.Image].width, NODE_DEFAULT_SIZE[CanvasNodeType.Image].height);
+                    setNodes((prev) =>
+                        prev.map((node) =>
+                            node.id === nodeId
+                                ? {
+                                      ...node,
+                                      width: imageSize.width,
+                                      height: imageSize.height,
+                                      metadata: {
+                                          ...node.metadata,
+                                          content: primary.content,
+                                          storageKey: primary.storageKey,
+                                          naturalWidth: primary.naturalWidth,
+                                          naturalHeight: primary.naturalHeight,
+                                          bytes: primary.bytes,
+                                          mimeType: primary.mimeType,
+                                          images,
+                                          count: images.length,
+                                          primaryImageId: primary.id,
+                                          prompt: imagePrompt,
+                                          status: NODE_STATUS_SUCCESS,
+                                          errorDetails: undefined,
+                                      },
+                                  }
+                                : node,
+                        ),
+                    );
+                    message.success(`Codex ImageGen 已生成 ${images.length} 张候选图`);
+                } catch (error) {
+                    if (!isGenerationCanceled(error)) {
+                        const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
+                        message.error(errorDetails);
+                        setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_ERROR, errorDetails } } : node)));
+                    }
+                } finally {
+                    finishGenerationRequest(nodeId, controller);
+                    setRunningNodeId(null);
+                }
+                return;
+            }
             const generationConfig = buildGenerationConfig(effectiveConfig, sourceNode, mode);
-            if (!isAiConfigReady(generationConfig, generationConfig.model)) {
+            if (mode !== "image" && !isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog(true);
                 return;
             }
@@ -2038,10 +2192,9 @@ function InfiniteCanvasPage() {
                             ? [{ id: up.id, name: `${up.title || up.id}.png`, type: up.metadata.mimeType || "image/png", dataUrl: up.metadata.content, storageKey: up.metadata.storageKey }]
                             : [],
                     );
-                    const image = refs.length
-                        ? await requestEdit({ ...generationConfig, count: "1" }, fullPrompt, refs, undefined, { signal: controller.signal }).then((items) => items[0])
-                        : await requestGeneration({ ...generationConfig, count: "1" }, fullPrompt, { signal: controller.signal }).then((items) => items[0]);
-                    const uploaded = await uploadImage(image.dataUrl);
+                    const image = (await requestCodexCanvasImages(fullPrompt, refs, 1, generationConfig.size, controller.signal))[0];
+                    if (!image) throw new Error("Codex ImageGen 没有返回图片");
+                    const uploaded = await uploadImage(image);
                     setNodes((prev) =>
                         prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, ...imageMetadata(uploaded), prompt: scene, model: generationConfig.model, status: NODE_STATUS_SUCCESS, errorDetails: undefined } } : node)),
                     );
@@ -2062,9 +2215,19 @@ function InfiniteCanvasPage() {
             const runController = startGenerationRequest(nodeId, nodeId, nodeId);
             const sourceTextContent = sourceNode?.type === CanvasNodeType.Text ? sourceNode.metadata?.content?.trim() || "" : "";
             const editingTextNode = mode === "text" && Boolean(sourceTextContent);
-            const generationContext = await hydrateNodeGenerationContext(
-                buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, editingTextNode ? t("canvas.projectPage.editTextPrompt", { source: sourceTextContent, prompt }) : prompt),
-            );
+            let generationContext: Awaited<ReturnType<typeof hydrateNodeGenerationContext>>;
+            try {
+                generationContext = await hydrateNodeGenerationContext(
+                    buildNodeGenerationContext(nodeId, nodesRef.current, connectionsRef.current, editingTextNode ? t("canvas.projectPage.editTextPrompt", { source: sourceTextContent, prompt }) : prompt),
+                );
+            } catch (error) {
+                if (!isGenerationCanceled(error)) {
+                    message.error(error instanceof Error ? error.message : t("canvas.projectPage.generationFailed"));
+                }
+                finishGenerationRequest(nodeId, runController);
+                setRunningNodeId(null);
+                return;
+            }
             const effectivePrompt = generationContext.prompt.trim();
             if (runController.signal.aborted) {
                 finishGenerationRequest(nodeId, runController);
@@ -2091,121 +2254,36 @@ function InfiniteCanvasPage() {
                             ? [{ id: sourceNode.id, name: `${sourceNode.title || sourceNode.id}.png`, type: sourceNode.metadata.mimeType || "image/png", dataUrl: sourceNode.metadata.content, storageKey: sourceNode.metadata.storageKey }]
                             : [];
                     const referenceImages = sourceReference.length ? sourceReference : generationContext.referenceImages;
+                    // Validate and hydrate persisted references before creating a result node. A stale blob: URL
+                    // must not leave an empty failed node behind on every click.
+                    const preparedReferenceImages = await prepareCodexCanvasImageReferences(referenceImages);
                     const generationType = referenceImages.length ? ("edit" as const) : ("generation" as const);
                     const generationMetadata = buildImageGenerationMetadata(generationType, generationConfig, count, referenceImages);
-                    const parentConfig = NODE_DEFAULT_SIZE[isConfigNode ? CanvasNodeType.Config : isImageNode ? CanvasNodeType.Image : CanvasNodeType.Text];
                     const imageConfig = NODE_DEFAULT_SIZE[CanvasNodeType.Image];
-                    const parentPosition = sourceNode?.position || { x: 0, y: 0 };
                     const rootId = isEmptyImageNode ? nodeId : nanoid();
                     const imageIds = Array.from({ length: count }, () => nanoid());
                     pendingChildIds = [rootId];
-                    const rootNode: CanvasNodeData = {
-                        id: rootId,
-                        type: CanvasNodeType.Image,
-                        title: effectivePrompt.slice(0, 32) || "Generated Image",
-                        position: {
-                            x: isEmptyImageNode ? parentPosition.x : parentPosition.x + parentConfig.width + 96,
-                            y: parentPosition.y + parentConfig.height / 2 - imageConfig.height / 2,
-                        },
-                        width: isEmptyImageNode ? sourceNode?.width || imageConfig.width : imageConfig.width,
-                        height: isEmptyImageNode ? sourceNode?.height || imageConfig.height : imageConfig.height,
-                        metadata: {
-                            prompt: effectivePrompt,
-                            status: NODE_STATUS_LOADING,
-                            images: imageIds.map((id) => ({ id, status: NODE_STATUS_LOADING, content: "", storageKey: "", naturalWidth: 0, naturalHeight: 0, bytes: 0, mimeType: "" })),
-                            ...generationMetadata,
-                        },
-                    };
-
-                    setNodes((prev) => [
-                        ...prev.map((node) =>
-                            node.id === nodeId
-                                ? isConfigNode
-                                    ? {
-                                          ...node,
-                                          metadata: { ...node.metadata, status: NODE_STATUS_LOADING, errorDetails: undefined },
-                                      }
-                                    : isEmptyImageNode
-                                      ? {
-                                            ...node,
-                                            position: rootNode.position,
-                                            width: rootNode.width,
-                                            height: rootNode.height,
-                                            title: rootNode.title,
-                                            metadata: { ...node.metadata, ...rootNode.metadata, errorDetails: undefined },
-                                        }
-                                      : isImageNode
-                                        ? {
-                                              ...node,
-                                              metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS, errorDetails: undefined },
-                                          }
-                                        : {
-                                              ...node,
-                                              type: CanvasNodeType.Text,
-                                              title: prompt.slice(0, 32) || "Prompt",
-                                              width: parentConfig.width,
-                                              height: parentConfig.height,
-                                              metadata: { ...node.metadata, content: prompt, prompt, status: NODE_STATUS_SUCCESS, fontSize: 14, errorDetails: undefined },
-                                          }
-                                : node,
-                        ),
-                        ...(isEmptyImageNode ? [] : [rootNode]),
-                    ]);
+                    setNodes((prev) => initializeCodexCanvasImageGenerationNodes(prev, { sourceNodeId: nodeId, rootNodeId: rootId, imageIds, effectivePrompt, sourcePrompt: prompt, generationMetadata }));
                     if (!isEmptyImageNode) setConnections((prev) => [...prev, { id: nanoid(), fromNodeId: nodeId, toNodeId: rootId }]);
                     setSelectedNodeIds(new Set([nodeId]));
                     setSelectedConnectionId(null);
                     setDialogNodeId(nodeId);
 
                     const controller = rootId === nodeId ? runController : startGenerationRequest(rootId, nodeId, nodeId, runController);
-                    let hasSuccess = false;
-                    let hasFailure = false;
-                    let firstError = "";
-                    await Promise.all(
-                        imageIds.map(async (imageId) => {
-                            try {
-                                const image = referenceImages.length
-                                    ? await requestEdit({ ...generationConfig, count: "1" }, effectivePrompt, referenceImages, undefined, { signal: controller.signal }).then((items) => items[0])
-                                    : await requestGeneration({ ...generationConfig, count: "1" }, effectivePrompt, { signal: controller.signal }).then((items) => items[0]);
-                                const uploaded = await uploadImage(image.dataUrl);
-                                const imageSize = fitNodeSize(uploaded.width, uploaded.height, imageConfig.width, imageConfig.height);
-                                const item: CanvasNodeImage = { id: imageId, status: NODE_STATUS_SUCCESS, content: uploaded.url, storageKey: uploaded.storageKey, naturalWidth: uploaded.width, naturalHeight: uploaded.height, bytes: uploaded.bytes, mimeType: uploaded.mimeType };
-                                setNodes((prev) =>
-                                    prev.map((node) => {
-                                        if (node.id !== rootId) return node;
-                                        const images = node.metadata?.images?.map((image) => (image.id === imageId ? item : image)) || [];
-                                        if (node.metadata?.primaryImageId) return { ...node, metadata: { ...node.metadata, images } };
-                                        const center = { x: node.position.x + node.width / 2, y: node.position.y + node.height / 2 };
-                                        return {
-                                            ...node,
-                                            position: { x: center.x - imageSize.width / 2, y: center.y - imageSize.height / 2 },
-                                            ...imageSize,
-                                            metadata: {
-                                                ...node.metadata,
-                                                content: item.content,
-                                                storageKey: item.storageKey,
-                                                naturalWidth: item.naturalWidth,
-                                                naturalHeight: item.naturalHeight,
-                                                bytes: item.bytes,
-                                                mimeType: item.mimeType,
-                                                images,
-                                                primaryImageId: imageId,
-                                            },
-                                        };
-                                    }),
-                                );
-                                hasSuccess = true;
-                                if (isConfigNode) setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_SUCCESS, errorDetails: undefined } } : node)));
-                                return true;
-                            } catch (error) {
-                                if (isGenerationCanceled(error)) return false;
-                                const errorDetails = error instanceof Error ? error.message : t("canvas.projectPage.generationFailed");
-                                if (!firstError) firstError = errorDetails;
-                                hasFailure = true;
-                                setNodes((prev) => prev.map((node) => (node.id === rootId ? { ...node, metadata: { ...node.metadata, images: node.metadata?.images?.map((image) => (image.id === imageId ? { ...image, status: NODE_STATUS_ERROR, errorDetails } : image)) } } : node)));
-                            }
-                            return false;
-                        }),
-                    );
+                    const { hasSuccess, hasFailure, firstError } = await runCodexCanvasImageSlots({
+                        imageIds,
+                        prompt: effectivePrompt,
+                        references: preparedReferenceImages,
+                        aspectRatio: generationConfig.size,
+                        signal: controller.signal,
+                        fallbackError: t("canvas.projectPage.generationFailed"),
+                        onSuccess: (imageId, uploaded) => {
+                            setNodes((prev) => applyCodexCanvasImageSlotSuccess(prev, { sourceNodeId: nodeId, rootNodeId: rootId, isConfigNode, imageId, uploaded, maxWidth: imageConfig.width, maxHeight: imageConfig.height }));
+                        },
+                        onFailure: (imageId, errorDetails) => {
+                            setNodes((prev) => applyCodexCanvasImageSlotFailure(prev, { rootNodeId: rootId, imageId, errorDetails }));
+                        },
+                    });
                     if (rootId !== nodeId) finishGenerationRequest(rootId, controller);
                     if (controller.signal.aborted) {
                         setNodes((prev) => prev.map((node) => (node.id === nodeId && isConfigNode && node.metadata?.status === NODE_STATUS_LOADING ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_IDLE, errorDetails: undefined } } : node)));
@@ -2215,13 +2293,15 @@ function InfiniteCanvasPage() {
                         message.error(hasSuccess ? t("canvas.projectPage.partialFailed") : firstError || t("canvas.projectPage.generationFailed"));
                     }
                     setNodes((prev) =>
-                        prev.map((node) =>
-                            node.id === nodeId && isConfigNode
-                                ? { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : t("canvas.projectPage.generationFailed") } }
-                                : node.id === rootId
-                                  ? { ...node, metadata: { ...node.metadata, status: hasSuccess ? NODE_STATUS_SUCCESS : NODE_STATUS_ERROR, errorDetails: hasSuccess ? undefined : t("canvas.projectPage.allFailed") } }
-                                    : node,
-                        ),
+                        finalizeCodexCanvasImageGeneration(prev, {
+                            sourceNodeId: nodeId,
+                            rootNodeId: rootId,
+                            isConfigNode,
+                            hasSuccess,
+                            firstError,
+                            generationFailedError: t("canvas.projectPage.generationFailed"),
+                            allFailedError: t("canvas.projectPage.allFailed"),
+                        }),
                     );
                     return;
                 }
@@ -2408,6 +2488,11 @@ function InfiniteCanvasPage() {
 
     const handleRetryNode = useCallback(
         async (node: CanvasNodeData, imageId?: string) => {
+            const interiorWorkflow = node.metadata?.interiorWorkflow;
+            if (usesCodexImageGen(interiorWorkflow)) {
+                await handleGenerateNode(node.id, "image", node.metadata?.prompt || "使用 Codex ImageGen 重新生成室内候选图");
+                return;
+            }
             const sourceNode = findRetrySourceNode(node.id, nodesRef.current, connectionsRef.current) || node;
             const savedImageMetadata = node.type === CanvasNodeType.Image ? node.metadata : undefined;
             const hasSavedImageMetadata = Boolean(savedImageMetadata?.generationType);
@@ -2422,7 +2507,13 @@ function InfiniteCanvasPage() {
                           count: "1",
                       }
                     : { ...buildGenerationConfig(effectiveConfig, sourceNode, node.type === CanvasNodeType.Text ? "text" : node.type === CanvasNodeType.Video ? "video" : node.type === CanvasNodeType.Audio ? "audio" : "image"), count: "1" };
-            if (!isAiConfigReady(generationConfig, generationConfig.model)) {
+            if (node.type === CanvasNodeType.Image && !useAgentStore.getState().token.trim()) {
+                const agent = useAgentStore.getState();
+                agent.openPanel();
+                message.warning("请先连接 Canvas Agent，画布图片统一由 Codex ImageGen 生成");
+                return;
+            }
+            if (node.type !== CanvasNodeType.Image && !isAiConfigReady(generationConfig, generationConfig.model)) {
                 openConfigDialog(true);
                 return;
             }
@@ -2498,10 +2589,9 @@ function InfiniteCanvasPage() {
                     return;
                 }
 
-                const image = useReferenceImages
-                    ? await requestEdit(generationConfig, prompt, retryImages, undefined, { signal: controller.signal }).then((items) => items[0])
-                    : await requestGeneration(generationConfig, prompt, { signal: controller.signal }).then((items) => items[0]);
-                const uploadedImage = await uploadImage(image.dataUrl);
+                const image = (await requestCodexCanvasImages(prompt, useReferenceImages ? retryImages : [], 1, generationConfig.size, controller.signal))[0];
+                if (!image) throw new Error("Codex ImageGen 没有返回图片");
+                const uploadedImage = await uploadImage(image);
                 const imageConfig = NODE_DEFAULT_SIZE[CanvasNodeType.Image];
                 const retryImage: CanvasNodeImage = {
                     id: imageId || node.metadata?.primaryImageId || nanoid(),
@@ -2555,7 +2645,7 @@ function InfiniteCanvasPage() {
                 setRunningNodeId(null);
             }
         },
-        [effectiveConfig, finishGenerationRequest, isAiConfigReady, message, openConfigDialog, startGenerationRequest, t],
+        [effectiveConfig, finishGenerationRequest, handleGenerateNode, isAiConfigReady, message, openConfigDialog, startGenerationRequest, t],
     );
 
     const deleteBatchImage = useCallback((nodeId: string, imageId: string) => {
@@ -2574,6 +2664,10 @@ function InfiniteCanvasPage() {
 
     const generateImageFromTextNode = useCallback(
         (node: CanvasNodeData) => {
+            if (node.metadata?.interiorWorkflow?.promptStage) {
+                void handleGenerateNode(node.id, "text", node.metadata.prompt || "使用 Codex 生成室内设计提示词");
+                return;
+            }
             const prompt = (node.metadata?.content || node.metadata?.prompt || "").trim();
             if (!prompt) {
                 message.warning(t("canvas.projectPage.emptyTextImage"));
@@ -2606,7 +2700,7 @@ function InfiniteCanvasPage() {
             setSelectedConnectionId(null);
             setDialogNodeId(configNode.id);
         },
-        [effectiveConfig.canvasImageCount, effectiveConfig.count, effectiveConfig.imageModel, effectiveConfig.model, effectiveConfig.size, message, t],
+        [effectiveConfig.canvasImageCount, effectiveConfig.count, effectiveConfig.imageModel, effectiveConfig.model, effectiveConfig.size, handleGenerateNode, message, t],
     );
 
     const insertAssistantImage = useCallback(
@@ -2972,7 +3066,7 @@ function InfiniteCanvasPage() {
 
                 <input ref={imageInputRef} type="file" multiple accept="image/*,video/*,audio/mpeg,audio/wav,audio/x-wav,.mp3,.wav" className="hidden" onChange={handleImageInputChange} />
 
-                <CanvasNodeInfoModal node={infoNode} open={Boolean(infoNode)} onClose={() => setInfoNodeId(null)} />
+                <CanvasNodeInfoModal node={infoNode} open={Boolean(infoNode)} onClose={() => setInfoNodeId(null)} canvasId={projectId} />
                 <CanvasPluginManagerModal open={pluginManagerOpen} onClose={() => setPluginManagerOpen(false)} />
 
                 {cropNode?.metadata?.content ? <CanvasNodeCropDialog dataUrl={cropNode.metadata.content} open={Boolean(cropNode)} onClose={() => setCropNodeId(null)} onConfirm={(crop) => void cropImageNode(cropNode!, crop)} /> : null}

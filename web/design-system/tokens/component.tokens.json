@@ -1,0 +1,315 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "$extensions": {
+    "com.shared-ui.meta": {
+      "name": "Shared UI component tokens",
+      "version": "0.1.2",
+      "dependsOn": ["./primitive.tokens.json", "./semantic.tokens.json"],
+      "scope": "portable-components"
+    }
+  },
+  "component": {
+    "control": {
+      "height": {
+        "small": {
+          "$type": "dimension",
+          "$value": "{primitive.size.control.small}"
+        },
+        "medium": {
+          "$type": "dimension",
+          "$value": "{primitive.size.control.medium}"
+        },
+        "large": {
+          "$type": "dimension",
+          "$value": "{primitive.size.control.large}"
+        }
+      },
+      "radius": {
+        "$type": "dimension",
+        "$value": "{primitive.radius.medium}"
+      },
+      "padding-inline": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.3}"
+      },
+      "gap": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.1-5}"
+      }
+    },
+    "button": {
+      "primary": {
+        "background": {
+          "$type": "color",
+          "$value": "{semantic.color.action.primary}"
+        },
+        "foreground": {
+          "$type": "color",
+          "$value": "{semantic.color.action.on-primary}"
+        },
+        "radius": {
+          "$type": "dimension",
+          "$value": "{primitive.radius.medium}"
+        },
+        "height": {
+          "$type": "dimension",
+          "$value": "{primitive.size.control.medium}"
+        },
+        "padding-inline": {
+          "$type": "dimension",
+          "$value": "{primitive.spacing.4}"
+        },
+        "gap": {
+          "$type": "dimension",
+          "$value": "{primitive.spacing.2}"
+        }
+      },
+      "secondary": {
+        "background": {
+          "$type": "color",
+          "$value": "{semantic.color.action.secondary}"
+        },
+        "foreground": {
+          "$type": "color",
+          "$value": "{semantic.color.action.on-secondary}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{semantic.color.border.default}"
+        }
+      }
+    },
+    "input": {
+      "background": {
+        "$type": "color",
+        "$value": "{semantic.color.background.surface}"
+      },
+      "foreground": {
+        "$type": "color",
+        "$value": "{semantic.color.text.primary}"
+      },
+      "placeholder": {
+        "$type": "color",
+        "$value": "{semantic.color.text.subtle}"
+      },
+      "border": {
+        "$type": "color",
+        "$value": "{semantic.color.border.default}"
+      },
+      "radius": {
+        "$type": "dimension",
+        "$value": "{primitive.radius.medium}"
+      },
+      "height": {
+        "$type": "dimension",
+        "$value": "{primitive.size.control.medium}"
+      },
+      "padding-inline": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.3}"
+      }
+    },
+    "card": {
+      "background": {
+        "$type": "color",
+        "$value": "{semantic.color.background.surface}"
+      },
+      "foreground": {
+        "$type": "color",
+        "$value": "{semantic.color.text.primary}"
+      },
+      "border": {
+        "$type": "color",
+        "$value": "{semantic.color.border.default}"
+      },
+      "radius": {
+        "$type": "dimension",
+        "$value": "{primitive.radius.large}"
+      },
+      "padding": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.4}"
+      },
+      "gap": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.3}"
+      },
+      "elevation": {
+        "$type": "shadow",
+        "$value": "{semantic.elevation.card}"
+      }
+    },
+    "floating-surface": {
+      "background": {
+        "$type": "color",
+        "$value": "{semantic.color.background.surface}"
+      },
+      "border": {
+        "$type": "color",
+        "$value": "{semantic.color.border.default}"
+      },
+      "radius": {
+        "$type": "dimension",
+        "$value": "{primitive.radius.x-large}"
+      },
+      "padding": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.2}"
+      },
+      "elevation": {
+        "$type": "shadow",
+        "$value": "{semantic.elevation.floating}"
+      }
+    },
+    "dialog": {
+      "background": {
+        "$type": "color",
+        "$value": "{semantic.color.background.surface}"
+      },
+      "foreground": {
+        "$type": "color",
+        "$value": "{semantic.color.text.primary}"
+      },
+      "radius": {
+        "$type": "dimension",
+        "$value": "{primitive.radius.2x-large}"
+      },
+      "padding": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.6}"
+      },
+      "gap": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.4}"
+      },
+      "elevation": {
+        "$type": "shadow",
+        "$value": "{semantic.elevation.dialog}"
+      }
+    },
+    "chip": {
+      "height": {
+        "$type": "dimension",
+        "$value": "{primitive.size.control.small}"
+      },
+      "padding-inline": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.3}"
+      },
+      "gap": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.1-5}"
+      },
+      "radius": {
+        "$type": "dimension",
+        "$value": "{primitive.radius.full}"
+      },
+      "background": {
+        "$type": "color",
+        "$value": "{semantic.color.background.subtle}"
+      },
+      "foreground": {
+        "$type": "color",
+        "$value": "{semantic.color.text.primary}"
+      },
+      "border": {
+        "$type": "color",
+        "$value": "{semantic.color.border.default}"
+      }
+    },
+    "feedback-badge": {
+      "height": {
+        "$type": "dimension",
+        "$value": "{primitive.size.control.small}"
+      },
+      "padding-inline": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.3}"
+      },
+      "gap": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.1-5}"
+      },
+      "radius": {
+        "$type": "dimension",
+        "$value": "{primitive.radius.full}"
+      },
+      "reinforce": {
+        "background": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.reinforce.surface}"
+        },
+        "foreground": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.reinforce.foreground}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.reinforce.border}"
+        }
+      },
+      "variant": {
+        "background": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.variant.surface}"
+        },
+        "foreground": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.variant.foreground}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.variant.border}"
+        }
+      },
+      "downweight": {
+        "background": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.downweight.surface}"
+        },
+        "foreground": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.downweight.foreground}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.downweight.border}"
+        }
+      },
+      "delete": {
+        "background": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.delete.surface}"
+        },
+        "foreground": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.delete.foreground}"
+        },
+        "border": {
+          "$type": "color",
+          "$value": "{semantic.color.feedback.delete.border}"
+        }
+      }
+    },
+    "focus-ring": {
+      "color": {
+        "$type": "color",
+        "$value": "{semantic.color.action.focus}"
+      },
+      "width": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.half}"
+      },
+      "offset": {
+        "$type": "dimension",
+        "$value": "{primitive.spacing.half}"
+      }
+    },
+    "tap-target": {
+      "minimum": {
+        "$type": "dimension",
+        "$value": "{primitive.size.tap-target}"
+      }
+    }
+  }
+}

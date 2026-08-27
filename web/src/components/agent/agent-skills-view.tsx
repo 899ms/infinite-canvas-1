@@ -329,7 +329,7 @@ export function AgentSkillsView({ clientId }: { clientId: string }) {
                                     </div>
                                     <div className="mt-2 flex items-center justify-between gap-2 pl-7">
                                         <label className="inline-flex items-center gap-2 text-xs" style={{ color: theme.node.muted }}>
-                                            <Switch size="small" checked={skill.enabled} loading={busy} disabled={!connected || Boolean(busySkill) || Boolean(generatingSource)} onChange={(enabled) => void toggleEnabled(skill, enabled)} />
+                                            <Switch aria-label={`${skill.interface?.displayName || skill.name} · ${t(skill.enabled ? "agent.skillManager.enabled" : "agent.skillManager.disabled")}`} size="small" checked={skill.enabled} loading={busy} disabled={!connected || Boolean(busySkill) || Boolean(generatingSource)} onChange={(enabled) => void toggleEnabled(skill, enabled)} />
                                             {t(skill.enabled ? "agent.skillManager.enabled" : "agent.skillManager.disabled")}
                                         </label>
                                         <div className="flex items-center gap-0.5">

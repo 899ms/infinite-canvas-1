@@ -1,9 +1,18 @@
 ---
 title: TODO
-description: Planned follow-up work
+description: 当前项目后续值得处理的事项
 ---
 
 # TODO
 
-- Replace the Claude Code CLI adapter with a Claude Agent SDK adapter and improve the tool queue, following the [Local Agent Integration Plan](/docs/progress/local-agent-integration-plan).
-- Add Skill installation from web search, Skill resource-file management, and controlled local-memory persistence.
+本文档用来记录当前项目后续比较值得处理的事项。
+
+- 工程基线：先分类当前修改与未跟踪文件，形成可恢复检查点，并在干净检出中复现安装、测试、构建和浏览器回归；不得清理用户资产或把当前工作区通过误认为仓库基线通过。
+- FrameFlow 验收：为中文待测试主清单建立状态与证据矩阵，并使用一次性测试数据覆盖创建需求、自动评审、暂停/继续/停止、人工反馈、归档/恢复的完整闭环。
+- 核心模块治理：先补特征测试，再渐进拆分画布项目页、本地 Agent 面板、FrameFlow core 与 Codex 集成层；重构不得与新功能混做，也不得全仓格式化。
+- 安全与可观测性：明确浏览器本地凭据和外部内容的信任边界，补充 CSP、日志脱敏、状态转换事件和失败恢复验证。
+- 文档治理：保持中英文 TODO 同步，并增加自动一致性检查；详细阶段与退出条件见仓库文档 `docs/post-development-roadmap.md`。
+- 本地 Agent 接入后续：按[本地 Agent 接入规划](/docs/progress/local-agent-integration-plan)把 Claude Code CLI Adapter 升级为 Claude Agent SDK Adapter，并完善工具队列体验。
+- Agent Skill 后续：补充网络检索安装、Skill 资源文件管理和可控的本地记忆沉淀。
+- 提示词系统后续：在明确用户授权后再接入 AI 自动拆解、跨批次命中率分析和更复杂的推荐策略；当前已用确定性偏好信号排序个人运行时库，继续保持人工审核且不自动重写 Prompt。
+- 提示词系统后续：如需跨设备使用，再设计端到端可控的同步与团队协作；当前个人词库和反馈只保存在本地 IndexedDB。

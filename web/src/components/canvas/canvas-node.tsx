@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Music2, Puzzle, RefreshCw, Star, Trash2, Video } from "lucide-react";
+import { ChevronRight, Copy, Download, Group, Image as ImageIcon, Music2, Puzzle, RefreshCw, Sparkles, Star, Trash2, Video } from "lucide-react";
 
 import { canvasThemes } from "@/lib/canvas-theme";
 import { formatBytes } from "@/lib/image-utils";
@@ -527,6 +527,7 @@ function MissingPluginContent({ theme, type }: Pick<NodeContentRendererProps, "t
 function TextContent({ node, theme, isEditingContent, textareaRef, mentionReferences, onContentChange, onStopEditing, onGenerateImage }: NodeContentRendererProps) {
     const { t } = useTranslation();
     const fontSize = node.metadata?.fontSize || 14;
+    const isInteriorPrompt = Boolean(node.metadata?.interiorWorkflow?.promptStage);
     const textStyle = { fontSize: `${fontSize}px`, lineHeight: `${Math.round(fontSize * 1.65)}px`, color: theme.node.text, boxSizing: "border-box" } as React.CSSProperties;
 
     return (
@@ -541,11 +542,11 @@ function TextContent({ node, theme, isEditingContent, textareaRef, mentionRefere
                 }}
                 onMouseDown={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
-                title={t("canvas.node.generateImage")}
-                aria-label={t("canvas.node.generateImage")}
+                title={isInteriorPrompt ? "使用 Codex 生成提示词" : t("canvas.node.generateImage")}
+                aria-label={isInteriorPrompt ? "使用 Codex 生成提示词" : t("canvas.node.generateImage")}
             >
-                <ImageIcon className="size-3.5" />
-                {t("canvas.node.generate")}
+                {isInteriorPrompt ? <Sparkles className="size-3.5" /> : <ImageIcon className="size-3.5" />}
+                {isInteriorPrompt ? "Codex" : t("canvas.node.generate")}
             </button>
             {isEditingContent ? (
                 <CanvasResourceMentionTextarea

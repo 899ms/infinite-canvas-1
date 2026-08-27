@@ -71,20 +71,18 @@ AI API Key、Base URL、画布、素材和生成记录默认保存在浏览器�
 
 ### 本地开发
 
+先获取包含当前定制功能的仓库，然后在仓库目录运行：
+
 ```bash
-git clone git@github.com:basketikun/infinite-canvas.git
-cd infinite-canvas
 cd web
-bun install
+bun install --frozen-lockfile
 bun run dev
 ```
 
 ### Docker 运行
 
 ```bash
-git clone git@github.com:basketikun/infinite-canvas.git
-cd infinite-canvas
-docker compose up -d
+docker compose up -d --build
 ```
 
 运行后默认端口3000，可访问 `http://localhost:3000`。

@@ -117,10 +117,17 @@ export function FrameFlowTrajectoryView({ endpoint, token, onOpenRun }: { endpoi
 
     return (
         <section aria-label="Auto Run 演化轨迹">
-            <div className="flex flex-wrap items-end justify-between gap-4 rounded-xl bg-card p-5 shadow-card ring-1 ring-border">
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm font-medium">选择自动跑任务</p>
+            <div className="rounded-xl bg-card p-5 shadow-card ring-1 ring-border">
+                <p className="text-sm font-medium">选择自动跑任务</p>
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+                    <Select
+                        className="min-w-[min(100%,18rem)] w-full max-w-xl flex-1"
+                        value={selectedId || undefined}
+                        placeholder={scope === "archived" ? "选择已归档自动跑" : "选择已有自动跑"}
+                        options={autoRuns.map((autoRun) => ({ value: autoRun.id, label: `${autoRun.name} · ${autoRun.iteration}/${autoRun.maxIterations} 轮${autoRun.briefSuperseded ? " · 旧修订" : ""}` }))}
+                        onChange={selectAutoRun}
+                    />
+                    <div className="flex shrink-0 items-center gap-3">
                         <Segmented
                             aria-label="演化轨迹需求范围"
                             size="small"
@@ -128,16 +135,9 @@ export function FrameFlowTrajectoryView({ endpoint, token, onOpenRun }: { endpoi
                             onChange={(value) => changeScope(value as FrameFlowRequirementScope)}
                             options={[{ label: "活动需求", value: "active" }, { label: "查看已归档", value: "archived" }]}
                         />
+                        <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => void load()}>刷新轨迹</Button>
                     </div>
-                    <Select
-                        className="mt-2 w-full max-w-xl"
-                        value={selectedId || undefined}
-                        placeholder={scope === "archived" ? "选择已归档自动跑" : "选择已有自动跑"}
-                        options={autoRuns.map((autoRun) => ({ value: autoRun.id, label: `${autoRun.name} · ${autoRun.iteration}/${autoRun.maxIterations} 轮${autoRun.briefSuperseded ? " · 旧修订" : ""}` }))}
-                        onChange={selectAutoRun}
-                    />
                 </div>
-                <Button icon={<RefreshCw className="size-4" />} loading={loading} onClick={() => void load()}>刷新轨迹</Button>
             </div>
 
             {error ? <Alert className="mt-4" showIcon type="error" title="演化轨迹暂时无法读取" description={error} /> : null}
@@ -178,18 +178,26 @@ export function FrameFlowTrajectoryView({ endpoint, token, onOpenRun }: { endpoi
                                             </div>
                                         </div>
 
-                                        <div className={`mt-4 grid gap-2 ${round.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-                                            {round.images.map(({ image, machineReview }) => (
-                                                <div key={image.id} className="min-w-0">
-                                                    <div className="aspect-square overflow-hidden rounded-lg bg-muted">
-                                                        <Image className="!size-full !object-cover" src={frameFlowImageUrl(endpoint, token, image.id)} alt={`第 ${round.iteration} 轮图片`} preview={{ mask: "点击放大" }} />
+                                        <Image.PreviewGroup>
+                                            <div className={`mt-4 grid gap-2 ${round.images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                                                {round.images.map(({ image, machineReview }, imageIndex) => (
+                                                    <div key={image.id} className="min-w-0">
+                                                        <div className="aspect-square overflow-hidden rounded-lg bg-muted">
+                                                            <Image
+                                                                className="!size-full !object-cover"
+                                                                rootClassName="!block !size-full cursor-zoom-in"
+                                                                src={frameFlowImageUrl(endpoint, token, image.id)}
+                                                                alt={`第 ${round.iteration} 轮图片 ${imageIndex + 1}`}
+                                                                preview={{ mask: "点击放大" }}
+                                                            />
+                                                        </div>
+                                                        <div className="mt-2 flex flex-wrap gap-1">
+                                                            {machineReview ? <Tag color={decisionTone(machineReview.decision)}>Codex {machineReview.rating}/5 · {decisionLabel(machineReview.decision)}</Tag> : <Tag>等待机器审图</Tag>}
+                                                        </div>
                                                     </div>
-                                                    <div className="mt-2 flex flex-wrap gap-1">
-                                                        {machineReview ? <Tag color={decisionTone(machineReview.decision)}>Codex {machineReview.rating}/5 · {decisionLabel(machineReview.decision)}</Tag> : <Tag>等待机器审图</Tag>}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
+                                                ))}
+                                            </div>
+                                        </Image.PreviewGroup>
 
                                         <ReviewSummary reviews={round.images.flatMap((item) => item.machineReview ? [item.machineReview] : [])} />
 

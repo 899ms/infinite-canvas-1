@@ -37,6 +37,30 @@ export type CanvasNodeImage = {
     mimeType: string;
 };
 
+export type InteriorWorkflowNodeRole =
+    | "floor-plan"
+    | "selected-region"
+    | "white-prompt"
+    | "white-result"
+    | "design-prompt"
+    | "design-result"
+    | "walkthrough-prompt"
+    | "walkthrough-video";
+
+export type InteriorWorkflowMetadata = {
+    workflowId: string;
+    role: InteriorWorkflowNodeRole;
+    roomType: string;
+    style: string;
+    requirements: string;
+    promptStage?: "white-model" | "design" | "walkthrough";
+    region?: { x: number; y: number; width: number; height: number };
+    promptTitle?: string;
+    promptSummary?: string;
+    negativePrompt?: string;
+    imageProvider?: "codex-imagegen";
+};
+
 export type CanvasNodeMetadata = {
     content?: string;
     composerContent?: string;
@@ -72,6 +96,7 @@ export type CanvasNodeMetadata = {
     durationMs?: number;
     groupId?: string;
     interactive?: boolean; // Plugin node interaction/move state; see CanvasNodeDefinition.interactionToggle.
+    interiorWorkflow?: InteriorWorkflowMetadata;
 };
 
 export type CanvasNodeData = {

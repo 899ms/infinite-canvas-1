@@ -20,7 +20,15 @@ type AssetExportItem = {
     bytes: number;
 };
 
-export async function exportAssets(assets: Asset[], filename: string) {
+export type AssetExportReceipt = {
+    fileName: string;
+    assetCount: number;
+    mediaFileCount: number;
+    bytes: number;
+    verified: true;
+};
+
+export async function buildAssetExportPackage(assets: Asset[]) {
     const files: AssetExportItem[] = [];
     const zipFiles: { name: string; data: BlobPart }[] = [];
 
@@ -39,14 +47,33 @@ export async function exportAssets(assets: Asset[], filename: string) {
 
     const data: AssetExportFile = { app: "infinite-canvas", version: 1, exportedAt: new Date().toISOString(), assets, files };
     const zip = await createZip([{ name: "assets.json", data: JSON.stringify(data, null, 2) }, ...zipFiles]);
-    saveAs(zip, filename);
+    const receipt = await inspectAssetExportPackage(zip);
+    return { zip, receipt };
 }
 
-export async function readAssetPackage(file: File) {
+export async function exportAssets(assets: Asset[]) {
+    const { zip, receipt } = await buildAssetExportPackage(assets);
+    saveAs(zip, receipt.fileName);
+    return receipt;
+}
+
+export async function inspectAssetExportPackage(file: Blob): Promise<AssetExportReceipt> {
     const zip = await readZip(file);
     const assetFile = zip.get("assets.json");
     if (!assetFile) throw new Error("missing assets.json");
     const data = JSON.parse(await assetFile.text()) as AssetExportFile;
+    if (data.app !== "infinite-canvas" || data.version !== 1 || !Array.isArray(data.assets) || !Array.isArray(data.files)) throw new Error("invalid asset package");
+    const missing = data.files.filter((item) => !zip.has(item.path));
+    if (missing.length) throw new Error(`asset package is missing ${missing.length} media file(s)`);
+    return { fileName: "我的资产.zip", assetCount: data.assets.length, mediaFileCount: data.files.length, bytes: file.size, verified: true };
+}
+
+export async function readAssetPackage(file: Blob) {
+    const zip = await readZip(file);
+    const assetFile = zip.get("assets.json");
+    if (!assetFile) throw new Error("missing assets.json");
+    const data = JSON.parse(await assetFile.text()) as AssetExportFile;
+    if (data.app !== "infinite-canvas" || data.version !== 1 || !Array.isArray(data.assets) || !Array.isArray(data.files)) throw new Error("invalid asset package");
     await Promise.all(
         data.files.map(async (item) => {
             const blob = zip.get(item.path);

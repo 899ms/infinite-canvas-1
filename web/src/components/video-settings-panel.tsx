@@ -63,7 +63,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 {item.label}
                             </OptionPill>
                         ))}
-                        <ResolutionInput value={resolution} theme={theme} onChange={(value) => onConfigChange("vquality", value)} />
+                        <ResolutionInput ariaLabel={t("settingsPanels.video.quality")} value={resolution} theme={theme} onChange={(value) => onConfigChange("vquality", value)} />
                     </div>
                 </SettingGroup>
                 <SettingGroup title={t("settingsPanels.video.size")} color={theme.node.muted}>
@@ -100,7 +100,7 @@ export function VideoSettingsPanel({ config, onConfigChange, theme, showTitle = 
                                 {value}s
                             </OptionPill>
                         ))}
-                        <NumberInput value={seconds} min={1} max={20} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} />
+                        <NumberInput ariaLabel={t("settingsPanels.video.seconds")} value={seconds} min={1} max={20} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} />
                     </div>
                 </SettingGroup>
             </div>
@@ -155,7 +155,7 @@ function SeedanceVideoSettingsPanel({ config, onConfigChange, theme, showTitle, 
                             </OptionPill>
                         ))}
                     </div>
-                    <NumberInput value={String(duration)} min={-1} max={15} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} />
+                    <NumberInput ariaLabel={t("settingsPanels.video.duration")} value={String(duration)} min={-1} max={15} theme={theme} onChange={(value) => onConfigChange("videoSeconds", value)} />
                 </SettingGroup>
                 <SettingGroup title={t("settingsPanels.video.output")} color={theme.node.muted}>
                     <div className="grid gap-2 rounded-xl border p-2.5" style={{ borderColor: theme.node.stroke }}>
@@ -217,10 +217,10 @@ function SettingGroup({ title, color, children }: { title: string; color: string
     );
 }
 
-function ResolutionInput({ value, theme, onChange }: { value: string; theme: CanvasTheme; onChange: (value: string) => void }) {
+function ResolutionInput({ ariaLabel, value, theme, onChange }: { ariaLabel: string; value: string; theme: CanvasTheme; onChange: (value: string) => void }) {
     return (
         <label className="flex h-9 overflow-hidden rounded-full border text-sm" style={{ borderColor: theme.node.stroke, color: theme.node.text }}>
-            <input type="number" min={1} className="min-w-0 flex-1 bg-transparent px-3 text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={value} onChange={(event) => onChange(event.target.value)} onMouseDown={(event) => event.stopPropagation()} />
+            <input aria-label={ariaLabel} type="number" min={1} className="min-w-0 flex-1 bg-transparent px-3 text-center outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={value} onChange={(event) => onChange(event.target.value)} onMouseDown={(event) => event.stopPropagation()} />
             <span className="grid w-7 place-items-center pr-1" style={{ color: theme.node.muted }}>
                 p
             </span>
@@ -234,13 +234,13 @@ function DimensionInput({ prefix, value, disabled, theme, onChange }: { prefix: 
             <span className="grid w-9 place-items-center" style={{ color: theme.node.muted }}>
                 {prefix}
             </span>
-            <input type="number" min={1} disabled={disabled} className="min-w-0 flex-1 bg-transparent px-2 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={value || ""} onChange={(event) => onChange(Number(event.target.value) || null)} onMouseDown={(event) => event.stopPropagation()} />
+            <input type="number" min={1} disabled={disabled} className="min-w-0 flex-1 bg-transparent px-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={value || ""} onChange={(event) => onChange(Number(event.target.value) || null)} onMouseDown={(event) => event.stopPropagation()} />
         </label>
     );
 }
 
-function NumberInput({ value, min, max, theme, onChange }: { value: string; min: number; max: number; theme: CanvasTheme; onChange: (value: string) => void }) {
-    return <input type="number" min={min} max={max} className="h-9 rounded-full border bg-transparent px-3 text-center text-sm outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" style={{ borderColor: theme.node.stroke, color: theme.node.text, WebkitTextFillColor: theme.node.text }} value={value} onChange={(event) => onChange(event.target.value)} onMouseDown={(event) => event.stopPropagation()} />;
+function NumberInput({ ariaLabel, value, min, max, theme, onChange }: { ariaLabel: string; value: string; min: number; max: number; theme: CanvasTheme; onChange: (value: string) => void }) {
+    return <input aria-label={ariaLabel} type="number" min={min} max={max} className="h-9 rounded-full border bg-transparent px-3 text-center text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-color-focus)] focus-visible:ring-offset-2 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" style={{ borderColor: theme.node.stroke, color: theme.node.text, WebkitTextFillColor: theme.node.text }} value={value} onChange={(event) => onChange(event.target.value)} onMouseDown={(event) => event.stopPropagation()} />;
 }
 
 function SizePreview({ width, height, color }: { width: number; height: number; color: string }) {
@@ -268,7 +268,7 @@ function SwitchRow({ label, checked, theme, onChange }: { label: string; checked
                 {label}
             </span>
             <span onMouseDown={(event) => event.stopPropagation()}>
-                <Switch size="small" checked={checked} onChange={onChange} />
+                <Switch aria-label={label} size="small" checked={checked} onChange={onChange} />
             </span>
         </div>
     );

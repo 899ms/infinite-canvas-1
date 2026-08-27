@@ -1,0 +1,76 @@
+@import "./tokens.css";
+
+/*
+ * Tailwind CSS v4 adapter.
+ * Import this file after Tailwind so these variables generate utility classes.
+ */
+@theme inline {
+  --font-sans: var(--ds-font-sans);
+  --font-mono: var(--ds-font-mono);
+
+  --color-background: var(--ds-color-background-canvas);
+  --color-foreground: var(--ds-color-text-primary);
+  --color-card: var(--ds-color-background-surface);
+  --color-card-foreground: var(--ds-color-text-primary);
+  --color-popover: var(--ds-color-background-surface);
+  --color-popover-foreground: var(--ds-color-text-primary);
+  --color-primary: var(--ds-color-action-primary);
+  --color-primary-foreground: var(--ds-color-action-on-primary);
+  --color-secondary: var(--ds-color-action-secondary);
+  --color-secondary-foreground: var(--ds-color-action-on-secondary);
+  --color-muted: var(--ds-color-background-subtle);
+  --color-muted-foreground: var(--ds-color-text-secondary);
+  --color-accent: var(--ds-color-background-subtle);
+  --color-accent-foreground: var(--ds-color-text-primary);
+  --color-destructive: var(--ds-color-text-danger);
+  --color-border: var(--ds-color-border-default);
+  --color-input: var(--ds-color-border-default);
+  --color-ring: var(--ds-color-focus);
+
+  --color-feedback-reinforce: var(--ds-feedback-reinforce-foreground);
+  --color-feedback-reinforce-surface: var(--ds-feedback-reinforce-surface);
+  --color-feedback-variant: var(--ds-feedback-variant-foreground);
+  --color-feedback-variant-surface: var(--ds-feedback-variant-surface);
+  --color-feedback-downweight: var(--ds-feedback-downweight-foreground);
+  --color-feedback-downweight-surface: var(--ds-feedback-downweight-surface);
+  --color-feedback-delete: var(--ds-feedback-delete-foreground);
+  --color-feedback-delete-surface: var(--ds-feedback-delete-surface);
+
+  --spacing-ds-half: var(--ds-space-half);
+  --spacing-ds-1: var(--ds-space-1);
+  --spacing-ds-1-5: var(--ds-space-1-5);
+  --spacing-ds-2: var(--ds-space-2);
+  --spacing-ds-2-5: var(--ds-space-2-5);
+  --spacing-ds-3: var(--ds-space-3);
+  --spacing-ds-3-5: var(--ds-space-3-5);
+  --spacing-ds-4: var(--ds-space-4);
+  --spacing-ds-4-5: var(--ds-space-4-5);
+  --spacing-ds-6: var(--ds-space-6);
+  --spacing-ds-8: var(--ds-space-8);
+  --spacing-ds-12: var(--ds-space-12);
+
+  --radius-sm: var(--ds-radius-small);
+  --radius-md: var(--ds-radius-medium);
+  --radius-lg: var(--ds-radius-large);
+  --radius-xl: var(--ds-radius-x-large);
+  --radius-2xl: var(--ds-radius-2x-large);
+  --radius-full: var(--ds-radius-full);
+
+  --text-overline: var(--ds-font-size-overline);
+  --text-overline--line-height: var(--ds-line-height-caption);
+  --text-caption: var(--ds-font-size-caption);
+  --text-caption--line-height: var(--ds-line-height-caption);
+  --text-body: var(--ds-font-size-body);
+  --text-body--line-height: var(--ds-line-height-body);
+  --text-section: var(--ds-font-size-section);
+  --text-section--line-height: var(--ds-line-height-heading);
+  --text-title: var(--ds-font-size-title);
+  --text-title--line-height: var(--ds-line-height-heading);
+  --text-display: var(--ds-font-size-display);
+  --text-display--line-height: var(--ds-line-height-compact);
+
+  --shadow-card: var(--ds-shadow-card);
+  --shadow-floating: var(--ds-shadow-floating);
+  --shadow-dialog: var(--ds-shadow-dialog);
+  --shadow-focus: var(--ds-shadow-focus);
+}

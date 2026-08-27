@@ -101,7 +101,7 @@ export function ConfigPromptSources() {
                     const status = statusQuery.data?.[source.id];
                     return (
                         <div key={source.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-stone-200 px-4 py-3 dark:border-stone-800">
-                            <Switch size="small" checked={source.enabled} onChange={(checked) => { toggleSource(source.id, checked); void invalidatePrompts(); }} />
+                            <Switch aria-label={`${source.name} · ${t("config.promptSources.editor.enabled")}`} size="small" checked={source.enabled} onChange={(checked) => { toggleSource(source.id, checked); void invalidatePrompts(); }} />
                             <div className="min-w-[220px] flex-1">
                                 <div className="flex min-w-0 items-center gap-2">
                                     <span className="truncate text-sm font-semibold">{source.name}</span>
