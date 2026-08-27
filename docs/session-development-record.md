@@ -152,3 +152,14 @@
 | `docs/session-development-record.md` | 修改 | 记录基于当前实现核验得到的边界，避免把 CSP 计划误写成已实施的 CSP。 |
 
 文档事实依据：Agent URL/Token 显式连接后进入 `localStorage`，标签页身份进入 `sessionStorage`；一次性 `baseUrl`/`apiKey` 参数读取后通过 `history.replaceState` 从 URL 移除；第三方插件按可读取当前页面本地数据的高信任代码处理。该文档不改变浏览器存储模型，也不声称 CSP 已实施。
+
+## 12. 阶段 D 外部 Prompt URL 边界（2026-08-28）
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/services/api/prompt-image-url.ts` | 修改 | 对不可信 Prompt 图片 URL 仅允许 HTTP(S)、blob 与 PNG/JPEG/WebP/GIF 的 base64 Data URL；新增仅允许 HTTP(S) 的来源详情链接清理器，继续保留既有不可加载缩略图黑名单。 |
+| `web/src/services/api/prompt-source-runtime.ts` | 修改 | 将外部记录的 `sourceUrl` 写入运行时对象前经过 HTTP(S) 清理，避免来源详情把 `javascript:`、`file:` 等协议交给 UI 链接。 |
+| `web/src/services/api/prompt-image-url.test.ts` | 修改 | 新增对 `javascript:`、`file:`、非图片 Data URL、SVG Data URL 与来源链接协议的回归；允许既有安全位图 Data URL、blob 和有效 HTTPS 图片。 |
+| `docs/session-development-record.md` | 修改 | 记录协议、来源与失败降级边界及质量结果。 |
+
+验证记录：先新增协议断言，确认当前实现会返回 `javascript:alert(1)` 且缺少来源链接清理函数；实现后聚焦测试 6 项通过，`npm run typecheck` 通过，完整 `npm test` 为 15 个文件/49 项通过，`npm run build` 通过。该切片不把浏览器 Prompt URL 政策外推为全部外部内容审计，CSP 与来源抓取网络策略仍需后续阶段 D 工作。

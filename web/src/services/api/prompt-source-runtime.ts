@@ -1,5 +1,5 @@
 import i18n from "@/i18n";
-import { sanitizePromptImageUrl, sanitizePromptImageUrls } from "./prompt-image-url";
+import { sanitizePromptExternalUrl, sanitizePromptImageUrl, sanitizePromptImageUrls } from "./prompt-image-url";
 import type { PromptSource } from "./prompt-source-presets";
 
 export type RawPrompt = {
@@ -74,7 +74,7 @@ function normalizeItems(values: unknown[], source: PromptSource) {
             createdAt: stringValue(record.createdAt),
             updatedAt: stringValue(record.updatedAt),
             author: stringValue(record.author),
-            sourceUrl: absoluteUrl(source.url, stringValue(record.sourceUrl)),
+            sourceUrl: sanitizePromptExternalUrl(absoluteUrl(source.url, stringValue(record.sourceUrl))),
             imageMode: optionalString(record.imageMode),
             imageModel: optionalString(record.imageModel),
             imageSize: optionalString(record.imageSize),
