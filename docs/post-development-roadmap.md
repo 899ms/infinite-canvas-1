@@ -173,6 +173,6 @@
 - 当前后续任务：[英文入口](content/docs/progress/todo.mdx) / [中文入口](content/docs/progress/todo.zh-CN.mdx)
 - 待测试主清单：[中文主清单](content/docs/progress/pending-test.zh-CN.mdx)
 - 待测试英文摘要：[英文摘要](content/docs/progress/pending-test.mdx)
+- 当前状态与证据：[95 项状态矩阵](frameflow-acceptance-matrix-2026-08-28.md)
 - 本轮审查记录：[审查与文件关联记录](session-development-record.md)
 - 架构决策：[ADR 目录](adr/)
-

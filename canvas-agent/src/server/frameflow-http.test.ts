@@ -6,6 +6,7 @@ import path from "node:path";
 import test from "node:test";
 
 import express from "express";
+import sharp from "sharp";
 
 import { FrameFlowCore } from "../frameflow/core.js";
 import { createFrameFlowRouter } from "./frameflow-http.js";
@@ -264,7 +265,130 @@ test("FrameFlow HTTP 归档查询默认隔离后代并可恢复 Requirement", as
     assert.equal(active.body.data.autoRuns[0].requirementArchived, false);
 });
 
+test("FrameFlow HTTP 隔离夹具覆盖停止、恢复、反馈、血缘与 Requirement 归档闭环", async (context) => {
+    const workspace = await fs.mkdtemp(path.join(os.tmpdir(), "frameflow-http-e2e-"));
+    context.after(() => fs.rm(workspace, { recursive: true, force: true }));
+    const generatedFiles = await Promise.all(["first.png", "second.png"].map(async (name, index) => {
+        const file = path.join(workspace, name);
+        await sharp({ create: { width: 8, height: 8, channels: 3, background: index === 0 ? { r: 220, g: 210, b: 200 } : { r: 190, g: 200, b: 210 } } }).png().toFile(file);
+        return file;
+    }));
+    let releaseGeneration!: () => void;
+    const generationGate = new Promise<void>((resolve) => { releaseGeneration = resolve; });
+    const core = new FrameFlowCore(workspace, {
+        planner: { plan: async () => ({
+            fields: {
+                subject: ["editorial chair"], composition: ["single subject"], color: ["warm gray"], lighting: ["window light"],
+                material: ["linen"], layout: ["centered"], mood: ["quiet"], rendering: ["photorealistic"], technical: ["4:5"], negative: ["text"],
+            },
+            compiledPrompt: "A quiet editorial chair photograph.",
+            reason: "以自由探索方向建立首轮基线。",
+        }) },
+        imageGenerator: { generate: async () => {
+            await generationGate;
+            return generatedFiles;
+        } },
+        imageReviewer: { review: async ({ images }) => images.map((image, index) => ({
+            imageId: image.imageId,
+            rating: index === 0 ? 5 as const : 2 as const,
+            comment: index === 0 ? "主体与构图均符合方向。" : "保留方向，但需要降低干扰。",
+            decision: index === 0 ? "keep" as const : "vary" as const,
+            strengths: ["主体明确"],
+            issues: index === 0 ? [] : ["减少背景噪点"],
+        })) },
+    });
+    const app = express();
+    app.use(express.json());
+    app.use("/agent/frameflow", createFrameFlowRouter(core));
+    const server = http.createServer(app);
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    context.after(() => new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve())));
+    const address = server.address();
+    assert(address && typeof address === "object");
+    const baseUrl = `http://127.0.0.1:${address.port}/agent/frameflow`;
+
+    const brief = await post(`${baseUrl}/commands`, {
+        type: "brief.create",
+        input: {
+            subject: "自由方向：安静的室内椅子", purpose: "隔离验收", style: "编辑摄影", scene: "自然窗光", aspectRatio: "4:5",
+            constraints: { keep: ["单一主体"], avoid: ["文字"] }, referenceImageIds: [], strategy: "balanced",
+        },
+        idempotencyKey: "http-e2e-brief",
+    });
+    const briefId = brief.body.data.resource.id;
+    const autoRun = await post(`${baseUrl}/commands`, {
+        type: "auto_run.create",
+        input: { name: "隔离闭环", briefId, count: 2, maxIterations: 1 },
+        idempotencyKey: "http-e2e-auto-run",
+    });
+    const autoRunId = autoRun.body.data.resource.id;
+
+    const started = await fetch(`${baseUrl}/auto-runs/${autoRunId}/start`, { method: "POST" });
+    assert.equal(started.status, 200);
+    const run = await waitForQuery(baseUrl, { type: "run.list", limit: 20 }, (data) => data.runs.length === 1);
+    const runId = run.runs[0].id;
+
+    const stopped = await post(`${baseUrl}/commands`, { type: "auto_run.stop", autoRunId, idempotencyKey: "http-e2e-stop" });
+    assert.equal(stopped.response.status, 200);
+    assert.equal((await post(`${baseUrl}/query`, { type: "auto_run.list", limit: 20 })).body.data.autoRuns[0].state, "paused");
+
+    // Stopping the auto-run does not discard an already-started ImageGen call. Its late result is recorded and reviewed,
+    // while the task remains paused until the user explicitly resumes it.
+    releaseGeneration();
+    const completedRun = await waitForQuery(baseUrl, { type: "run.detail", runId }, (data) => data.run.status === "succeeded");
+    assert.equal(completedRun.run.imageIds.length, 2);
+    const reviewed = await waitForQuery(baseUrl, { type: "review.queue", limit: 20 }, (data) => data.items.length === 2 && data.items.every((item: { machineReview?: unknown }) => item.machineReview));
+    assert.ok(reviewed.items.every((item: { image: { runId: string } }) => item.image.runId === runId));
+    assert.equal((await post(`${baseUrl}/query`, { type: "auto_run.list", limit: 20 })).body.data.autoRuns[0].state, "paused");
+
+    const resumed = await fetch(`${baseUrl}/auto-runs/${autoRunId}/start`, { method: "POST" });
+    assert.equal(resumed.status, 200);
+    const completedAutoRun = await waitForQuery(baseUrl, { type: "auto_run.list", limit: 20 }, (data) => data.autoRuns[0]?.state === "completed");
+    assert.equal(completedAutoRun.autoRuns[0].currentRunId, runId);
+
+    const [preferred, discarded] = reviewed.items.map((item: { image: { id: string } }) => item.image.id);
+    await post(`${baseUrl}/commands`, { type: "feedback.append", imageId: preferred, feedback: { kind: "rating", rating: 5 }, idempotencyKey: "http-e2e-rating" });
+    await post(`${baseUrl}/commands`, { type: "feedback.append", imageId: preferred, feedback: { kind: "comment", comment: "保留椅子的留白和自然光。" }, idempotencyKey: "http-e2e-comment" });
+    await post(`${baseUrl}/commands`, { type: "feedback.append", imageId: preferred, feedback: { kind: "soft_delete", reason: "aesthetic_dislike" }, idempotencyKey: "http-e2e-hide" });
+    let preference = await post(`${baseUrl}/query`, { type: "preference.dna", briefId });
+    assert.deepEqual(preference.body.data.avoid.map((item: { imageId: string; weight: number }) => ({ imageId: item.imageId, weight: item.weight })), [{ imageId: preferred, weight: -4 }]);
+    await post(`${baseUrl}/commands`, { type: "feedback.append", imageId: preferred, feedback: { kind: "restore" }, idempotencyKey: "http-e2e-restore-image" });
+    preference = await post(`${baseUrl}/query`, { type: "preference.dna", briefId });
+    assert.deepEqual(preference.body.data.boost.map((item: { imageId: string; weight: number }) => ({ imageId: item.imageId, weight: item.weight })), [{ imageId: preferred, weight: 3 }]);
+    await post(`${baseUrl}/commands`, { type: "feedback.append", imageId: discarded, feedback: { kind: "rating", rating: 1 }, idempotencyKey: "http-e2e-low-rating" });
+    await post(`${baseUrl}/commands`, { type: "image.delete", imageId: discarded, idempotencyKey: "http-e2e-delete-without-learning" });
+    preference = await post(`${baseUrl}/query`, { type: "preference.dna", briefId });
+    assert.equal(preference.body.data.avoid.some((item: { imageId: string }) => item.imageId === discarded), false);
+
+    const trajectory = await post(`${baseUrl}/query`, { type: "auto_run.trajectory", autoRunId });
+    assert.equal(trajectory.body.data.brief.id, briefId);
+    assert.deepEqual(trajectory.body.data.rounds[0].run.imageIds.sort(), [preferred, discarded].sort());
+    assert.ok(trajectory.body.data.rounds[0].images.every((item: { machineReview?: { runId: string } }) => item.machineReview?.runId === runId));
+
+    const archived = await post(`${baseUrl}/commands`, { type: "brief.archive", briefId, idempotencyKey: "http-e2e-archive" });
+    assert.equal(archived.response.status, 200);
+    assert.deepEqual((await post(`${baseUrl}/query`, { type: "auto_run.list", limit: 20 })).body.data.autoRuns, []);
+    const archivedRuns = await post(`${baseUrl}/query`, { type: "auto_run.list", limit: 20, includeArchived: true });
+    assert.equal(archivedRuns.body.data.autoRuns[0].id, autoRunId);
+    assert.equal(archivedRuns.body.data.autoRuns[0].requirementArchived, true);
+    await post(`${baseUrl}/commands`, { type: "brief.restore", briefId, idempotencyKey: "http-e2e-restore-requirement" });
+    const restoredRuns = await post(`${baseUrl}/query`, { type: "auto_run.list", limit: 20 });
+    assert.equal(restoredRuns.body.data.autoRuns[0].id, autoRunId);
+    assert.equal(restoredRuns.body.data.autoRuns[0].requirementArchived, false);
+});
+
 async function post(url: string, body: unknown) {
     const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     return { response, body: await response.json() as Record<string, any> };
+}
+
+async function waitForQuery(baseUrl: string, query: unknown, matches: (data: any) => boolean, timeoutMs = 2_000) {
+    const deadline = Date.now() + timeoutMs;
+    let result = await post(`${baseUrl}/query`, query);
+    while (!matches(result.body.data)) {
+        if (Date.now() >= deadline) throw new Error(`等待 FrameFlow 验收夹具状态超时：${JSON.stringify(query)}`);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        result = await post(`${baseUrl}/query`, query);
+    }
+    return result.body.data;
 }
