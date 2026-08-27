@@ -175,3 +175,17 @@
 | `docs/session-development-record.md` | 修改 | 记录事件契约、向后兼容约束和验证结果。 |
 
 验证记录：先新增事件历史断言，原实现返回 `undefined`，证明停止原因尚未记录；补齐 Auto Run 的用户停止后，继续以 Run 的用户取消断言复现同一缺口。现在聚焦两条取消回归、Canvas Agent 构建和完整 `npm test` 172 项均通过。历史 journal 仍可无原因回放；新写入会区分 `user_requested` 与 `agent_restart`。此切片补的是可恢复事实语义；生成失败、机器审图、轮次、批次和隔离结果已有独立事件，未将其伪装成单一通用遥测流。
+
+## 14. 阶段 C FrameFlow 请求构建器解耦（2026-08-28）
+
+本切片只从 Codex 编排层迁出无副作用的 FrameFlow 请求文本构建；不修改线程启动、结构化输出 schema、Provider 调用、文件附件或既有 Prompt 文本。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/agent/codex-frameflow-requests.ts` | 新增 | 独立承载 FrameFlow 的规划、中文翻译、ImageGen、机器审图和跨轮总结请求文本，以及它们的输入类型；模块只依赖领域类型，不启动 Codex 进程。 |
+| `canvas-agent/src/agent/codex.ts` | 修改 | 保留线程、Provider、结构化输出校验和资源清理职责，改为调用独立构建器，并继续导出相同的 FrameFlow 输入类型以保持调用方契约。 |
+| `canvas-agent/src/agent/codex-frameflow-requests.test.ts` | 新增 | 直接验证五类请求保留策略、人工偏好证据、逐图映射、目标画幅、参考图和跨轮真实 iteration 等关键约束。 |
+| `canvas-agent/package.json` | 修改 | 将新纯模块测试加入正式 Canvas Agent 测试命令。 |
+| `docs/session-development-record.md` | 修改 | 记录职责边界、测试先行过程、文件关联和验证结果。 |
+
+验证记录：先让新测试直接导入尚不存在的纯模块，得到预期 `ERR_MODULE_NOT_FOUND`；迁移后，首次断言错误地把系统指令当成请求文本，已改为只断言构建器本来负责的内容。聚焦测试、`npm run build` 和完整 `npm test` 173 项均通过。该切片不声称外部 Codex Provider 已人工验收；它只证明请求文本在本地纯函数与既有 Agent 测试组合中保持一致。
