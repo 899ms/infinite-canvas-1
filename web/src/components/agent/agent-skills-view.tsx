@@ -369,6 +369,7 @@ export function AgentSkillsView({ clientId }: { clientId: string }) {
                 confirmLoading={saving}
                 width={680}
                 centered
+                forceRender
                 destroyOnHidden
                 styles={{ body: { maxHeight: "calc(100vh - 220px)", overflowY: "auto" } }}
                 onCancel={() => {

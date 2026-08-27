@@ -584,3 +584,18 @@
 | `docs/session-development-record.md` | 修改 | 记录标题修复、浏览器实测值和未覆盖的 Agent 连接边界。 |
 
 验证记录：隔离 Vite `127.0.0.1:4173` 下，首页 `h1` 实测为 52px、700、56.16px 行高；资产、图像工作台、视频工作台、画布库和配置页 `h1` 均为 32px、700。切换浅色主题后，资产标题仍为 32px、700，根节点为 `data-ds-theme=light`。空资产库仍明确显示“新增资产”按钮。点击“打开 Agent”可展开面板，页面实际暴露对话、历史、技能、日志标签及连接设置；在未建立隔离 Agent 连接的前提下，不声称覆盖已有连接、对话、历史和日志的保留语义。结束时关闭 Playwright 和临时 Vite，3000（PID 37996）及 17371（PID 42544）未受影响；未执行外部生成、未写入用户资产且不涉及 Docker/容器部署。
+
+## 43. 配置、生成与画布控件的可访问性及按需加载验收（2026-08-28）
+
+本切片关闭中文主清单第 04 项。所有交互位于独立 Playwright browser origin 和本轮临时 Vite `127.0.0.1:4173`；没有连接 Agent、读取 Token、导入用户资产或访问用户正在运行的 3000/17371 服务。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/pages/image/index.tsx`、`web/src/pages/video/index.tsx` | 既有实现（未修改） | 提供具名的对齐、透明背景、清晰度、时长和数量控件；本节通过真实浏览器确认其可访问名称、状态与键盘切换。 |
+| `web/src/pages/config/index.tsx`、`web/src/components/layout/channel-editor-drawer.tsx`、`web/src/components/layout/model-script-editor.tsx` | 既有实现（未修改） | 配置页首访按需加载渠道编辑器和脚本编辑器；点击“编辑”及“调用脚本”后分别显示对应界面。 |
+| `web/src/components/canvas/canvas-toolbar.tsx`、`web/src/components/canvas/canvas-appearance.tsx` | 既有实现（未修改） | 提供具名画布外观开关与节点插件入口；焦点上的 Space 不被画布平移快捷键抢占。 |
+| `web/src/components/agent/agent-skills-view.tsx` | 修改 | 为 Skill 创建对话框增加 `forceRender`，使 `Form.useForm` 在未连接 Agent 时已有挂载的表单容器，消除打开“技能”标签产生的 Ant Design 表单警告，且不改变连接或 Skill 操作语义。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 04 项记为“人工通过”，并同步未验证项总数为 85。 |
+| `docs/session-development-record.md` | 修改 | 记录本次交互、修复、端口保护和证据边界，满足对话级可追溯要求。 |
+
+验证记录：配置页首访的网络请求中没有 `channel-editor-drawer.tsx` 或 `model-script-editor.tsx`；点击“编辑”后显示“编辑渠道”对话框，点击“调用脚本”后显示模型脚本编辑器。隔离浏览器依次确认：生图页的“16 倍数对齐”和“透明背景”开关、视频页的“清晰度”和“秒数”数值控件、提示词来源的具名来源开关、画布外观的“图片信息”开关、节点插件入口，以及 Agent 面板的“对话/历史/技能/日志”标签均有清晰的可访问名称或状态。对已获得焦点的“16 倍数对齐”、提示词来源和“图片信息”按 Space 均实际切换自身状态；画布开关可从已选中切换为未选中，未触发画布平移。未连接的 Agent “技能”标签按产品预期显示“连接 Agent 后查看 Skill”并禁用操作；修复后以全新浏览器会话重复打开该标签，控制台为 0 errors、0 warnings，之前的 `useForm` 未连接表单警告不再出现。结束时精确关闭浏览器会话与监听 4173 的临时 Vite，复核 3000（PID 37996）和 17371（PID 42544）仍在监听；不涉及真实 Agent、外部生成或 Docker/容器部署。
