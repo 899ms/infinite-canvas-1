@@ -894,3 +894,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本次文件关系、隔离浏览器证据与未覆盖边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：原顶部栏在窄容器下隐藏文字“Agent”，标签栏使用 `overflow-hidden`，会把超出空间直接裁剪。现在标题在 360px 面板保持可见，四个标签仍属于可横向滚动的 `tablist`；连接设置、新对话和收起按钮均与标题/标签保持同一垂直中心。全量 Web 单测 51 项、TypeScript、生产构建、Chromium 浏览器回归 45 项，以及文档内容检查和生产构建均通过。格式门禁中，本切片新增用例已格式化；其余 7 个超出历史基线项为既有 `.playwright-cli` 记录、两个此前 Agent 用例和 CSP 脚本，未在本切片改动。该证据只覆盖隔离 Chromium、最小面板宽度和可访问名称，不外推为真实 Canvas Agent 连接、所有浏览器引擎或真实生图调用验收。
+
+## 69. Agent 工具确认模式隔离 SSE 回归（2026-08-28）
+
+本切片关闭中文主清单第 34 项。测试在页面加载前替换浏览器 `EventSource` 为内存实现，仍由 `LocalAgentPanel` 的真实 `hello`、`tool_call` 监听和工具处理函数消费事件；结果接口使用 Vite 临时 4173 路由夹具，不连接真实 17371、3000、用户资产、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-tool-confirmation.spec.ts` | 新增 | 以 `canvas_apply_ops` 的真实前端事件路径验证默认自动确认立即调用 `canvasContext.applyOps` 并向 `/canvas/result` 回传；切换手动确认后验证等待确认卡片、拒绝操作和取消结果回传。 |
+| `web/src/components/agent/agent-chat-composer.tsx`、`web/src/components/agent/local-agent-panel.tsx` | 既有实现（未修改） | 前者在输入框左下角提供确认模式菜单，后者按模式拦截画布写入工具或立即执行，并回传 Canvas Agent 结果。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 34 项标为“自动化通过”，同步自动化通过 23 项、未验证 65 项与浏览器 47 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录 SSE 夹具、真实事件路径、结果回传和隔离边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：默认模式的可访问名称为“选择工具确认模式，当前为 自动确认”，模拟 `tool_call(canvas_apply_ops)` 后获得一次带 Canvas 快照的 `/canvas/result` 回传，页面不出现等待确认卡片。打开菜单选择“手动确认”后，输入框模式立即更新，后续同一工具调用显示“等待确认”及“拒绝执行”；拒绝后回传 `requestId=tool-manual` 与“用户取消了画布工具调用”，卡片消失。初版网络 SSE 路由使用了错误的 `/agent/**` 前缀，后改为加载前内存 EventSource，使测试覆盖真实前端监听器而不受开发服务器 SSE 生命周期影响；结果接口实际为 `/canvas/result`，不是 `/agent/codex/tool-result`。全量 Web 单测 51 项、TypeScript、生产构建、Chromium 浏览器 47 项以及文档内容检查和生产构建均通过；格式门禁只剩此前已存在的 7 项 `.playwright-cli` 记录、两个 Agent 用例和 CSP 脚本，本切片新用例已格式化。该证据不外推为真实 Agent 服务、复杂 Canvas 变更、批准后执行或跨浏览器验收。
