@@ -1205,3 +1205,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：初始参考图区显示“暂无参考图，可将图片拖到这里”。内存 PNG 拖入后边框变为高亮并显示“松开即可添加参考图”；随后一次 drop 两张 PNG 和一份 `text/plain`，页面显示“参考一.png”“参考二.png”缩略图，未显示“忽略.txt”，高亮状态移除。该证据不外推为操作系统文件拖放、超大图片、剪贴板输入、网络图片解码或跨浏览器行为。
+
+## 92. 视频创作台参考资产拖放（2026-08-28）
+
+本切片关闭中文主清单第 54 项。Chromium 使用 Playwright 自管的隔离 Vite 4173；所有文件均由浏览器内存 `DataTransfer` 构造，不读取用户文件、真实 3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/video-reference-drop.spec.ts` | 新增 | 在真实视频创作台验证从任一参考区混合投放后，图片、MP4/MOV 与 WAV 自动进入各自列表，文本忽略，当前区高亮并在 drop 后复位，以及视频 3 个数量上限。 |
+| `web/src/pages/video/index.tsx`、`web/src/lib/seedance-video.ts` | 既有实现（未修改） | `addReferences` 按类型和大小分流并截断到图片 9、视频 3、音频 3；拖放区阻止默认导航并维护当前目标高亮。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 54 项更新为“自动化通过”，同步浏览器 61 项与未验证 45 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：先向“参考视频”区域拖入内存 MP4，边框高亮并显示“松开即可上传参考资产”。随后一次 drop PNG、4 个 MP4/MOV、WAV 和 `text/plain`：图片缩略图出现在参考图区，视频区只出现 3 个视频元素，音频区出现 WAV 文件名，文本没有渲染，视频区高亮解除。该证据不外推为真实媒体可解码性、文件大小/时长边界的操作系统文件拖放、剪贴板输入、跨浏览器或外部生成服务行为。
