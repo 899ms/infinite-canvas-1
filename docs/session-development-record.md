@@ -1098,3 +1098,17 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：历史列表中“第二段对话”整张卡片可直接点击恢复，恢复后自动回到“对话”页并显示该线程的历史消息，页面没有额外“进入”按钮。返回历史后勾选全选框显示“已选 2 条”；确认删除后两个归档接口均被调用，列表显示“当前工作空间还没有对话记录”，store 的 `activeThreadId` 为空、`messages` 为零。夹具按真实服务端的单调会话 revision 模拟恢复与删除，避免把过期响应误判为前端状态问题。该证据不外推为真实 Codex 归档延迟、真实附件文件删除、跨浏览器或删除失败恢复验收。
+
+## 84. Agent 默认新对话（2026-08-28）
+
+本切片关闭中文主清单第 47 项。Chromium 使用 Vite 临时 4173、真实右侧 `LocalAgentPanel`、内存 EventSource 和受控 Agent HTTP 接口；不会连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-default-new-thread.spec.ts` | 新增 | 验证连接后的空会话输入可编辑、不会请求 reset 或自动显示旧历史，并确认首条发送以空 `threadId` 提交。 |
+| `web/src/components/agent/local-agent-panel.tsx` | 修改 | 空闲会话成为可发送状态；连接 hello 不再自动重置/预建线程；服务端尚未返回真实线程 ID 时保留首发等待流式事件绑定。 |
+| `canvas-agent/src/server/http.ts` | 修改 | 删除连接/新对话/恢复失败时的预热持久线程创建；仅允许空闲空会话的首条 turn 交给 `runCodexTurn` 懒创建线程，实际线程 ID 到达后再切换会话。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 47 项更新为“自动化通过”，同步浏览器 58 项与未验证 52 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的实现、隔离范围和证据边界，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：连接空闲 Agent 后，对话区不自动恢复“旧对话”历史，且不会向 `/agent/codex/threads/reset` 发请求；输入框可直接输入“第一条消息才建线程”，发送请求的 `threadId` 为空。服务端只接受这种 `idle + 空 threadId` 组合进入首次 turn，`runCodexTurn` 随后创建真实 Codex 线程并经事件切换会话，因此连接和未发送的新对话不产生持久历史记录。该证据不外推为真实 Codex App Server 的线程创建延迟、真实历史存储、断线重连或跨浏览器行为验收。

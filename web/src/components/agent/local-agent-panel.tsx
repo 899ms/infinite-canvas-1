@@ -163,7 +163,7 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
         })),
     );
     const setAgentState = useAgentStore((state) => state.setAgentState);
-    const conversationReady = conversation.status === "ready" || conversation.status === "warning";
+    const conversationReady = conversation.status === "idle" || conversation.status === "ready" || conversation.status === "warning";
     const conversationBusy = conversation.status === "preparing" || conversation.status === "running";
     const closePanel = useAgentStore((state) => state.closePanel);
     const pushMessage = useAgentStore((state) => state.addMessage);
@@ -398,15 +398,6 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
             if (!headless) message.success(rt("localAgentConnected"));
             void postState(endpoint, token, clientId, canvasContextRef.current?.snapshot || null);
             if (document.visibilityState === "visible" && document.hasFocus()) void activateAgentClient(endpoint, token, clientId);
-            if (!busy && !nextThreadId && (!hello?.conversation || hello.conversation.status === "idle")) {
-                void fetchAgentJson<AgentWorkspaceResponse>(endpoint, token, "/agent/codex/threads/reset", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ clientId, permissionMode }) })
-                    .then((result) => result.conversation && applyConversationState(result.conversation))
-                    .catch((error) => {
-                        const state = agentErrorState(error);
-                        if (state) applyConversationState(state);
-                        addEventLog(rt("conversationInitFailed"), error);
-                    });
-            }
         });
         source.addEventListener("codex_state", (event) => {
             const data = parseEventData<AgentCodexState>(event);
@@ -635,7 +626,7 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
             message.warning(rt(canvasReferences.length ? "someCanvasReferencesMissing" : "canvasReferencesMissing"));
         }
         const requestPrompt = promptWithCanvasReferences(promptWithAttachments(text, files), canvasReferences);
-        if (!currentState.connected || !requestPrompt || currentState.sending || currentState.waiting || currentState.loadingThreads || !["ready", "warning"].includes(currentState.conversation.status)) return;
+        if (!currentState.connected || !requestPrompt || currentState.sending || currentState.waiting || currentState.loadingThreads || !["idle", "ready", "warning"].includes(currentState.conversation.status)) return;
         let referenceImages: AgentAttachment[] = [];
         if (canvasReferences.some((item) => item.kind === "image")) {
             setAgentState({ sending: true, activity: rt("readingCanvasImages") });
@@ -701,7 +692,6 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
                 }),
             });
             threadId = accepted.threadId || threadId;
-            if (!threadId) throw new Error(rt("startConversationFailed"));
             if (selectedSkill) clearSkillSelection(selectedSkillRevision);
             files.forEach((item) => {
                 URL.revokeObjectURL(item.url);
@@ -1394,7 +1384,7 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
                         attachments={attachments.map((attachment) => agentAttachmentToChatAttachment(attachment, endpoint, token))}
                         disabled={!connected || !conversationReady || loadingThreads}
                         sending={sending || waiting}
-                        placeholder={conversation.status === "idle" || conversation.status === "preparing"
+                        placeholder={conversation.status === "preparing"
                             ? t("agent.panel.mcpInitializing")
                             : conversation.status === "failed"
                                 ? t("agent.panel.initFailed")
