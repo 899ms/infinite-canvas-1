@@ -752,3 +752,12 @@
 | `docs/session-development-record.md` | 修改 | 保留本次验证路径、失败定位及边界，满足 `AGENTS.md` 的记录要求。 |
 
 验证记录：该用例以两个 Auto Run（最新和旧任务）及对应的 Run/Review 夹具运行。先直达 `/frameflow?view=lineage`，页面将 URL 写为 `autoRunId=auto-run-new&runId=run-new`，且只显示“最新探索”；再直达 `/frameflow?view=review`，URL 同样保持最新任务且只显示最新图片。最后直达全部范围并刷新，`autoRunId=all` 不被默认选择逻辑回写，旧任务批次仍可见。一次尝试以键盘模拟 Ant Select 的切换未可靠触发选项提交，故不把这部分外推为下拉主动切换已验收；第 02 项继续保持“未验证”。所有数据为 Vite 4173 的内存路由夹具，不访问真实 Agent、用户资产、3000/17371、外部 Provider 或 Docker。
+
+## 58. 浏览器回归基线计数同步（2026-08-28）
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `docs/post-development-roadmap.md` | 修改 | 将当前基线的 Playwright 总数从历史的 25 同步为当前全套 `bun run test:e2e` 已通过的 34，并补充新增 FrameFlow 覆盖范围。 |
+| `docs/session-development-record.md` | 修改 | 记录该数字为当前基线更正，而非回改历史阶段性测试结论。 |
+
+验证记录：在本次第 02、14、15 项补强后，Web `bun run test:e2e` 输出为 `34 passed`；文档内容检查继续验证中文主清单 95 项、英文摘要 25 项和状态矩阵 95 项。此更新仅校正路线图的“当前基线”描述，不把 34 项浏览器回归外推为 95 项验收全部完成。
