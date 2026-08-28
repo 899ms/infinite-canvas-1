@@ -51,7 +51,7 @@
 | 41 | Agent 对话统计 | 自动化通过 | 主清单 41；隔离会话；简洁消息和最新用量正确 | `web/e2e/agent-chat-usage.spec.ts` 在真实右侧面板验证用户右对齐、无气泡/头像、双方无历史时间与 Token 元数据，最新调用显示输入/缓存/输出，并在新对话时清空。 |
 | 42 | Agent 回复实时显示 | 自动化通过 | 主清单 42；隔离流与失败事件；增量、完整回补与错误收束正确 | `web/e2e/agent-realtime-reply.spec.ts` 以真实右侧面板、内存 EventSource 和受控历史接口覆盖：用户消息后立即出现“正在思考”、流式片段实时显示，`turn.completed` 后自动读取权威历史并替换为完整 Codex 回复；模型繁忙事件立刻显示中文重试建议、清除发送/等待状态，日志只记录“处理失败”。 |
 | 43 | Agent 流式交互性能 | 自动化通过 | 主清单 43；隔离长历史与多增量；当前流、滚动和完成同步稳定 | `web/e2e/agent-streaming-performance.spec.ts` 以 80 条历史消息和 120 段 SSE 增量验证：历史行启用 `content-visibility`，仅当前流式消息持续更新；用户上滚后后续增量不强制跳回底部，完成后自动回补完整历史，并且全过程未请求 `/health`。 |
-| 44 | Agent 过程时间线 | 未验证 | 主清单 44；隔离工具流；时间线可追溯 | — |
+| 44 | Agent 过程时间线 | 自动化通过 | 主清单 44；隔离过程事件与历史；时间线、计划和恢复一致 | `web/e2e/agent-process-timeline.spec.ts` 覆盖单命令折叠预览与展开诊断；`agent-process-timeline-live.spec.ts` 通过真实面板与内存 EventSource 依次发送思考、计划、命令、文件、网页和画布工具事件，验证中文化卡片、思考摘要保持、计划单卡更新，以及 `turn.completed` 后从权威历史恢复完整过程记录。 |
 | 45 | Agent 权限控制 | 未验证 | 主清单 45；隔离审批；权限语义正确 | — |
 | 46 | Agent 历史记录 | 未验证 | 主清单 46；隔离历史；恢复和删除一致 | `canvas-agent/src/agent/codex-history.test.ts` 有局部覆盖 |
 | 47 | Agent 默认新对话 | 未验证 | 主清单 47；隔离线程；默认状态正确 | — |

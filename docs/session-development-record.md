@@ -1056,3 +1056,17 @@
 | `docs/session-development-record.md` | 修改 | 记录修复范围、文件关联、隔离边界与未关闭原因，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：旧实现的单命令折叠行只显示执行数量，无法在不展开详情时识别具体命令。现在预览以单行、截断且带完整 title 的代码样式显示；点击预览所在摘要行后，仍可查看 `F:/isolated/workspace`、`1.2 秒`、退出状态 `0` 与“全部通过”。定向 Chromium 回归通过。思考摘要、执行计划、文件/网页/画布工具事件顺序及历史恢复尚未在同一浏览器场景完整验收，第 44 项继续保留“未验证”。
+
+## 81. Agent 完整过程时间线与历史恢复（2026-08-28）
+
+本切片关闭中文主清单第 44 项。Chromium 使用 Vite 临时 4173、真实右侧 `LocalAgentPanel`、内存 EventSource 与受控线程历史接口；不会连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-process-timeline-live.spec.ts` | 新增 | 从真实前端事件监听器依次发送 reasoning、plan、command、file、web search 与 canvas 工具事件；验证同一计划更新不重复、中文化展示、摘要保留，并在完成后由历史快照恢复。 |
+| `web/e2e/agent-process-timeline.spec.ts` | 既有新增用例 | 继续验证第 80 节修复的单命令预览与展开详情。 |
+| `web/src/components/agent/local-agent-panel.tsx`、`agent-event-formatters.ts`、`agent-chat.tsx`、`agent-chat-message.tsx` | 既有实现（本切片未修改） | 分别负责事件归并与历史同步、事件中文投影、计划与时间线分区、以及摘要/命令/工具卡片渲染。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 44 项更新为“自动化通过”，同步未验证 55 项与浏览器 55 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录完整事件顺序、历史恢复、隔离边界及结果，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：实时事件先显示思考摘要、进行中 `1/2` 计划、单命令预览、文件修改、网页搜索和“画布操作”，不显示原始 `canvas_apply_ops`。思考摘要展开后仍显示原有 Markdown 列表内容，`item.completed(summary=已完成分析)` 不会覆盖；第二个 `plan.updated` 把同一计划更新为 `2/2`，页面仍仅有一个“任务进度”卡。`turn.completed` 后接口返回同一线程的权威历史，文件摘要、搜索摘要与完整计划继续可见。全量验收仍限于隔离 Chromium、受控 SSE 和受控历史数据，不外推为真实 Canvas Agent、真实网页搜索、跨浏览器或真实 Codex 执行验收。
