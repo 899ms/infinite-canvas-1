@@ -786,3 +786,18 @@
 | `docs/session-development-record.md` | 修改 | 记录夹具边界、文件关系、失败定位及最终验证，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：第一版路由拦截使用 `**/agent/**`，意外匹配 `/src/components/agent/agent-panel.tsx` 的懒加载模块，浏览器报“Failed to fetch dynamically imported module”；已将范围收紧为 `http://127.0.0.1:4173/agent/**`，使接口夹具不会覆盖前端模块。随后以精确 accessible name 定位顶部“收起 Agent”，避免与面板内“收起 Agent 面板”重名。完整 16 并发回归还暴露原懒加载骨架断言的固定延迟竞态，现由夹具扣住模块响应、确认骨架可见后再放行。最终全套 `bun run test:e2e` 为 38 项通过，Web `bun run typecheck` 与文档内容检查也通过；不将隔离状态保持外推为真实 Agent 连接或外部模型验收。
+
+## 61. 浏览器业务数据失败保护回归（2026-08-28）
+
+本切片关闭中文主清单第 03 项。新增浏览器回归直接使用 Chromium 的 IndexedDB：不修改业务实现，不访问真实 3000、17371、用户资产、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/prompt-dashboard-storage.spec.ts` | 新增 | 验证提示词知识库、PromptFill 自定义模板和图片反馈真实写入后刷新仍保持；在三者已建立的 IndexedDB 连接上拦截 `transaction` 并抛出 `QuotaExceededError`，验证保存拒绝不提交内存、读取拒绝不覆盖内存且仪表盘显示统一安全告警。 |
+| `web/src/lib/persisted-state.ts`、`web/src/lib/persisted-state.test.ts` | 既有实现（未修改） | `persistBeforeCommit` 先等待浏览器存储成功，才提交 Zustand 内存；单元测试覆盖同一原子保证。 |
+| `web/src/stores/use-prompt-knowledge-base-store.ts`、`web/src/stores/use-prompt-fill-store.ts`、`web/src/stores/use-image-feedback-store.ts` | 既有实现（未修改） | 三类业务 store 在保存/读取失败时保留现有内存并记录错误，供页面告警呈现。 |
+| `web/src/pages/prompts/dashboard.tsx` | 既有实现（未修改） | 汇集三类 store 错误，并显示“浏览器数据未能安全保存或读取”。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 03 项标为“自动化通过”，同步自动化通过数为 15、未验证数为 73 和浏览器回归基线。 |
+| `docs/session-development-record.md` | 修改 | 记录真实浏览器存储夹具、失败诊断、文件关系和验证边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：首次精确文本断言失败，是因为仪表盘将来源 `manual` 与采集内容渲染在同一容器中，非持久化或状态错误；改为匹配可见内容后通过。第一条用例依次调用三个真实 store API，刷新后重新导入模块并确认知识库采集、PromptFill 模板和图片反馈仍在。第二条用例只在各 store 完成水合后替换现有 `IDBDatabase.prototype.transaction`，对 `prompt_knowledge_base` 与 `image_feedback` 对象仓库抛出 `QuotaExceededError`；三次保存均为 rejected，三个 Zustand 容器没有出现待写数据，三条错误均进入仪表盘告警。再预置内存数据并调用三类 `hydrate`，读取失败后内存数据保持且告警继续显示。目标两项浏览器回归和 Web 类型检查通过；全套浏览器基线将在提交前重新执行，不把此隔离 IndexedDB 夹具外推为其他业务存储或生产浏览器配额验收。
