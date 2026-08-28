@@ -880,3 +880,17 @@
 | `docs/session-development-record.md` | 修改 | 记录实时/历史两个投影的测试关联与边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：实时 `dynamic_tool_call(image_gen)` 开始时卡片标题为“调用工具：image_gen”，失败时正文和 detail 输出均为“图片服务不可用”；右侧日志相应记录“调用工具”与“工具失败”，不再遗漏动态工具。历史 `dynamicToolCall` 完成时恢复“已生成 1 张图片”，失败时仍为同一具体工具标题和真实错误，不使用“工具操作已完成”之类的泛化文案。此前 `formatAgentEventLog` 只覆盖 `mcp_tool_call`，本次补齐这一可观察性缺口。定向 Web/Agent 测试通过；不外推为真实 ImageGen 调用、SSE 运输或所有第三方工具协议兼容性验收。
+
+## 68. 窄 Agent 顶部栏可用性回归（2026-08-28）
+
+本切片关闭中文主清单第 32 项。测试只在 Vite 临时 4173 服务中预置已连接的 Agent 状态和线程接口响应，将面板宽度固定为组件支持的最小 360px；不连接真实 17371、3000、用户资产、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/agent-panel-tabs.tsx` | 修改 | 为顶部栏和标签栏提供稳定测试标识，并将标签容器从裁剪改为 `overflow-x:auto`，以保留窄宽度下的横向访问路径。 |
+| `web/src/components/agent/local-agent-panel.tsx` | 修改 | 保持垂直居中的“Agent”文字标题可见；连接、新对话和收起操作仍在同一行，窄宽度仅收起操作文字为图标。 |
+| `web/e2e/agent-panel-header.spec.ts` | 新增 | 在最小宽度面板验证标题、连接设置、标签、新对话和收起操作均可见，标签栏可横向滚动，所有操作的垂直中心一致。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 32 项标为“自动化通过”，同步自动化通过 22 项、未验证 66 项与浏览器 45 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关系、隔离浏览器证据与未覆盖边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：原顶部栏在窄容器下隐藏文字“Agent”，标签栏使用 `overflow-hidden`，会把超出空间直接裁剪。现在标题在 360px 面板保持可见，四个标签仍属于可横向滚动的 `tablist`；连接设置、新对话和收起按钮均与标题/标签保持同一垂直中心。全量 Web 单测 51 项、TypeScript、生产构建、Chromium 浏览器回归 45 项，以及文档内容检查和生产构建均通过。格式门禁中，本切片新增用例已格式化；其余 7 个超出历史基线项为既有 `.playwright-cli` 记录、两个此前 Agent 用例和 CSP 脚本，未在本切片改动。该证据只覆盖隔离 Chromium、最小面板宽度和可访问名称，不外推为真实 Canvas Agent 连接、所有浏览器引擎或真实生图调用验收。
