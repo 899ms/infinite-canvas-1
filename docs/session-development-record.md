@@ -1257,3 +1257,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、架构边界、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：预置根节点与两个成功图片槽位后，选择根节点即可看到完整生成提示词；展开“2 张”图片组，将另一张子图设为主图后，提示词不变；再次选择根节点后仍为同一提示词。该证据不外推为真实 ImageGen 多图生成、每个槽位存储独立提示词（当前模型为根节点单一生成提示词）、跨浏览器同步或用户导入的历史畸形数据。
+
+## 96. 画布生成配置提示词与模型解析（2026-08-28）
+
+本切片关闭中文主清单第 58 项。验证仅调用纯生成上下文和配置解析函数，不访问真实 3000/17371、用户画布、Token、外部 Provider 或 Docker/容器；完整 Web 门禁中的 Playwright 由自身隔离 Vite 4173 启动并关闭。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/canvas/canvas-node-generation.test.ts` | 新增 | 以隔离配置节点、上游文本节点和连线固定连续首发/失败重试上下文相同，上游文字只出现一次；同时固定 image/video/text/audio 四种生成模式解析对应模型。 |
+| `web/src/components/canvas/canvas-node-generation.ts`、`web/src/lib/canvas/canvas-generation-helpers.ts`、`web/src/pages/canvas/project.tsx` | 既有实现（未修改） | 前者从当前节点和连线重建请求上下文；中者按模式选择能力匹配模型；页面在首发和重试时直接消费这两个结果。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 58 项更新为“自动化通过”，同步 Web 19 文件/59 项测试与未验证 41 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片文件关联、隔离范围、验证和不外推边界，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：同一 `composerContent` 在首发与模拟失败重试的两次 `buildNodeGenerationContext` 调用返回完全相同结果，包含的上游文本仅出现一次；`buildGenerationConfig` 在 image、video、text、audio 模式分别解析为当前对应的 imageModel、videoModel、textModel、audioModel。Web 全量单测为 19 个文件 59 项通过，TypeScript、生产构建与 64 项 Playwright 回归通过。该证据不外推为真实外部 Provider 的响应、实际密钥有效性、请求网络重试策略、用户填写无效模型时的服务端兼容性或跨设备配置同步。
