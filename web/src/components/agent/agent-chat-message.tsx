@@ -301,12 +301,14 @@ export function AgentCommandGroup({ items, theme }: { items: AgentCommandItem[];
     const running = states.some((state) => state.running);
     const failed = states.filter((state) => state.failed).length;
     const expandable = items.some((item) => Boolean(item.text.trim() || userDetail(item.detail)));
+    const preview = items.length === 1 ? items[0].text.trim() : "";
     const color = running ? "#d97706" : failed ? "#dc2626" : theme.node.muted;
     const label = running ? t(items.length > 1 ? "agent.message.commandsRunning" : "agent.message.commandRunning", { count: items.length }) : t("agent.message.commandsCompleted", { count: items.length, failed: failed ? t("agent.message.commandsFailed", { count: failed }) : "" });
     const header = (
         <div className="flex min-w-0 items-center gap-2 text-sm" style={{ color }}>
             {running ? <LoaderCircle className="size-4 shrink-0 animate-spin" /> : <TerminalSquare className="size-4 shrink-0" />}
-            <span className="font-medium">{label}</span>
+            <span className="shrink-0 font-medium">{label}</span>
+            {preview ? <code className="min-w-0 flex-1 truncate text-[11px]" style={{ color: theme.node.muted }} title={preview}>{preview}</code> : null}
             {expandable ? <ChevronRight className="size-3.5 shrink-0 transition-transform group-open:rotate-90" /> : null}
         </div>
     );
