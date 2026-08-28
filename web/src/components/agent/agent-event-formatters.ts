@@ -270,8 +270,7 @@ export function formatLogJson(logs: AgentEventLog[], context: AgentLogContext) {
 
 export function formatAgentEventLog(event: AgentEventPayload) {
     const item = event.item;
-    if (event.type === "thread.started") return { title: tr("threadCreated"), text: shortId(event.thread_id) };
-    if (event.type === "turn.started") return { title: tr("turnStarted"), text: shortId(event.turn_id) };
+    if (event.type === "turn.started") return { title: tr("turnStarted"), text: "" };
     if (event.type === "plan.updated") {
         const tasks = planTasks(event.plan);
         return { title: tr("progressUpdated"), text: tr("progressCount", { completed: tasks.filter((item) => item.status === "completed").length, total: tasks.length }) };
@@ -288,7 +287,13 @@ export function formatAgentEventLog(event: AgentEventPayload) {
 }
 
 function turnSummary(event: AgentEventPayload) {
-    return event.duration_ms ? tr("seconds", { value: (event.duration_ms / 1000).toFixed(1) }) : tr("completed");
+    const duration = event.duration_ms ? tr("seconds", { value: (event.duration_ms / 1000).toFixed(1) }) : "";
+    const usage = event.usage
+        ? [`${i18n.t("agent.chat.input")} ${eventUsage(event).input.toLocaleString()}`, `${i18n.t("agent.chat.cached")} ${eventUsage(event).cached.toLocaleString()}`, `${i18n.t("agent.chat.output")} ${eventUsage(event).output.toLocaleString()}`].join(
+              " · ",
+          )
+        : "";
+    return [duration, usage].filter(Boolean).join(" · ") || tr("completed");
 }
 
 export function agentErrorView(value: unknown) {
@@ -303,10 +308,6 @@ export function eventUsage(event: AgentEventPayload): AgentTokenUsage {
         cached: numberField(event.usage, "cached_input_tokens"),
         output: numberField(event.usage, "output_tokens"),
     };
-}
-
-function shortId(value?: string) {
-    return value ? value.slice(0, 8) : "";
 }
 
 export function compactText(value: string, maxLength = 120) {

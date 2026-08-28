@@ -974,3 +974,18 @@
 | `docs/session-development-record.md` | 修改 | 记录隔离浏览器范围、控件语义和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：面板启动会真实追加连接失败事件，故错误筛选显示 2 条而不是夹具的 1 条；测试以实际可见计数选择筛选。连续相同“模型正在重试”折叠为“重复 2 次”；展开错误可查看详情，原始 JSON 包含 `request-test`，清空后按钮禁用。定向 Chromium 回归通过；不外推为真实 Canvas Agent 网络、复制权限失败、长日志滚动跟随或跨浏览器验收。
+
+## 75. Agent HTTP 诊断日志闭环（2026-08-28）
+
+本切片完成中文主清单第 38 项的自动化闭环。服务端仍以纯函数验证 Debug HTTP 过滤；Chromium 使用 Vite 临时 4173、内存 Agent store、路由夹具和模拟 EventSource，从真实发送入口进入右侧日志，不监听或访问真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/agent-event-formatters.ts` | 修改 | 删除线程启动日志中的 ID，开始处理不再显示 turn ID；完成摘要合并本轮输入、缓存、输出 Token 与耗时。流式增量仍只更新对话，不写入日志。 |
+| `web/src/components/agent/agent-event-formatters.test.ts` | 修改 | 验证线程事件和流式更新不生成日志，完成事件仅生成精简生命周期摘要与格式化用量。 |
+| `web/e2e/agent-http-diagnostics.spec.ts` | 新增 | 从真实发送输入框和按钮出发，经受控 SSE 发送 thread、turn、回复、用量和完成事件；验证右侧仅显示发送、开始、回复、完成用量，不显示线程 ID 或流式摘要。 |
+| `canvas-agent/src/server/http-log-filter.test.ts` | 既有测试 | 继续验证成功健康检查、画布同步和 OPTIONS 不写 Debug HTTP 日志，失败和业务请求保留。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 38 项更新为“自动化通过”，同步自动化通过 28 项、未验证 60 项、Web 52 项和浏览器 49 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、证据边界和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：隔离 Chromium 页面发送“验证精简诊断日志”后，日志按“发送任务、开始处理、收到回复、处理完成”显示；完成摘要为“1.3 秒 · 输入 1,200 · 缓存 300 · 输出 45”。`thread.started` 和 `item.updated(agent_message)` 不进入日志。该结果不外推为真实网络 SSE、真实 Codex、剪贴板权限、跨浏览器或长日志跟随行为验收。

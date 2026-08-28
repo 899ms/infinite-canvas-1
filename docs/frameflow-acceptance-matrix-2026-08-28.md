@@ -45,7 +45,7 @@
 | 35 | Canvas Agent Codex 升级 | 自动化通过 | 主清单 35；隔离 Codex 协议与版本诊断；启动可继续 | `canvas-agent/src/version-check.test.ts` 验证启动必报 Agent、内置 `0.146.0` 与本机 Codex 版本，缺失/不匹配/可升级均提示，npm 查询失败仅警告且不抛出；`codex-client.test.ts` 覆盖同线程中断、随后新 turn 启动及 Codex 事件归属，`session.test.ts` 覆盖画布工具请求与回传。 |
 | 36 | Canvas Agent Debug | 自动化通过 | 主清单 36；隔离临时日志目录；正常/Debug 级别、按日追加与脱敏正确 | `canvas-agent/src/utils/logger.test.ts` 覆盖普通模式只输出 Info/Warn/Error，Debug 模式写入隔离临时目录的同日追加文件；日志正文与详情中的凭据、Bearer 和 Data URL 均被遮蔽，单行格式稳定。 |
 | 37 | Canvas Agent Codex 日志 | 自动化通过 | 主清单 37；隔离 stderr；ANSI、上游 UTC 时间与换行不会污染本地诊断 | `canvas-agent/src/agent/codex-client.test.ts` 验证 Codex stderr 去除 ANSI 控制符、上游 UTC ISO 时间和末尾换行，只把干净正文交给本地 logger 与网页时间线各自加一次本地时间。 |
-| 38 | Agent HTTP 诊断日志 | 未验证 | 主清单 38；隔离 HTTP；诊断顺序正确 | — |
+| 38 | Agent HTTP 诊断日志 | 自动化通过 | 主清单 38；隔离 HTTP 与 SSE；精简生命周期和完成用量正确 | `canvas-agent/src/server/http-log-filter.test.ts` 覆盖本地 Debug HTTP 噪音过滤；`web/src/components/agent/agent-event-formatters.test.ts` 与 `web/e2e/agent-http-diagnostics.spec.ts` 覆盖真实发送入口、受控 SSE 的开始、回复、完成用量，以及线程 ID/流式摘要不进入右侧日志。 |
 | 39 | Agent 排查日志 | 自动化通过 | 主清单 39；隔离 Agent 日志；筛选、折叠、详情、原始 JSON 与清空可用 | `web/e2e/agent-log-diagnostics.spec.ts` 以隔离日志打开真实右侧面板，验证错误筛选、连续警告折叠计数、详情、原始 JSON 和清空操作。 |
 | 40 | Agent 排查日志顺序与跟随 | 未验证 | 主清单 40；长日志；顺序和跟随正确 | — |
 | 41 | Agent 对话统计 | 未验证 | 主清单 41；隔离会话；统计正确 | — |
@@ -106,10 +106,10 @@
 
 ## 当前结论
 
-- 已自动化通过：27 项（02、03、05、06、07、08、09、10、12、13、14、15、16、19、20、24、26、27、28、29、30、32、34、35、36、37、39）。
+- 已自动化通过：28 项（02、03、05、06、07、08、09、10、12、13、14、15、16、19、20、24、26、27、28、29、30、32、34、35、36、37、38、39）。
 - 人工通过：5 项（04、17、21、23、25）。
 - 阻塞：2 项（01、18），原因均为当前明确排除 Docker/容器部署。
-- 未验证：61 项。虽然其中若干项已有单元或局部浏览器回归，其范围不足以覆盖主清单对应的完整可见行为，仍需逐项人工或补充自动化验收。
+- 未验证：60 项。虽然其中若干项已有单元或局部浏览器回归，其范围不足以覆盖主清单对应的完整可见行为，仍需逐项人工或补充自动化验收。
 - 本次新增的 `FrameFlow HTTP 隔离夹具覆盖停止、恢复、反馈、血缘与 Requirement 归档闭环` 是阶段 B 的 P0 自动化证据；其余仍按本矩阵继续关闭，不将它外推为 95 项全部通过。
 - `canvas-agent/src/frameflow/core.test.ts` 以一次性工作区验证机器审图失败后原 Auto Run 进入失败态，原生成批次保持可追溯；重新启动后只补充缺失审图并在同一任务完成。该证据不覆盖页面刷新或 UI 设置交互。
 - `web/e2e/frameflow-task-context.spec.ts` 以隔离浏览器 origin 验证自动跑失败卡片在刷新后仍保留失败原因与原批次，点击“继续自动跑”后调用该任务的恢复端点并回写完成态；不包含真实模型调用。
