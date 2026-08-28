@@ -1481,3 +1481,16 @@
 | `web/src/components/canvas/infinite-canvas.tsx`、`web/src/components/canvas/canvas-toolbar.tsx` | 既有实现（已复核） | 前者按空格/Ctrl 临时反转工具，后者仅切换持久选择/移动模式。 |
 
 验证记录：点击工具栏精确 `aria-label="选择"` 后，画布光标为 `grab`；按住空格为 `auto`，松开后回到 `grab`，证明临时切换未改写工具栏的持久移动状态。当前未覆盖框选虚线缩放、Ctrl 临时反转、节点上拖动画布、焦点控件空格语义和追加选择；第 76 项继续保持未验证。
+
+## 114. 国际化基础框架的局部浏览器证据（2026-08-28）
+
+本切片补强中文主清单第 78 项，但不将该项标为完整通过。Chromium 使用 Playwright 自管的隔离 Vite 4173 和独立浏览器存储；不访问真实用户配置、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/i18n-basic.spec.ts` | 新增 | 从真实顶部语言按钮切换中文/英文，验证首页导航、设置弹层标题/Provider Tab/新增 Provider 按钮、图片工作台 Model 组合框的即时翻译，以及两个方向刷新后仍保持所选语言。 |
+| `web/src/i18n/index.ts` | 既有实现（已复核） | 以 `infinite-canvas:locale` 作为 locale 的本地持久化键，并在写入后调用 i18next 切换。 |
+| `web/src/components/layout/user-status-actions.tsx` | 既有实现（已复核） | 根据当前语言计算下一语言的可访问名称，供顶部按钮切换并让 React/i18next 驱动页面重新渲染。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 记录第 78 项的自动化子证据、完整回归基线与未覆盖范围，满足 `AGENTS.md` 的本次文件关联记录要求。 |
+
+验证记录：从中文首页点击“切换到 English”后，顶部“我的画布”即时变为 `My Canvases`，按钮变为“Switch to 简体中文”；设置弹层即时显示 `Settings & Preferences`、`Providers` 与 `Add provider`，图片工作台显示名为 `Model` 的组合框。刷新页面后英文仍保持。再切回中文并刷新，按钮恢复为“切换到 English”。定向 Playwright 为 1 项通过，随后完整 Playwright 为 79 项通过；Web TypeScript 与文档内容检查也通过。该证据不外推为版本发布弹层、移动端导航、渠道编辑器、所有模型下拉项、全部路由/提示词/错误文案或文档站的中英文搜索保持；第 78 项继续保持未验证。
