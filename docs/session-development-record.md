@@ -1319,3 +1319,15 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 63 项更新为“自动化通过”，同步矩阵为 49 项自动化通过、37 项未验证，并记录文件关联与隔离边界。 |
 
 验证记录：桌面 1440px 下，标题“提示词中心”和“当前共 2 条提示词”均可见；输入无匹配词后 220ms 仍保留旧卡片，随后显示空态，证明查询未在连续输入时立即提交。48 个长标签使左侧栏产生独立纵向滚动，滚动侧栏不改变主内容滚动位置；右侧搜索框下直接出现提示词卡片。390px 窄屏变为单列、侧栏位于搜索区上方且根文档无横向溢出。点击“加入资产”后，隔离资产库立即出现对应文本资产，页面没有“我的提示词”Tab。Web 全量门禁为 21 个 Vitest 文件 66 项、TypeScript、生产构建与 66 项 Playwright 回归通过。该证据不外推为真实远程来源网络、历史缓存迁移、触屏惯性滚动、所有设备断点或跨设备资产同步。
+
+## 101. 提示词详情弹窗固定区与滚动区（2026-08-28）
+
+本切片关闭中文主清单第 64 项。Chromium 使用 Playwright 自管的隔离 Vite 4173，在浏览器本地存储写入一个禁用内置来源、启用本地路由夹具的提示词来源；不访问真实远程来源、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/prompt-detail-dialog.spec.ts` | 新增 | 用带封面、两张参考图与 120 段正文的内存提示词，验证中间内容独立滚动、上方媒体和底部复制/加入资产操作固定，以及桌面和窄屏的视口边界。 |
+| `web/src/pages/prompts/components/prompt-detail-dialog.tsx` | 既有实现（未修改） | 上方媒体区与底部操作区为 `shrink-0`，中间标签/描述/预览/正文区域独占 `overflow-y-auto`，Modal body 高度受 85vh 限制。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 64 项更新为“自动化通过”，同步矩阵为 50 项自动化通过、36 项未验证，并记录文件关联与隔离边界。 |
+
+验证记录：在 1280×900 下，滚动中间区域后 `scrollTop` 大于 0，而封面和“复制提示词”按钮的坐标保持不变。切换至 390×520 后弹窗四边均处于视口内，底部操作仍可见。夹具最初使用 SVG Data URL，项目既有 URL 安全策略按预期降级为占位图；改为允许的 PNG Data URL 后得到实际媒体固定区证据。Web 全量门禁为 21 个 Vitest 文件 66 项、TypeScript、生产构建与 67 项 Playwright 回归通过。该证据不外推为真实远程图片加载、动画以外的浏览器渲染差异、触屏惯性滚动、系统剪贴板权限或跨设备资产同步。
