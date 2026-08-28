@@ -772,3 +772,17 @@
 | `docs/session-development-record.md` | 修改 | 记录本次文件关系、浏览器夹具和剩余验收边界。 |
 
 验证记录：通过延迟 Vite 的唯一 `/src/pages/not-found/index.tsx` 懒模块响应，首次访问该路由先出现 `aria-busy=true` 的共享加载骨架，模块完成后骨架消失并显示 404；该路由同样经 `lazyPage` 使用共享 Suspense fallback，避免并发测试已缓存配置模块造成的非确定性。首页 `h1.page-display` 计算样式为 `52px/700`；配置、提示词、资产、画布、生图、视频、室内和 FrameFlow 的 `h1.page-title` 均为 `32px/700`，从深色切换浅色后仍保持 700。资产夹具先验证空库“新增资产”，再注入一条内存文本资产、输入无匹配条件，显示“没有匹配条件的资产”和“清除筛选”。这些验证不访问真实资产、3000/17371、外部 Provider 或 Docker。顶部 Agent 打开后的连接、对话、历史和日志状态保持尚未由本节夹具覆盖，因此第 24 项仍为“未验证”；全套浏览器基线为 37 项。
+
+## 60. 顶部 Agent 状态保持隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 24 项的最后一项可见行为。测试在 Vite 临时 4173 服务中拦截 Agent 历史、单线程快照、模型与 Skill 请求；不连接或读取真实 17371、3000、用户资产、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/routes.spec.ts` | 修改 | 以预置的已连接 Agent store 和隔离 HTTP 响应，验证顶部“打开 Agent”显示既有对话与连接状态；“收起 Agent”后再次打开仍显示同一对话，并在历史、日志标签中显示原线程和日志。 |
+| `web/src/stores/use-agent-store.ts` | 既有实现（未修改） | `closePanel` 仅关闭视觉面板、保留 `panelMounted` 和会话状态；该行为是回归断言的实现依据。 |
+| `web/src/layouts/user-layout.tsx`、`web/src/components/agent/agent-panel.tsx` | 既有实现（未修改） | 惰性挂载 Agent 面板并在状态允许时保持面板实例，供顶部导航按钮重新打开。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 24 项更新为“自动化通过”，同步自动化通过数为 14、未验证数为 74 和浏览器回归基线。 |
+| `docs/session-development-record.md` | 修改 | 记录夹具边界、文件关系、失败定位及最终验证，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：第一版路由拦截使用 `**/agent/**`，意外匹配 `/src/components/agent/agent-panel.tsx` 的懒加载模块，浏览器报“Failed to fetch dynamically imported module”；已将范围收紧为 `http://127.0.0.1:4173/agent/**`，使接口夹具不会覆盖前端模块。随后以精确 accessible name 定位顶部“收起 Agent”，避免与面板内“收起 Agent 面板”重名。完整 16 并发回归还暴露原懒加载骨架断言的固定延迟竞态，现由夹具扣住模块响应、确认骨架可见后再放行。最终全套 `bun run test:e2e` 为 38 项通过，Web `bun run typecheck` 与文档内容检查也通过；不将隔离状态保持外推为真实 Agent 连接或外部模型验收。
