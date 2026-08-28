@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type {Writable} from "node:stream";
 import {inspect} from "node:util";
 
 import winston, {format, transports, type Logger as WinstonLogger} from "winston";
@@ -9,19 +10,21 @@ import {formatDateForFilename} from "./date.js";
 
 /** 管理 Canvas Agent 的终端与文件 Debug 日志。 */
 export class Logger {
-    readonly enabled = process.argv.includes("--debug");
-    readonly filePath = this.enabled ? path.join(os.homedir(), ".infinite-canvas", "logs", `canvas-agent-${formatDateForFilename()}.log`) : "";
+    readonly enabled: boolean;
+    readonly filePath: string;
     private readonly logger: WinstonLogger;
 
     /** 普通模式输出 Info 以上日志，Debug 模式额外输出 Debug 并写入文件。 */
-    constructor() {
+    constructor(options: LoggerOptions = {}) {
+        this.enabled = options.debug ?? process.argv.includes("--debug");
+        this.filePath = this.enabled ? path.join(options.homeDirectory || os.homedir(), ".infinite-canvas", "logs", `canvas-agent-${formatDateForFilename(options.date)}.log`) : "";
         const line = format.printf(({level, message, timestamp, details}) => `${timestamp} ${level.toUpperCase()} ${message}${formatDetails(details)}`);
         const output = format.combine(format.timestamp({format: "YYYY-MM-DD HH:mm:ss"}), line);
         if (this.enabled) fs.mkdirSync(path.dirname(this.filePath), {recursive: true});
         this.logger = winston.createLogger({
             level: this.enabled ? "debug" : "info",
             transports: [
-                new transports.Console({format: output}),
+                options.outputStream ? new transports.Stream({stream: options.outputStream, format: output}) : new transports.Console({format: output}),
                 ...(this.enabled ? [new transports.File({filename: this.filePath, format: output})] : []),
             ],
         });
@@ -29,27 +32,43 @@ export class Logger {
 
     /** 输出 Debug 级别日志。 */
     debug(message: string, details?: unknown) {
-        if (details === undefined) this.logger.debug(message);
-        else this.logger.debug(message, {details: sanitizeLogDetails(details)});
+        if (details === undefined) this.logger.debug(sanitizeLogMessage(message));
+        else this.logger.debug(sanitizeLogMessage(message), {details: sanitizeLogDetails(details)});
     }
 
     /** 输出 Info 级别日志。 */
     info(message: string, details?: unknown) {
-        if (details === undefined) this.logger.info(message);
-        else this.logger.info(message, {details: sanitizeLogDetails(details)});
+        if (details === undefined) this.logger.info(sanitizeLogMessage(message));
+        else this.logger.info(sanitizeLogMessage(message), {details: sanitizeLogDetails(details)});
     }
 
     /** 输出 Warn 级别日志。 */
     warn(message: string, details?: unknown) {
-        if (details === undefined) this.logger.warn(message);
-        else this.logger.warn(message, {details: sanitizeLogDetails(details)});
+        if (details === undefined) this.logger.warn(sanitizeLogMessage(message));
+        else this.logger.warn(sanitizeLogMessage(message), {details: sanitizeLogDetails(details)});
     }
 
     /** 输出 Error 级别日志。 */
     error(message: string, details?: unknown) {
-        if (details === undefined) this.logger.error(message);
-        else this.logger.error(message, {details: sanitizeLogDetails(details)});
+        if (details === undefined) this.logger.error(sanitizeLogMessage(message));
+        else this.logger.error(sanitizeLogMessage(message), {details: sanitizeLogDetails(details)});
     }
+
+    /** 完成待写日志；仅供受控关闭与测试使用。 */
+    close() {
+        return new Promise<void>((resolve, reject) => {
+            this.logger.once("finish", resolve);
+            this.logger.once("error", reject);
+            this.logger.end();
+        });
+    }
+}
+
+export interface LoggerOptions {
+    debug?: boolean;
+    homeDirectory?: string;
+    date?: Date;
+    outputStream?: Writable;
 }
 
 /** 将日志详情格式化为紧凑的单行文本。 */
@@ -78,8 +97,13 @@ function sanitize(value: unknown, key = "", seen = new WeakSet<object>()): unkno
 
 function redactLogText(value: string) {
     return value
+        .replace(/\bdata:[^\s'"`]+/gi, (dataUrl) => `[DATA URL ${dataUrl.length} chars]`)
         .replace(/\bbearer\s+[A-Za-z0-9._~+/=\-]{8,}/gi, "Bearer [REDACTED]")
         .replace(/\b(?:api[_ -]?key|access[_ -]?(?:key|token)|connect[_ -]?token|token|secret|password|authorization|credential)\s*(?:[:=：]|为|是)\s*(?:bearer\s+)?[`'"“]?[A-Za-z0-9_./+\-=]{8,}/gi, "[REDACTED]");
+}
+
+function sanitizeLogMessage(message: string) {
+    return redactLogText(message).replace(/\r?\n|\r/g, "\\n");
 }
 
 export const logger = new Logger();

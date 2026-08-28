@@ -922,3 +922,16 @@
 | `docs/session-development-record.md` | 修改 | 记录版本诊断逻辑、运行边界、已有协议测试和验证命令，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：依赖清单把内置 `@openai/codex` 固定为 `0.146.0`。启动路径记录 Canvas Agent、内置 Codex 与本机 Codex 三种版本；未安装本机 Codex 时提示安装，版本不一致时提示两者同步升级。npm 返回较新 Agent、内置 Codex 或本机 Codex 时分别给出对应升级命令；npm 抛错时只记录“Unable to check the latest npm versions; startup will continue.”，不阻断启动。`codex-client.test.ts` 已证明 `interruptCurrentTurn` 只中断匹配的活跃线程，随后可以启动新 turn；`session.test.ts` 已证明浏览器连接、画布工具请求及结果只作用于正确客户端。定向版本检查、Canvas Agent 全量 195 项测试和生产构建通过。该证据不外推为实际全局 Codex 安装状态、真实 npm 可达性、真实 app-server 进程或跨进程恢复验收。
+
+## 71. Canvas Agent Debug 日志隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 36 项。测试用 `Logger` 的受控输出流与系统临时目录验证日志行为；不启动 Canvas Agent、不读取用户配置、不写入真实用户主目录、不占用 3000/17371，也不使用真实凭据、图片、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/utils/logger.ts` | 修改 | 为 Logger 增加仅供受控关闭/测试的输出目录、日期和终端流注入入口；保持默认运行仍以进程 `--debug` 与用户主目录为准。普通与 Debug 两种输出都会压缩换行、遮蔽正文中的 Data URL 与凭据，Debug 文件仍按本地日期追加。 |
+| `canvas-agent/src/utils/logger.test.ts` | 修改 | 通过内存 Writable 断言普通模式只输出 Info/Warn/Error；通过系统临时目录断言 Debug 同日三行追加文件、时间/级别格式以及正文/详情凭据与 Data URL 均不泄露。测试结束仅删除自己刚创建且经测试框架持有的临时目录。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 36 项更新为“自动化通过”，同步自动化通过 25 项、未验证 63 项与 Canvas Agent 197 项测试基线。 |
+| `docs/session-development-record.md` | 修改 | 记录日志隔离、文件关联和验证边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：普通模式调用 `debug` 不写入终端，`info`、`warn` 与 `error` 产生 `YYYY-MM-DD HH:mm:ss LEVEL message` 单行；含 token 的详情为 `[REDACTED]`，正文中的 Data URL 为带长度的 `[DATA URL … chars]`。Debug 模式在同一固定日期先写入一条 Debug 和一条 Info，再由独立 Logger 追加一条 Warn，结果文件恰为三行，未出现任何虚构的图片内容或凭据。定向日志回归、Canvas Agent 全量 197 项测试、生产构建，以及文档内容检查和生产构建通过。此项不外推为真实 `npx -y @basketikun/canvas-agent --debug` 启动、真实 Codex stderr、部署日志采集或外部服务日志验收。
