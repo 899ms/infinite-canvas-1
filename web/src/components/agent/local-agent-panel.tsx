@@ -1279,6 +1279,10 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
                 messages: current.messages.map((message) => message.threadId === scope.threadId && message.turnId === scope.turnId && message.streamId ? { ...message, streamId: undefined } : message),
             });
             if (event.status === "failed") showAgentError(event.error?.message, event, !event.replayed);
+            if (!event.replayed && scope.threadId && scope.turnId) {
+                const sequence = ++loadThreadsSequenceRef.current;
+                void loadThreadSnapshot(scope.threadId, sequence, undefined, scope.turnId).catch((error) => addEventLog(rt("historyReadFailed"), error));
+            }
         }
         const item = formatAgentEvent(event);
         if (item) addMessage(scopeEventChatItem(event, { ...item, id: event.item?.id || createId() }, event.item?.id || createId()));

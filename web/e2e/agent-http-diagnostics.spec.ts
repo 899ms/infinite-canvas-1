@@ -67,6 +67,13 @@ test("普通 Agent 消息只保留精简生命周期日志和完成用量", asyn
     );
     await page.getByRole("button", { name: "打开 Agent" }).click();
     await page.waitForFunction(() => Array.isArray((window as typeof window & { __agentEventSources?: unknown[] }).__agentEventSources) && (window as typeof window & { __agentEventSources?: unknown[] }).__agentEventSources!.length > 0);
+    await page.evaluate(
+        async ({ conversation }) => {
+            const { useAgentStore } = await import("/src/stores/use-agent-store.ts");
+            useAgentStore.setState({ conversation, loadingThreads: false });
+        },
+        { conversation },
+    );
 
     const prompt = page.getByRole("textbox", { name: "询问 Codex，输入 / 使用技能，@ 引用画布素材" });
     await prompt.fill("验证精简诊断日志");

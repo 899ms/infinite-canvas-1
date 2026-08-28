@@ -1016,3 +1016,17 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：预置用户与 Codex 历史消息的 `meta` 为日期/Token 文本时，页面两侧均不显示；用户消息容器右对齐、无图片头像且不带气泡背景。最新调用显示“输入 1,200”“缓存 300”“输出 45”；点击“新对话”后旧消息和“最新调用”均清空。该结果不外推为逐帧动画曲线、跨浏览器渲染或真实 Codex 用量验收。
+
+## 78. Agent 实时回复历史回补与失败收束（2026-08-28）
+
+本切片关闭中文主清单第 42 项。Chromium 使用 Vite 临时 4173、真实右侧 `LocalAgentPanel`、内存 EventSource 和受控 Agent 历史接口；不会连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/local-agent-panel.tsx` | 修改 | 在收到非回放的 `turn.completed` 后请求同一线程的权威快照，并带入已结算 turn；当 SSE 未发送最终 `item.completed` 时，既有合并逻辑仍能以持久化历史替换临时流式片段。 |
+| `web/e2e/agent-realtime-reply.spec.ts` | 新增 | 从真实输入框发送消息，验证“正在思考”、流式片段与 `turn.completed` 后自动回补完整回复；同一 EventSource 下再验证模型繁忙错误立即显示中文重试建议、停止等待，并只写入“处理失败”日志。 |
+| `web/e2e/agent-http-diagnostics.spec.ts` | 修改 | 在等待内存 EventSource 建立后显式恢复已就绪会话，避免并行回归中历史读取短暂设置 `loadingThreads` 时把真实输入框保持为不可编辑。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 42 项更新为“自动化通过”，同步未验证 57 项与浏览器 52 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的事件顺序、文件关联、隔离边界与验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：页面发送“请完整同步回复”后，用户消息下方立即显示“正在思考”；受控 `item.updated` 显示“流式片段”。历史接口在此时仍为空，待 `turn.completed` 后才返回同一 turn 的用户消息和完整 Codex 回复；面板无需切换历史或日志即自动显示“这是一条完整同步回复。”，并移除临时片段。随后模拟 `selected model is at capacity`，对话显示“当前选择的模型请求量过大，暂时无法处理。请稍后重试，或切换其他模型后再试。”；store 中 `sending`/`waiting` 均为 `false`，唯一诊断条目为“处理失败”。新增回归暴露既有 HTTP 日志用例在全并发时过早填充被历史读取临时禁用的输入框，现以同一已就绪状态消除该竞态。全量 Chromium 52 项回归通过。该证据不外推为真实 Canvas Agent SSE、超过 30 秒等待提示、真实历史持久化、跨浏览器或真实 Provider 失败验收。
