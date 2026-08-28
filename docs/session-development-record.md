@@ -731,3 +731,14 @@
 | `docs/session-development-record.md` | 修改 | 记录本次文件关联、隔离范围与验证结论，满足仓库 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：新增浏览器夹具返回同一 Brief 的两条已审核反馈和一条未审核图片：DNA 为净权重 `+1`、有效样本 `2`、强化 `1`、规避 `1`、质量拒绝 `1`；强化/规避卡片分别显示图片、评分、Comment 与 `2/3` 条事实事件，未审核图片不会渲染为 DNA 证据。页面同时显示“严格按需求隔离”，明确偏好不能覆盖主体、用途、画幅与必须保留/避免等硬约束。对应 Core 用例“Codex Planner 只在同一 Creative Brief 内继承人工偏好证据”通过，验证下一次 `round.plan` 带入图片 ID、有符号权重、评分、Comment、Prompt Version 与原 Prompt 字段，并将另一 Creative Brief 的偏好完全排除。所有测试使用临时 Vite 4173、内存路由和系统临时 Core 工作区，不访问真实 Agent、用户资产、3000/17371、外部 Provider 或 Docker。矩阵第 14 项改为“自动化通过”，自动化通过数为 12、未验证数为 76。
+
+## 56. FrameFlow 运行与血缘任务隔离、重试与取消回归（2026-08-28）
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-lineage.spec.ts` | 新增 | 隔离浏览器回归：当前 Auto Run 只显示其真实轮次批次；`autoRunId=all` 显示手动与归档运行；失败 slot 的重试只提交该 slot，成功图片保持且重试图片回显尝试次数；Decision/Diff 保持按需展开；取消运行后显示已取消 slot 与隔离区迟到文件。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 将主清单第 15 项更新为“自动化通过”，关联页面与 Core 证据。 |
+| `docs/post-development-roadmap.md` | 修改 | 将持续验收债务从 76 项同步为 75 项。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关系、命令语义和隔离边界，满足 `AGENTS.md` 的记录要求。 |
+
+验证记录：夹具先以一个当前任务的部分成功 Run、一条手动 Run 和一条归档 Run 进入运行与血缘页；当前任务范围只显示前者并统计 `1` 条，`autoRunId=all` 后显示三条。错误 slot 的“重试 1 个失败项”只发出 `run.retry(run-current, [slot-retry])`；页面随后保留第一张成功图片、显示第二张重试图片和“尝试 2 次”。展开“查看生成依据与 Prompt 变更”后可见 Agent Decision 与 Prompt Diff。另一夹具对运行中的 batch 确认取消，验证 `run.cancel`、slot 的“已取消”及 quarantine 提示。Core 定向用例验证指定失败 slot 重跑仍保留原成功图片，且取消后的迟到生成文件被移入 quarantine。均为 Vite 4173、内存路由和系统临时工作区，未访问用户资产、3000/17371、外部 Provider 或 Docker。矩阵第 15 项改为“自动化通过”，自动化通过数为 13、未验证数为 75。
