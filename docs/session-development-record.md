@@ -716,3 +716,7 @@
 ## 53. FrameFlow 待审人工反馈与删除语义隔离回归（2026-08-28）
 
 本切片关闭中文主清单第 12 项。`web/e2e/frameflow-review-feedback.spec.ts` 以固定 1×1 PNG、内存队列和命令路由依次操作同一待审图片：点击“5 星：强化”后验证 `feedback.append/rating=5` 与检查器 `5 星` 回显；保存 Comment 后验证独立 `feedback.append/comment`；确认“不喜欢并学习”后页面显示“已隐藏”和恢复入口；最后确认“删除（不参与学习）”，仅发送 `image.delete`，队列变为空且显示“还没有可审核的 FrameFlow 图片”。既有 `frameflow-task-context.spec.ts` 继续覆盖隐藏后的恢复命令，Core 临时工作区测试覆盖评分、评论、隐藏与恢复的领域事件/偏好语义。全部为隔离路由，不访问真实 Agent、资产、3000/17371 或 Docker。矩阵第 12 项改为“自动化通过”，自动化通过数为 10、未验证数为 78；不将该证据外推为真实外部模型或生产部署验收。
+
+## 54. FrameFlow 机器审图状态隔离回归（2026-08-28）
+
+`web/e2e/frameflow-machine-review-state.spec.ts` 使用当前 `reviewing` Auto Run 的两张图片（一张尚未审完、一张已有 Machine Review）和一张历史图片。进入全部任务范围时，当前图片显示“Codex 审图中”及 `机器审图 1/2 张`；切换历史图片后不再显示该提示，明确回退为“无机器审图记录”。该夹具仅拦截请求并返回内存 PNG，不访问真实 Agent、用户资产、3000/17371 或 Docker。矩阵第 13 项改为“自动化通过”，自动化通过数为 11、未验证数为 77。
