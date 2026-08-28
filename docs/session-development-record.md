@@ -1423,3 +1423,17 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 71 项更新为“自动化通过”，同步矩阵为 57 项自动化通过、29 项未验证及 Agent 204 项测试基线。 |
 
 验证记录：两个客户端均收到 `thread-shared` 的工作空间事件、同一 `turn-shared` 用户消息及 `{ busy: true }` 状态；会话状态为 `running` 时无法取得任何 Codex 写锁，模拟发送、新建、恢复或删除都会在 HTTP 统一守卫中得到 `CONVERSATION_BUSY`。将运行状态置回结束后，会话恢复 `ready` 且可再次取得写锁。前端对非当前 threadId 的聊天和 Agent 事件提前返回，不渲染到当前对话。Canvas Agent 全量 204 项测试通过。该证据不外推为真实多窗口浏览器网络、实际 Codex 输出或跨设备一致性。
+
+## 109. 本地 Agent 跨标签运行状态与完成语义（2026-08-28）
+
+本切片关闭中文主清单第 72 项。Chromium 使用 Playwright 自管的隔离 Vite 4173、同一浏览器上下文的两个真实页面和每页独立内存 EventSource；不连接真实 Canvas Agent、Codex、用户项目、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| web/e2e/agent-cross-tab-running.spec.ts | 新增 | 第一个页面在工具完成后保持运行；第二个页面随后打开并从 hello 当前状态立即收到忙碌 turn，验证输入不可编辑、发送替换为停止；两页同时收到结束事件后恢复输入，并各自日志记录“本轮完成”。 |
+| web/src/components/agent/agent-event-formatters.test.ts | 修改 | 固定工具完成与整轮完成是两个不同的日志生命周期：MCP 工具的 item.completed 仅显示“工具完成”，turn.completed 才显示“本轮完成”。 |
+| web/src/i18n/locales/zh-CN.ts、web/src/i18n/locales/en-US.ts | 修改 | 将完成轮次日志分别统一为“本轮完成”与 “Turn completed”，避免与单个工具完成混淆。 |
+| canvas-agent/src/canvas/session.ts、web/src/components/agent/local-agent-panel.tsx | 既有实现（已复核） | hello 含当前 codex 快照，SSE codex_state 逐页更新等待/发送状态；面板在 waiting 时禁用输入和发送。 |
+| docs/frameflow-acceptance-matrix-2026-08-28.md、docs/post-development-roadmap.md、docs/session-development-record.md | 修改 | 将第 72 项更新为“自动化通过”，同步矩阵为 58 项自动化通过、28 项未验证，以及当前 Web/浏览器质量基线。 |
+
+验证记录：第一页收到 mcp_tool_call(item.completed) 后日志仅有“工具完成”，没有提前出现“本轮完成”。第二页在此之后建立 EventSource 连接，hello.codex 的 busy、threadId 和 turnId 使其进入运行态，文本框为 contenteditable=false，发送被停止按钮替代。两页再收到 conversation_changed(ready)、turn.completed 与 codex_state(busy:false) 后，两个文本框均恢复可输入，且两页日志各出现一次“本轮完成”。该证据不外推为真实跨设备 SSE、浏览器崩溃恢复、真实 Codex 长任务或网络中断重连。

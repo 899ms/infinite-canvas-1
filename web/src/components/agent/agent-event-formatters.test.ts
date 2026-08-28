@@ -23,6 +23,16 @@ describe("dynamic_tool_call 事件", () => {
                 duration_ms: 1250,
                 usage: { input_tokens: 1200, cached_input_tokens: 300, output_tokens: 45 },
             }),
-        ).toEqual({ title: "处理完成", text: "1.3 秒 · 输入 1,200 · 缓存 300 · 输出 45" });
+        ).toEqual({ title: "本轮完成", text: "1.3 秒 · 输入 1,200 · 缓存 300 · 输出 45" });
+    });
+
+    it("工具完成与本轮完成使用不同的生命周期语义", () => {
+        expect(
+            formatAgentEventLog({
+                type: "item.completed",
+                item: { id: "tool-1", type: "mcp_tool_call", tool: "canvas_get_state" },
+            }),
+        ).toEqual({ title: "工具完成", text: "读取画布" });
+        expect(formatAgentEventLog({ type: "turn.completed" })).toEqual({ title: "本轮完成", text: "完成" });
     });
 });

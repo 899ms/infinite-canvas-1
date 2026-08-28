@@ -79,7 +79,7 @@
 | 69 | 全站 Agent | 自动化通过 | 主清单 69；隔离任务状态；仅当前标签返回 | `web/src/lib/agent/agent-site-tools.test.ts` 覆盖生图/视频提交均返回 `taskId`，并可查询排队、运行、成功、失败及按 `nodeIds` 的画布状态；`canvas-agent/src/canvas/session.test.ts` 验证查询请求仅发给当前激活网页。 |
 | 70 | 本地 Agent 多标签页隔离 | 自动化通过 | 主清单 70；双标签；工具只写入发起页 | `canvas-agent/src/canvas/session.test.ts` 双客户端覆盖焦点读写、turn 绑定后焦点切换不改变目标、关闭活动页回退、绑定页断开不落入另一页，以及仅请求页可回传工具结果。 |
 | 71 | 本地 Agent 多标签页会话同步 | 自动化通过 | 主清单 71；双标签；线程状态同步 | `canvas-agent/src/canvas/session.test.ts` 覆盖站点级会话切换、同线程聊天与运行状态广播到两页；运行期统一写操作锁拒绝会话变更，结束后恢复；前端按线程过滤事件并禁用运行期操作。 |
-| 72 | 本地 Agent 运行状态同步 | 未验证 | 主清单 72；双标签长任务；忙碌状态同步 | `canvas-agent/src/canvas/session.test.ts` 有局部覆盖 |
+| 72 | 本地 Agent 运行状态同步 | 自动化通过 | 主清单 72；双标签长任务；忙碌状态同步 | web/e2e/agent-cross-tab-running.spec.ts 在两个真实浏览器页面中覆盖工具完成后第二页建立 SSE 连接、运行状态即时回放与结束收束；canvas-agent/src/canvas/session.test.ts 覆盖站点级状态广播。 |
 | 73 | 本地 Agent 图片附件落画布 | 未验证 | 主清单 73；隔离附件；归属与关闭失败正确 | `canvas-agent/src/canvas/session.test.ts` 有局部覆盖 |
 | 74 | Agent 对话滚动 | 未验证 | 主清单 74；长会话；跟随和跳转正确 | — |
 | 75 | Agent 消息区分 | 未验证 | 主清单 75；多类消息；布局清晰不溢出 | — |
