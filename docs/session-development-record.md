@@ -1444,13 +1444,13 @@
 
 | 文件 | 变更类型 | 关联与用途 |
 | --- | --- | --- |
-| web/e2e/agent-attachment-nodes.spec.ts | 新增 | 触发真实前端 canvas_create_attachment_nodes 分支，验证附件从 Agent 响应读取后写入图片节点操作、保持 1×2 比例、位置和标题，并生成可持久化的图片元数据后回传成功。 |
+| web/e2e/agent-attachment-nodes.spec.ts | 修改 | 触发真实前端 canvas_create_attachment_nodes 与 canvas_apply_ops 分支，验证附件图片、分析文本、生成配置及文本/图片各一条入配置连线按序写入并逐次回传成功。 |
 | web/e2e/canvas-attachment-persistence.spec.ts | 新增 | 在真实 Zustand 画布项目中写入同一类 image 节点，等待项目状态落盘后按节点 storageKey 从浏览器图片存储读取原图，补强附件节点的项目/二进制存储关联。 |
 | web/src/components/agent/local-agent-panel.tsx | 既有实现（已复核） | attachmentNodeOps 按 clientId 获取附件、上传图片、按原尺寸比例生成 image 节点和 imageMetadata，再交给发起画布的 applyOps。 |
 | canvas-agent/src/canvas/session.test.ts | 既有实现（已复核） | 已覆盖附件仅能由发起标签页读取和落画布，另一标签页或附件不存在时拒绝。 |
 | docs/session-development-record.md | 修改 | 记录本次前端子证据和未覆盖边界，满足 AGENTS.md 的文件关联记录要求。 |
 
-验证记录：隔离工具请求携带 attachment-1、标题“商品参考.png”和位置 (120, 80)；页面只请求当前 clientId 的附件端点，得到 1×2 PNG 后写入一条 image add_node 操作，尺寸为 1×2，metadata 状态为 success 且含 naturalWidth、naturalHeight、mimeType 和持久化 storageKey。Agent 收到同一 requestId 的成功回传。新增项目存储回归创建真实画布项目，写入同规格图片节点并等待画布状态持久化，随后通过该节点 storageKey 成功读取 1×2 PNG。当前仍未自动覆盖真实 Codex 根据商品信息创建文本提示词、生成配置与连线，以及真实画布刷新后再次参与生成；第 73 项继续保持未验证。
+验证记录：隔离工具请求携带 attachment-1、标题“商品参考.png”和位置 (120, 80)；页面只请求当前 clientId 的附件端点，得到 1×2 PNG 后写入一条 image add_node 操作，尺寸为 1×2，metadata 状态为 success 且含 naturalWidth、naturalHeight、mimeType 和持久化 storageKey，并得到同一 requestId 的成功回传。随后模拟 Codex 调用 canvas_apply_ops 创建“商品分析提示词”文本、“商品主图生成”配置，写入文本→配置与图片→配置两条连接，并取得第二次成功回传。新增项目存储回归创建真实画布项目，写入同规格图片节点并等待画布状态持久化，随后通过该节点 storageKey 成功读取 1×2 PNG。当前仍未自动覆盖真实 Codex 根据商品信息创建文本提示词、生成配置与连线，以及真实画布刷新后再次参与生成；第 73 项继续保持未验证。
 
 ## 111. Agent 对话滚动的局部浏览器证据（2026-08-28）
 

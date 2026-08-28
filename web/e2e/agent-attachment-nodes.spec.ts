@@ -7,7 +7,7 @@ test("Agent 附件工具在发起画布持久化原比例图片节点并回传�
     const toolResults: Array<Record<string, unknown>> = [];
     await page.addInitScript(
         ({ conversation }) => {
-            type TestWindow = Window & { __emitAttachmentTool?: () => void; __attachmentOps?: Array<Record<string, unknown>> };
+            type TestWindow = Window & { __emitAttachmentTool?: () => void; __emitAttachmentGraph?: () => void; __attachmentOps?: Array<Record<string, unknown>> };
             class TestEventSource extends EventTarget {
                 close() {}
 
@@ -28,6 +28,30 @@ test("Agent 附件工具在发起画布持久化原比例图片节点并回传�
                                                 title: "商品参考.png",
                                                 position: { x: 120, y: 80 },
                                             },
+                                        ],
+                                    },
+                                }),
+                            }),
+                        );
+                    (window as TestWindow).__emitAttachmentGraph = () =>
+                        this.dispatchEvent(
+                            new MessageEvent("tool_call", {
+                                data: JSON.stringify({
+                                    requestId: "attachment-graph-2",
+                                    name: "canvas_apply_ops",
+                                    input: {
+                                        ops: [
+                                            { type: "add_node", id: "analysis-text-1", nodeType: "text", title: "商品分析提示词", position: { x: 420, y: 80 }, metadata: { content: "提取商品卖点并生成电商主图提示词", status: "success" } },
+                                            {
+                                                type: "add_node",
+                                                id: "image-config-1",
+                                                nodeType: "config",
+                                                title: "商品主图生成",
+                                                position: { x: 760, y: 80 },
+                                                metadata: { generationMode: "image", composerContent: "@[node:analysis-text-1]\n@[node:image-attachment-1]", status: "idle" },
+                                            },
+                                            { type: "connect_nodes", fromNodeId: "analysis-text-1", toNodeId: "image-config-1" },
+                                            { type: "connect_nodes", fromNodeId: "image-attachment-1", toNodeId: "image-config-1" },
                                         ],
                                     },
                                 }),
@@ -98,8 +122,10 @@ test("Agent 附件工具在发起画布持久化原比例图片节点并回传�
     await page.getByRole("button", { name: "打开 Agent" }).click();
     await page.waitForFunction(() => typeof (window as Window & { __emitAttachmentTool?: () => void }).__emitAttachmentTool === "function");
     await page.evaluate(() => (window as Window & { __emitAttachmentTool?: () => void }).__emitAttachmentTool?.());
-
     await expect.poll(() => toolResults).toEqual([expect.objectContaining({ requestId: "attachment-tool-1", result: expect.any(Object) })]);
+    await page.evaluate(() => (window as Window & { __emitAttachmentGraph?: () => void }).__emitAttachmentGraph?.());
+
+    await expect.poll(() => toolResults).toEqual([expect.objectContaining({ requestId: "attachment-tool-1", result: expect.any(Object) }), expect.objectContaining({ requestId: "attachment-graph-2", result: expect.any(Object) })]);
     await expect
         .poll(() => page.evaluate(() => (window as Window & { __attachmentOps?: Array<Record<string, unknown>> }).__attachmentOps))
         .toEqual([
@@ -119,5 +145,15 @@ test("Agent 附件工具在发起画布持久化原比例图片节点并回传�
                     storageKey: expect.stringMatching(/^image:/),
                 }),
             }),
+            expect.objectContaining({ type: "add_node", id: "analysis-text-1", nodeType: "text", title: "商品分析提示词", metadata: expect.objectContaining({ content: "提取商品卖点并生成电商主图提示词", status: "success" }) }),
+            expect.objectContaining({
+                type: "add_node",
+                id: "image-config-1",
+                nodeType: "config",
+                title: "商品主图生成",
+                metadata: expect.objectContaining({ generationMode: "image", composerContent: "@[node:analysis-text-1]\n@[node:image-attachment-1]", status: "idle" }),
+            }),
+            { type: "connect_nodes", fromNodeId: "analysis-text-1", toNodeId: "image-config-1" },
+            { type: "connect_nodes", fromNodeId: "image-attachment-1", toNodeId: "image-config-1" },
         ]);
 });
