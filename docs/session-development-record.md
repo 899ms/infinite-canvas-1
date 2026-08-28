@@ -1472,3 +1472,12 @@
 | `web/src/components/agent/agent-chat-message.tsx` | 既有实现（已复核） | 按角色渲染用户右对齐、助手开放 Markdown、错误红色文本和紧凑附件。 |
 
 验证记录：长用户消息所在行含 `justify-end` 且内容容器没有气泡背景/圆角类；助手行含 `justify-start`，错误文本计算色为 `rgb(220, 38, 38)`，两张附件均可见。切换浅色、深色主题后页面 `scrollWidth` 不超过 `clientWidth`。当前未覆盖所有屏幕宽度、复杂 Markdown 表格和真实网络图片失败；第 75 项继续保持未验证。
+
+## 113. 画布工具模式的局部浏览器证据（2026-08-28）
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-tool-mode.spec.ts` | 新增 | 从真实画布库创建隔离项目，精确定位工具栏“选择”按钮，验证切至移动后的 `grab` 光标、空格按住时临时变为选择光标、松开后恢复移动。 |
+| `web/src/components/canvas/infinite-canvas.tsx`、`web/src/components/canvas/canvas-toolbar.tsx` | 既有实现（已复核） | 前者按空格/Ctrl 临时反转工具，后者仅切换持久选择/移动模式。 |
+
+验证记录：点击工具栏精确 `aria-label="选择"` 后，画布光标为 `grab`；按住空格为 `auto`，松开后回到 `grab`，证明临时切换未改写工具栏的持久移动状态。当前未覆盖框选虚线缩放、Ctrl 临时反转、节点上拖动画布、焦点控件空格语义和追加选择；第 76 项继续保持未验证。
