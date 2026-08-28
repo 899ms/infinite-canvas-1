@@ -935,3 +935,16 @@
 | `docs/session-development-record.md` | 修改 | 记录日志隔离、文件关联和验证边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：普通模式调用 `debug` 不写入终端，`info`、`warn` 与 `error` 产生 `YYYY-MM-DD HH:mm:ss LEVEL message` 单行；含 token 的详情为 `[REDACTED]`，正文中的 Data URL 为带长度的 `[DATA URL … chars]`。Debug 模式在同一固定日期先写入一条 Debug 和一条 Info，再由独立 Logger 追加一条 Warn，结果文件恰为三行，未出现任何虚构的图片内容或凭据。定向日志回归、Canvas Agent 全量 197 项测试、生产构建，以及文档内容检查和生产构建通过。此项不外推为真实 `npx -y @basketikun/canvas-agent --debug` 启动、真实 Codex stderr、部署日志采集或外部服务日志验收。
+
+## 72. Canvas Agent Codex stderr 日志回归（2026-08-28）
+
+本切片关闭中文主清单第 37 项。测试只输入内存中的 ANSI 与 UTC 前缀文本；不启动 Codex app-server、不读取真实 stderr、用户配置、Token、图片或端口 3000/17371，也不调用外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/agent/codex-client.ts` | 修改 | 将 Codex stderr 规范化提取为单一函数；子进程监听器只将去除 ANSI、上游 UTC ISO 时间和末尾换行的正文发送给公共 logger 与 `agent_log`。 |
+| `canvas-agent/src/agent/codex-client.test.ts` | 修改 | 验证颜色控制符与 `2026-08-28T01:23:45.678Z` 不会进入规范化输出，网页事件可由既有 `addEventLog` 唯一追加本地时间。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 37 项更新为“自动化通过”，同步自动化通过 26 项、未验证 62 项与 Canvas Agent 198 项测试基线。 |
+| `docs/session-development-record.md` | 修改 | 记录 stderr 文本边界、文件关联和验证范围，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：输入带黄色 ANSI 包装、UTC 时间与 CRLF 的 Codex stderr 后，输出只有“Codex 正在重试”；本地终端继续由 Logger 生成一次 `YYYY-MM-DD HH:mm:ss WARN`，网页 `addEventLog` 继续生成一次本地时间，故不会显示重复 ISO 时间或 ANSI 转义。定向回归、Canvas Agent 全量 198 项测试和生产构建，以及文档内容检查和生产构建通过。此项不外推为真实 Codex 子进程、生产终端或浏览器人工日志视图验收。

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { CodexAppClient } from "./codex-client.js";
+import { CodexAppClient, normalizeCodexStderr } from "./codex-client.js";
 import { assertDraftHasNoSensitiveValues, canvasSkillSource } from "./canvas-skill-safety.js";
 
 type TestClient = {
@@ -18,6 +18,13 @@ type TestClient = {
 };
 
 const emptyEventHistory = { record: () => Promise.resolve(), recordTurn: () => Promise.resolve() };
+
+test("Codex stderr 移除 ANSI 与上游 UTC 时间，交由本地日志时间线记录", () => {
+    const text = normalizeCodexStderr("\u001b[33m2026-08-28T01:23:45.678Z Codex 正在重试\u001b[0m\r\n");
+
+    assert.equal(text, "Codex 正在重试");
+    assert.doesNotMatch(text, /\u001b\[|2026-08-28T01:23:45\.678Z/);
+});
 
 test("审批只在 app-server 确认 resolved 后清除", () => {
     const writes: Array<Record<string, unknown>> = [];

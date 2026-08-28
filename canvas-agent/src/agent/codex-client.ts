@@ -30,6 +30,11 @@ export class CodexReportedError extends Error {
     override name = "CodexReportedError";
 }
 
+/** 清理 Codex stderr 的上游格式；本地 logger 与网页各自添加唯一的本地时间。 */
+export function normalizeCodexStderr(value: string) {
+    return stripAnsi(value).replace(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+/, "").trim();
+}
+
 /** 封装 Codex app-server 的 JSON-RPC 通信与事件转换。 */
 export class CodexAppClient {
     private nextId = 1;
@@ -80,7 +85,7 @@ export class CodexAppClient {
         child.stdout?.on("data", (chunk) => client.read(chunk.toString()));
         child.stderr?.on("data", (chunk) => {
             if (client.skillDraftActive) return;
-            const text = stripAnsi(chunk.toString()).replace(/^\d{4}-\d{2}-\d{2}T[\d:.]+Z\s+/, "");
+            const text = normalizeCodexStderr(chunk.toString());
             logger.warn("Codex app-server stderr", { text });
             emit("agent_log", { text });
         });
