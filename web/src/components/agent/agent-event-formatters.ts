@@ -281,6 +281,8 @@ export function formatAgentEventLog(event: AgentEventPayload) {
     if (event.type === "turn.failed" || event.type === "error") return { title: tr("turnFailed"), text: agentErrorView(event.message || event.error?.message).text };
     if (event.type === "item.started" && isMcpToolItem(item)) return { title: tr("toolCalled"), text: toolName(String(item?.tool || "")) };
     if (event.type === "item.completed" && isMcpToolItem(item)) return { title: tr(item.error ? "toolFailed" : "toolCompleted"), text: `${toolName(String(item?.tool || ""))}${item.error?.message ? ` · ${item.error.message}` : ""}` };
+    if (event.type === "item.started" && item?.type === "dynamic_tool_call") return { title: tr("toolCalled"), text: toolName(String(item.tool || "")) };
+    if (event.type === "item.completed" && item?.type === "dynamic_tool_call") return { title: tr(item.error ? "toolFailed" : "toolCompleted"), text: `${toolName(String(item.tool || ""))}${item.error?.message ? ` · ${item.error.message}` : ""}` };
     if (event.type === "item.completed" && item?.type === "agent_message") return { title: tr("replyReceived"), text: compactText(stringText(item.text)) };
     return null;
 }

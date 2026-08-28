@@ -455,6 +455,26 @@ test("读取画布历史按节点类型汇总，并保留空画布和失败原�
     assert.equal((byId.get("canvas-failed")?.detail as { status?: string }).status, "failed");
 });
 
+test("动态工具历史保留具体名称、结果和失败原因", () => {
+    const messages = threadMessages({
+        id: "thread-1",
+        turns: [{
+            id: "turn-1",
+            status: "completed",
+            items: [
+                { id: "dynamic-success", type: "dynamicToolCall", tool: "image_gen", status: "completed", contentItems: [{ text: "已生成 1 张图片" }] },
+                { id: "dynamic-failed", type: "dynamicToolCall", tool: "image_gen", status: "failed", error: { message: "图片服务不可用" } },
+            ],
+        }],
+    });
+    const byId = new Map(messages.map((item) => [item.itemId, item]));
+    assert.equal(byId.get("dynamic-success")?.title, "调用工具：image_gen");
+    assert.equal(byId.get("dynamic-success")?.text, "已生成 1 张图片");
+    assert.equal(byId.get("dynamic-failed")?.title, "调用工具：image_gen");
+    assert.equal(byId.get("dynamic-failed")?.text, "图片服务不可用");
+    assert.equal((byId.get("dynamic-failed")?.detail as { output?: string }).output, "图片服务不可用");
+});
+
 test("命令完成条目缺少 command 时仍保留历史卡片", () => {
     const messages = threadMessages({
         id: "thread-1",

@@ -866,3 +866,17 @@
 | `docs/session-development-record.md` | 修改 | 记录成功、失败及并发草稿三种状态的隔离验证范围，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：失败夹具返回 `500 / 测试发送失败`。点击发送后，用户消息先立即出现在对话中，失败处理移除该待发送消息、恢复“失败后应恢复的草稿”并显示真实错误文本。成功夹具则暂停 turn 响应：首条消息已显示而输入为空；随后模拟任务运行期间写入“运行中保留的新草稿”，再放行成功响应，草稿仍在。输入框是 contenteditable `textbox`，因此断言使用可访问角色及文本，而非 input value。两条定向浏览器回归通过；不外推为真实 SSE 思考动画、附件恢复、实际 Codex 线程创建或跨浏览器验收。
+
+## 67. Agent 动态工具名称、失败与历史回归（2026-08-28）
+
+本切片关闭中文主清单第 30 项。测试只使用格式化函数和 Canvas Agent 内存历史，不调用真实 Agent、3000、17371、用户资产、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/agent-event-formatters.ts` | 修改 | 将 `dynamic_tool_call` 纳入右侧事件日志，与 MCP 工具一样记录调用、完成/失败及真实错误。 |
+| `web/src/components/agent/agent-event-formatters.test.ts` | 新增 | 验证实时动态工具卡片和日志均使用 `image_gen` 的具体名称，失败正文/详情/日志保留“图片服务不可用”。 |
+| `canvas-agent/src/agent/codex-history.test.ts` | 修改 | 验证动态工具完成后恢复具体结果，失败历史仍有具体名称和错误详情。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 30 项标为“自动化通过”，同步未验证数为 67、Web 51 与 Agent 193 项测试基线。 |
+| `docs/session-development-record.md` | 修改 | 记录实时/历史两个投影的测试关联与边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：实时 `dynamic_tool_call(image_gen)` 开始时卡片标题为“调用工具：image_gen”，失败时正文和 detail 输出均为“图片服务不可用”；右侧日志相应记录“调用工具”与“工具失败”，不再遗漏动态工具。历史 `dynamicToolCall` 完成时恢复“已生成 1 张图片”，失败时仍为同一具体工具标题和真实错误，不使用“工具操作已完成”之类的泛化文案。此前 `formatAgentEventLog` 只覆盖 `mcp_tool_call`，本次补齐这一可观察性缺口。定向 Web/Agent 测试通过；不外推为真实 ImageGen 调用、SSE 运输或所有第三方工具协议兼容性验收。
