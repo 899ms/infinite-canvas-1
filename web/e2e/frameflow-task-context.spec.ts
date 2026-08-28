@@ -15,34 +15,44 @@ test("FrameFlow 待审与运行血缘默认保持同一最新任务上下文", a
     });
     await page.route("**/agent/frameflow/query?**", async (route) => {
         const query = route.request().postDataJSON() as { type?: string; autoRunId?: string; runId?: string; promptVersionId?: string };
-        const data = query.type === "auto_run.list"
-            ? { type: "auto_run.list", autoRuns: [newerAutoRun, olderAutoRun] }
-            : query.type === "review.queue"
-              ? { type: "review.queue", items: [reviewItem("image-new", newerAutoRun, "run-new"), reviewItem("image-old", olderAutoRun, "run-old")] }
-              : query.type === "auto_run.trajectory"
-                ? query.autoRunId === olderAutoRun.id ? olderTrajectory : newerTrajectory
-                : query.type === "run.list"
-                  ? { type: "run.list", runs: [newerTrajectory.rounds[0].run, olderTrajectory.rounds[0].run] }
-                  : query.type === "run.detail"
-                    ? runDetail(query.runId === "run-old" ? olderTrajectory : newerTrajectory)
-                    : query.type === "prompt.lineage"
-                      ? promptLineage(query.promptVersionId === "prompt-old" ? olderTrajectory : newerTrajectory)
-                      : { type: "quarantine.list", items: [] };
+        const data =
+            query.type === "auto_run.list"
+                ? { type: "auto_run.list", autoRuns: [newerAutoRun, olderAutoRun] }
+                : query.type === "review.queue"
+                  ? { type: "review.queue", items: [reviewItem("image-new", newerAutoRun, "run-new"), reviewItem("image-old", olderAutoRun, "run-old")] }
+                  : query.type === "auto_run.trajectory"
+                    ? query.autoRunId === olderAutoRun.id
+                        ? olderTrajectory
+                        : newerTrajectory
+                    : query.type === "run.list"
+                      ? { type: "run.list", runs: [newerTrajectory.rounds[0].run, olderTrajectory.rounds[0].run] }
+                      : query.type === "run.detail"
+                        ? runDetail(query.runId === "run-old" ? olderTrajectory : newerTrajectory)
+                        : query.type === "prompt.lineage"
+                          ? promptLineage(query.promptVersionId === "prompt-old" ? olderTrajectory : newerTrajectory)
+                          : { type: "quarantine.list", items: [] };
         await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data }) });
     });
     await page.route("**/agent/frameflow/assets/**", async (route) => {
         await route.fulfill({ contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") });
     });
 
+    await page.goto("/frameflow?view=lineage");
+    await expect(page).toHaveURL(/view=lineage.*autoRunId=auto-run-new.*runId=run-new/);
+    await expect(page.getByText("最新探索")).toBeVisible();
+    await expect(page.getByText("旧任务", { exact: true })).toHaveCount(0);
+
     await page.goto("/frameflow?view=review");
     await expect(page).toHaveURL(/view=review.*autoRunId=auto-run-new/);
     await expect(page.getByAltText("待审图片 image-ne")).toBeVisible();
     await expect(page.getByAltText("待审图片 image-ol")).toHaveCount(0);
 
-    await page.getByRole("tab", { name: "运行与血缘" }).click();
-    await expect(page).toHaveURL(/view=lineage.*autoRunId=auto-run-new.*runId=run-new/);
-    await expect(page.getByText("最新探索")).toBeVisible();
-    await expect(page.getByText("旧任务", { exact: true })).toHaveCount(0);
+    await page.goto("/frameflow?view=lineage&autoRunId=all");
+    await expect(page).toHaveURL(/view=lineage.*autoRunId=all/);
+    await expect(page.getByRole("button", { name: /批次 run-old/ })).toBeVisible();
+    await page.reload();
+    await expect(page).toHaveURL(/view=lineage.*autoRunId=all/);
+    await expect(page.getByRole("button", { name: /批次 run-old/ })).toBeVisible();
 });
 
 test("FrameFlow 待审页把人工隐藏与恢复保持为独立反馈", async ({ page }) => {
@@ -57,9 +67,7 @@ test("FrameFlow 待审页把人工隐藏与恢复保持为独立反馈", async (
         const item = reviewItem("image-feedback", newerAutoRun, "run-new");
         item.image.status = imageStatus;
         item.feedback = imageStatus === "hidden" ? { hiddenReason: "aesthetic_dislike" } : {};
-        const data = query.type === "auto_run.list"
-            ? { type: "auto_run.list", autoRuns: [newerAutoRun] }
-            : { type: "review.queue", items: [item] };
+        const data = query.type === "auto_run.list" ? { type: "auto_run.list", autoRuns: [newerAutoRun] } : { type: "review.queue", items: [item] };
         await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data }) });
     });
     await page.route("**/agent/frameflow/commands**", async (route) => {
@@ -93,9 +101,8 @@ test("FrameFlow 自动跑失败后在原任务继续审图", async ({ page }) =>
     });
     await page.route("**/agent/frameflow/query?**", async (route) => {
         const query = route.request().postDataJSON() as { type?: string };
-        const data = query.type === "brief.list"
-            ? { type: "brief.list", briefs: [recoveryBrief] }
-            : { type: "auto_run.list", autoRuns: [{ ...failedAutoRun, state: resumed ? "completed" : "failed", lastError: resumed ? undefined : failedAutoRun.lastError }] };
+        const data =
+            query.type === "brief.list" ? { type: "brief.list", briefs: [recoveryBrief] } : { type: "auto_run.list", autoRuns: [{ ...failedAutoRun, state: resumed ? "completed" : "failed", lastError: resumed ? undefined : failedAutoRun.lastError }] };
         await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data }) });
     });
     await page.route("**/agent/frameflow/auto-runs/auto-run-recovery/start**", async (route) => {
@@ -127,30 +134,32 @@ test("FrameFlow 创建页先批准 Prompt，再提交独立生成批次", async 
     await page.route("**/agent/frameflow/query?**", async (route) => {
         const query = route.request().postDataJSON() as { type?: string };
         const approvedPrompt = { ...prompt, status: approved ? "approved" : "draft" };
-        const data = query.type === "brief.detail"
-            ? { type: "brief.detail", brief }
-            : query.type === "prompt.lineage"
-              ? { type: "prompt.lineage", promptVersionId: prompt.id, versions: [approvedPrompt], decisions: [] }
-              : query.type === "run.list"
-                ? { type: "run.list", runs: [run] }
-                : query.type === "run.detail"
-                  ? { type: "run.detail", run, slots: [{ id: "slot-create", runId: run.id, index: 0, status: "running", attempts: 1 }] }
-                  : query.type === "auto_run.list"
-                    ? { type: "auto_run.list", autoRuns: [] }
-                    : { type: "quarantine.list", items: [] };
+        const data =
+            query.type === "brief.detail"
+                ? { type: "brief.detail", brief }
+                : query.type === "prompt.lineage"
+                  ? { type: "prompt.lineage", promptVersionId: prompt.id, versions: [approvedPrompt], decisions: [] }
+                  : query.type === "run.list"
+                    ? { type: "run.list", runs: [run] }
+                    : query.type === "run.detail"
+                      ? { type: "run.detail", run, slots: [{ id: "slot-create", runId: run.id, index: 0, status: "running", attempts: 1 }] }
+                      : query.type === "auto_run.list"
+                        ? { type: "auto_run.list", autoRuns: [] }
+                        : { type: "quarantine.list", items: [] };
         await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data }) });
     });
     await page.route("**/agent/frameflow/commands**", async (route) => {
         const command = route.request().postDataJSON() as { type?: string; input?: { subject?: string; purpose?: string } };
         commands.push(command);
         if (command.type === "prompt.approve") approved = true;
-        const resource = command.type === "brief.create"
-            ? { type: "brief", id: brief.id }
-            : command.type === "round.plan"
-              ? { type: "prompt_version", id: prompt.id }
-              : command.type === "run.start"
-                ? { type: "run", id: run.id }
-                : { type: "prompt_version", id: prompt.id };
+        const resource =
+            command.type === "brief.create"
+                ? { type: "brief", id: brief.id }
+                : command.type === "round.plan"
+                  ? { type: "prompt_version", id: prompt.id }
+                  : command.type === "run.start"
+                    ? { type: "run", id: run.id }
+                    : { type: "prompt_version", id: prompt.id };
         await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data: { resource } }) });
     });
 
@@ -179,7 +188,12 @@ function trajectory(item: ReturnType<typeof autoRun>, imageId: string) {
     const run = { id: item.currentRunId!, briefId: item.briefId, promptVersionId, status: "succeeded", requestedCount: 1, slotIds: [`slot-${imageId}`], imageIds: [imageId], createdAt: now, completedAt: now };
     const prompt = { id: promptVersionId, briefId: item.briefId, revision: 1, status: "used", fields, compiledPrompt: "A quiet editorial chair photograph.", reason: "隔离任务上下文夹具。", diff, referenceImageIds: [], createdAt: now };
     const image = { id: imageId, runId: run.id, promptVersionId, referenceImageIds: [], width: 800, height: 1000, status: "pending_review", createdAt: now };
-    return { type: "auto_run.trajectory", autoRun: item, brief: { id: item.briefId, profileId: "default", subject: item.name, purpose: "隔离浏览器验收", aspectRatio: "4:5", constraints: { keep: [], avoid: [] }, referenceImageIds: [], strategy: "balanced", createdAt: now }, rounds: [{ iteration: 1, run, prompt, images: [{ image, machineReview: machineReview(imageId, item, run.id) }] }] };
+    return {
+        type: "auto_run.trajectory",
+        autoRun: item,
+        brief: { id: item.briefId, profileId: "default", subject: item.name, purpose: "隔离浏览器验收", aspectRatio: "4:5", constraints: { keep: [], avoid: [] }, referenceImageIds: [], strategy: "balanced", createdAt: now },
+        rounds: [{ iteration: 1, run, prompt, images: [{ image, machineReview: machineReview(imageId, item, run.id) }] }],
+    };
 }
 
 function reviewItem(imageId: string, item: ReturnType<typeof autoRun>, runId: string) {

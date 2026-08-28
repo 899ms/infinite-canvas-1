@@ -742,3 +742,13 @@
 | `docs/session-development-record.md` | 修改 | 记录本次文件关系、命令语义和隔离边界，满足 `AGENTS.md` 的记录要求。 |
 
 验证记录：夹具先以一个当前任务的部分成功 Run、一条手动 Run 和一条归档 Run 进入运行与血缘页；当前任务范围只显示前者并统计 `1` 条，`autoRunId=all` 后显示三条。错误 slot 的“重试 1 个失败项”只发出 `run.retry(run-current, [slot-retry])`；页面随后保留第一张成功图片、显示第二张重试图片和“尝试 2 次”。展开“查看生成依据与 Prompt 变更”后可见 Agent Decision 与 Prompt Diff。另一夹具对运行中的 batch 确认取消，验证 `run.cancel`、slot 的“已取消”及 quarantine 提示。Core 定向用例验证指定失败 slot 重跑仍保留原成功图片，且取消后的迟到生成文件被移入 quarantine。均为 Vite 4173、内存路由和系统临时工作区，未访问用户资产、3000/17371、外部 Provider 或 Docker。矩阵第 15 项改为“自动化通过”，自动化通过数为 13、未验证数为 75。
+
+## 57. FrameFlow 默认任务定位与全部范围刷新补强回归（2026-08-28）
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-task-context.spec.ts` | 修改 | 扩展同一隔离夹具：直接访问不带 `autoRunId` 的运行与血缘、待审均选择最新活动任务；访问 `autoRunId=all` 后确认旧任务批次出现并在刷新后保持全部范围。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 更新第 02 项的局部证据与未覆盖边界，状态仍为“未验证”。 |
+| `docs/session-development-record.md` | 修改 | 保留本次验证路径、失败定位及边界，满足 `AGENTS.md` 的记录要求。 |
+
+验证记录：该用例以两个 Auto Run（最新和旧任务）及对应的 Run/Review 夹具运行。先直达 `/frameflow?view=lineage`，页面将 URL 写为 `autoRunId=auto-run-new&runId=run-new`，且只显示“最新探索”；再直达 `/frameflow?view=review`，URL 同样保持最新任务且只显示最新图片。最后直达全部范围并刷新，`autoRunId=all` 不被默认选择逻辑回写，旧任务批次仍可见。一次尝试以键盘模拟 Ant Select 的切换未可靠触发选项提交，故不把这部分外推为下拉主动切换已验收；第 02 项继续保持“未验证”。所有数据为 Vite 4173 的内存路由夹具，不访问真实 Agent、用户资产、3000/17371、外部 Provider 或 Docker。
