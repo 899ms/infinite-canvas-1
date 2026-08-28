@@ -62,7 +62,7 @@ export function CanvasConfigComposer({ value, inputs, onChange, onClose }: Canva
         const editor = editorRef.current;
         if (!editor) return;
         const next = serializeEditor(editor);
-        onChange(next);
+        if (next !== value) onChange(next);
         syncMention();
     };
 

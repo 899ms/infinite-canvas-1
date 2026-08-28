@@ -1218,3 +1218,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：先向“参考视频”区域拖入内存 MP4，边框高亮并显示“松开即可上传参考资产”。随后一次 drop PNG、4 个 MP4/MOV、WAV 和 `text/plain`：图片缩略图出现在参考图区，视频区只出现 3 个视频元素，音频区出现 WAV 文件名，文本没有渲染，视频区高亮解除。该证据不外推为真实媒体可解码性、文件大小/时长边界的操作系统文件拖放、剪贴板输入、跨浏览器或外部生成服务行为。
+
+## 93. 画布组装提示词滚动与输入回写（2026-08-28）
+
+本切片关闭中文主清单第 55 项，并修复回归中暴露的无限更新。Chromium 使用 Playwright 自管的隔离 Vite 4173，新建的画布和配置节点只存在于隔离浏览器存储；不读取用户文件、真实 3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/canvas/canvas-config-composer.tsx` | 修改 | 仅在内容序列化结果变化时向父级回写，防止编辑器同步同值内容造成 React 更新深度循环。 |
+| `web/e2e/canvas-config-composer-scroll.spec.ts` | 新增 | 新建真实画布配置节点，写入 120 段文本，验证正文高度受限、滚轮只滚动正文，以及标题/关闭按钮位置稳定。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 55 项更新为“自动化通过”，同步浏览器 62 项与未验证 44 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、缺陷修复、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：首次测试在向组装器写入内容后出现 React “Maximum update depth exceeded”。修复后，120 段文本使编辑器 `scrollHeight` 大于 `clientHeight`；鼠标滚轮后 `scrollTop` 增大，而编辑器顶部及关闭按钮的视口坐标保持不变。该证据不外推为触屏惯性滚动、所有浏览器的原生 contenteditable 行为、引用 Chip 的完整编辑路径或真实生成请求。
