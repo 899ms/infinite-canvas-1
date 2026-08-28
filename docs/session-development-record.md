@@ -1384,3 +1384,17 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 68 项更新为“自动化通过”，同步矩阵为 54 项自动化通过、32 项未验证及浏览器 72 项回归基线。 |
 
 验证记录：公开库加载单一内存来源后，页面没有“我的提示词”Tab；输入“无需展开来源”直接显示“无需展开来源的画布搜索命中”。导入审核迁移夹具后，运行时词库中的“QA 雨夜肖像”点击“插入画布”即导航到新画布，状态中的节点为 `text`，标题仍为“QA 雨夜肖像”，`content` 和 `prompt` 均为 `cinematic street portrait in neon rain, natural pose`，状态为 `success`。Web 全量门禁为 23 个 Vitest 文件 68 项、TypeScript、生产构建与 72 项 Playwright 回归通过。该证据不外推为真实远程来源持续可用、未审核个人内容、跨设备同步、所有历史损坏项目数据或真实生成服务。
+
+## 106. 全站 Agent 生成任务状态（2026-08-28）
+
+本切片关闭中文主清单第 69 项。验证仅使用 Zustand 内存工作台任务、内存画布快照和 Canvas Agent 的伪 SSE 响应，不启动真实 Codex、真实生成服务、3000/17371、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/lib/agent/agent-site-tools.test.ts` | 新增 | 发起两次生图、两次视频工作台命令，验证每次运行都返回 `taskId`；覆盖排队、运行、成功和失败四种任务状态、按 `taskId` 精确查询，以及以当前画布 `nodeIds` 查询生成节点。 |
+| `web/src/lib/agent/agent-site-tools.ts`、`web/src/stores/use-workbench-agent-store.ts` | 既有实现（未修改） | 前者将工作台命令导航到生图/视频页面并创建可追踪任务，后者以本页内存任务表保存状态。 |
+| `web/src/components/agent/local-agent-panel.tsx`、`web/src/services/api/canvas-agent.ts` | 既有实现（未修改） | 页面在获得焦点或重新可见时调用 `/canvas/activate`，并以各自 `clientId` 上报/接收工具请求。 |
+| `canvas-agent/src/canvas/session.ts`、`canvas-agent/src/canvas/session.test.ts` | 既有实现（未修改） | 服务端以最近活动的 `clientId` 为未绑定工具的目标；单测验证 `generation_get_status` 只发送给当前激活网页，另一网页没有收到工具请求。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 69 项更新为“自动化通过”，同步矩阵为 55 项自动化通过、31 项未验证，以及 Web 24 个文件/69 项测试基线。 |
+
+验证记录：隔离生图和视频提交均返回形如 `image-N`、`video-N` 的 `taskId`；同一任务表中可汇总 `queued=1`、`running=1`、`succeeded=1`、`failed=1`，并以 `taskId` 仅返回目标运行中生图任务。向 `generation_get_status` 提交当前画布的 `nodeIds` 时，只返回该画布的 `loading→running` 配置节点及其项目 ID，不混入其他节点或工作台任务。Canvas Agent 的两客户端测试激活第二页后，状态查询工具仅发送给第二页，第一页没有收到调用。Web 全量测试为 24 个 Vitest 文件 69 项、TypeScript 通过；Canvas Agent 203 项测试通过。该证据不外推为真实模型队列、跨浏览器本地状态复制、真实多窗口焦点事件或生产 Agent 服务可用性。
