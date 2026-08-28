@@ -1283,3 +1283,15 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片文件关联、隔离范围、验证与不外推边界，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：远处图片节点初始未渲染在可视画布 DOM；点击“放大预览”后显示标题和图片的详情弹窗，节点仍未进入 DOM，证明预览没有触发定位。关闭弹窗后点击带“定位到节点”标题的元素整行，节点出现于视口并带选中层级。Web 全量单测 19 个文件 59 项、TypeScript、生产构建和 65 项 Playwright 回归通过。该证据不外推为多选/批量导出模式、视频/音频预览、触屏交互、跨浏览器动画曲线或用户导入的异常节点数据。
+
+## 98. 配置与用户偏好导入导出（2026-08-28）
+
+本切片关闭中文主清单第 60 项。测试以测试进程内的 Zustand 状态和内存 JSON 文件运行；不会读取、写入或导出用户浏览器中的真实 API Key、WebDAV 凭据、提示词来源或 Docker/容器配置。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/services/config-file.test.ts` | 新增 | 固定导出内容含完整 AI 配置、WebDAV 和提示词来源；固定变更后的导入恢复；固定错误 JSON 拒绝且保留原状态。 |
+| `web/src/services/config-file.ts`、`web/src/components/layout/app-config-modal.tsx` | 既有实现（未修改） | 前者组装和校验配置文件并写回两个配置存储；后者提供导入/导出按钮，导入失败时显示错误消息。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 60 项更新为“自动化通过”，同步 Web 20 文件/62 项与未验证 39 项基线，并记录文件关联。 |
+
+验证记录：内存导出 JSON 含应用标识、版本、渠道/默认模型/生成偏好、WebDAV 和提示词来源计划；修改状态后导入精确恢复；`{invalid` 被拒绝且现有 API Key 不变。定向 Vitest 为 3 项通过。该证据不外推为浏览器下载权限、操作系统文件选择器、真实凭据有效性或 WebDAV 网络连接。
