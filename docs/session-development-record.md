@@ -840,3 +840,16 @@
 | `docs/session-development-record.md` | 修改 | 记录即时 UI 状态、异步历史失效、请求绑定和隔离边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：原实现先等待重置接口再应用会话状态，因此网络准备期间仍可能看到旧消息；同时在途历史读取没有被新对话操作明确作废。现在点击“新对话”同步设置空活动线程、空消息和 `preparing` 会话，随后异步重置；按钮运行时输入不可提交，服务返回 `thread-new` 后才恢复可发送状态。夹具首先确认“旧会话消息”已消失，再输入“只发送到新会话”，截获 `/agent/codex/turn` 的 `threadId=thread-new`；进入历史后仅显示旧会话，没有 `thread-new` 空历史条目。实现仅采用项目既有的 Zustand `setAgentState` 补丁和序列号失效机制；React 19.2 的状态批处理说明支持在事件处理器启动异步请求前先提交一致的 UI 状态（[React 官方文档](https://react.dev/learn/queueing-a-series-of-state-updates)）。未对真实多标签 SSE、实际 Codex 空线程目录或跨浏览器行为作外推。
+
+## 65. Agent 读取画布卡片的历史恢复回归（2026-08-28）
+
+本切片关闭中文主清单第 28 项。测试只构造 Canvas Agent 内存历史，不读取真实画布、用户资产、3000、17371、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/agent/codex-history.test.ts` | 修改 | 新增 `canvas_get_state` 历史投影回归，验证八类节点/连线精确计数、空画布和失败错误文本。 |
+| `canvas-agent/src/agent/codex-history.ts` | 既有实现（未修改） | 从 MCP 历史结果解析画布节点与连线，并生成可在刷新后恢复的中文工具卡片摘要。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 28 项标为“自动化通过”，同步未验证数为 69 与 Canvas Agent 192 项测试基线。 |
+| `docs/session-development-record.md` | 修改 | 记录测试数据、历史恢复范围与验证边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：同一已完成历史 turn 依次返回完整画布、空画布及失败读取。完整画布精确显示 `3 个文本、5 张图片、2 个配置、1 个视频、1 个音频、1 个分组、1 个其他节点、4 条连线`；空结果显示“当前画布为空”；失败项显示“读取画布超时”且 detail 状态为 `failed`。该路径经 `threadMessages` 投影，正是刷新或恢复历史对话使用的来源，因此证明摘要不会只存在于实时事件中。全量 Canvas Agent 测试为 192 项通过；不外推为真实 Agent 调用、可视化卡片布局或跨标签焦点选择验收。

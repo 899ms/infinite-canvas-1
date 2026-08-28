@@ -433,6 +433,28 @@ test("通用工具只由标题和结构化状态表达完成结果", () => {
     assert.equal((messages[0].detail as { status?: string }).status, "completed");
 });
 
+test("读取画布历史按节点类型汇总，并保留空画布和失败原因", () => {
+    const result = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }] });
+    const messages = threadMessages({
+        id: "thread-1",
+        turns: [{
+            id: "turn-1",
+            status: "completed",
+            items: [
+                { id: "canvas-full", type: "mcpToolCall", tool: "canvas_get_state", status: "completed", result: result({ nodes: [{ type: "text" }, { type: "text" }, { type: "text" }, { type: "image" }, { type: "image" }, { type: "image" }, { type: "image" }, { type: "image" }, { type: "config" }, { type: "config" }, { type: "video" }, { type: "audio" }, { type: "group" }, { type: "custom" }], connections: [{}, {}, {}, {}] }) },
+                { id: "canvas-empty", type: "mcpToolCall", tool: "canvas_get_state", status: "completed", result: result({ nodes: [], connections: [] }) },
+                { id: "canvas-failed", type: "mcpToolCall", tool: "canvas_get_state", status: "failed", error: { message: "读取画布超时" } },
+            ],
+        }],
+    });
+    const byId = new Map(messages.map((item) => [item.itemId, item]));
+    assert.equal(byId.get("canvas-full")?.title, "读取画布");
+    assert.equal(byId.get("canvas-full")?.text, "3 个文本、5 张图片、2 个配置、1 个视频、1 个音频、1 个分组、1 个其他节点、4 条连线");
+    assert.equal(byId.get("canvas-empty")?.text, "当前画布为空");
+    assert.equal(byId.get("canvas-failed")?.text, "读取画布超时");
+    assert.equal((byId.get("canvas-failed")?.detail as { status?: string }).status, "failed");
+});
+
 test("命令完成条目缺少 command 时仍保留历史卡片", () => {
     const messages = threadMessages({
         id: "thread-1",
