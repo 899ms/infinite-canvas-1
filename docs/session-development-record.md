@@ -1070,3 +1070,17 @@
 | `docs/session-development-record.md` | 修改 | 记录完整事件顺序、历史恢复、隔离边界及结果，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：实时事件先显示思考摘要、进行中 `1/2` 计划、单命令预览、文件修改、网页搜索和“画布操作”，不显示原始 `canvas_apply_ops`。思考摘要展开后仍显示原有 Markdown 列表内容，`item.completed(summary=已完成分析)` 不会覆盖；第二个 `plan.updated` 把同一计划更新为 `2/2`，页面仍仅有一个“任务进度”卡。`turn.completed` 后接口返回同一线程的权威历史，文件摘要、搜索摘要与完整计划继续可见。全量验收仍限于隔离 Chromium、受控 SSE 和受控历史数据，不外推为真实 Canvas Agent、真实网页搜索、跨浏览器或真实 Codex 执行验收。
+
+## 82. Agent 权限控制与并发审批（2026-08-28）
+
+本切片关闭中文主清单第 45 项。Chromium 使用 Vite 临时 4173、真实右侧 `LocalAgentPanel`、内存 EventSource 与受控审批 HTTP 接口；Canvas Agent 单测使用进程内伪 app-server stdin。两者都不会连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-permission-controls.spec.ts` | 新增 | 在真实面板验证“请求批准 / 自动审查 / 完全访问权限”选择，自动审查刷新保留、完全访问的显式风险确认，以及文件与网络两个并发审批卡的拒绝、本会话允许、SSE resolved 后逐一回收。 |
+| `canvas-agent/src/agent/codex-client.test.ts` | 修改 | 验证请求批准 turn 使用 `on-request + workspaceWrite + 禁网`；自动审查线程额外携带 `approvals_reviewer=auto_review`；完全访问线程/turn 使用 `never + danger-full-access`。 |
+| `web/src/components/agent/agent-chat-composer.tsx`、`web/src/components/agent/local-agent-panel.tsx`、`web/src/components/agent/agent-chat-message.tsx` | 既有实现（本切片未修改） | 分别提供权限菜单、完全访问二次确认/审批状态机，以及审批卡的三种决定按钮与目标信息。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 45 项更新为“自动化通过”，同步 Canvas Agent 200 项、浏览器 56 项与未验证 54 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、权限边界、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：初始模式为“请求批准”，切换“自动审查”后 `localStorage` 保存 `automatic` 并在刷新/重新打开面板后仍显示该模式。选择“完全访问权限”先显示“Codex 将不受沙箱限制，可访问互联网及本机任意文件”的风险确认，只有点击“启用完全访问”后才保存 `full`。回到请求批准后，受控 SSE 同时送达工作区外文件和网络访问两个审批请求；每张卡均提供“拒绝 / 允许一次 / 本会话允许”。拒绝网络请求只提交 `decline` 并在对应 resolved 后移除该卡，文件请求仍保持；再选择本会话允许只提交 `acceptForSession`，第二个 resolved 后才移除。Canvas Agent 协议单测额外证明三种选择会实际转为 app-server 的策略参数。该证据不外推为真实 Codex 对风险的分类质量、真实网络访问、真实文件改写、跨浏览器或生产权限审计。

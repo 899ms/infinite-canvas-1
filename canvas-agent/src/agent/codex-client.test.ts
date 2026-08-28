@@ -48,6 +48,49 @@ test("审批只在 app-server 确认 resolved 后清除", () => {
     assert.equal(client.resolveApproval("17", "accept"), false);
 });
 
+test("三种权限模式分别传递审批、沙箱与自动审查策略", async () => {
+    const writes: Array<Record<string, unknown>> = [];
+    const child = { stdin: { write: (line: string) => (writes.push(JSON.parse(line)), true) } };
+    const client = Reflect.construct(CodexAppClient, [child, () => undefined, emptyEventHistory]) as CodexAppClient;
+    const testClient = client as unknown as TestClient;
+
+    const startingAutomatic = client.startThread("D:\\site", "automatic");
+    const automaticThread = writes.at(-1);
+    assert.equal(automaticThread?.method, "thread/start");
+    assert.deepEqual((automaticThread?.params as { config?: Record<string, unknown> })?.config?.approvals_reviewer, "auto_review");
+    assert.deepEqual((automaticThread?.params as { approvalPolicy?: unknown; sandbox?: unknown })?.approvalPolicy, "on-request");
+    assert.deepEqual((automaticThread?.params as { approvalPolicy?: unknown; sandbox?: unknown })?.sandbox, "workspace-write");
+    testClient.handle({ id: automaticThread?.id, result: { thread: { id: "automatic-thread" } } });
+    await startingAutomatic;
+
+    const startingFull = client.startThread("D:\\site", "full");
+    const fullThread = writes.at(-1);
+    assert.equal(fullThread?.method, "thread/start");
+    assert.deepEqual((fullThread?.params as { approvalPolicy?: unknown; sandbox?: unknown })?.approvalPolicy, "never");
+    assert.deepEqual((fullThread?.params as { approvalPolicy?: unknown; sandbox?: unknown })?.sandbox, "danger-full-access");
+    assert.equal((fullThread?.params as { config?: Record<string, unknown> })?.config?.approvals_reviewer, undefined);
+    testClient.handle({ id: fullThread?.id, result: { thread: { id: "full-thread" } } });
+    await startingFull;
+
+    const runningRequest = client.startTurn("request-thread", "检查工作区", [], "request");
+    const requestTurn = writes.at(-1);
+    assert.equal(requestTurn?.method, "turn/start");
+    assert.deepEqual((requestTurn?.params as { approvalPolicy?: unknown; sandboxPolicy?: unknown })?.approvalPolicy, "on-request");
+    assert.deepEqual((requestTurn?.params as { approvalPolicy?: unknown; sandboxPolicy?: unknown })?.sandboxPolicy, { type: "workspaceWrite", networkAccess: false });
+    testClient.handle({ id: requestTurn?.id, result: { turn: { id: "request-turn" } } });
+    testClient.handleNotification("turn/completed", { threadId: "request-thread", turn: { id: "request-turn", status: "completed" } });
+    await runningRequest;
+
+    const runningFull = client.startTurn("full-thread", "执行已授权任务", [], "full");
+    const fullTurn = writes.at(-1);
+    assert.equal(fullTurn?.method, "turn/start");
+    assert.deepEqual((fullTurn?.params as { approvalPolicy?: unknown; sandboxPolicy?: unknown })?.approvalPolicy, "never");
+    assert.deepEqual((fullTurn?.params as { approvalPolicy?: unknown; sandboxPolicy?: unknown })?.sandboxPolicy, { type: "dangerFullAccess" });
+    testClient.handle({ id: fullTurn?.id, result: { turn: { id: "full-turn" } } });
+    testClient.handleNotification("turn/completed", { threadId: "full-thread", turn: { id: "full-turn", status: "completed" } });
+    await runningFull;
+});
+
 test("中断请求只作用于当前运行线程", async () => {
     const writes: Array<Record<string, unknown>> = [];
     const child = { stdin: { write: (line: string) => (writes.push(JSON.parse(line)), true) } };
