@@ -1167,3 +1167,15 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和证据边界，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：临时目录中的 `AGENTS.md` 与运行时 `AGENT_PROMPT` 字节一致；受控 app-server JSON-RPC 的 `turn/start.input` 只有“请根据这张参考图整理当前画布中的节点。附件：参考图.png”，不包含完整工作目录指令。既有当前画布优先测试和会话工具路由测试继续覆盖工作目录规则加载后对画布工具的约束。该证据不外推为真实 Codex 对所有自然语言请求的遵循概率、真实 app-server 文件加载时序或跨平台工作目录权限。
+
+## 89. 画布文本复制浏览器验收（2026-08-28）
+
+本切片关闭中文主清单第 50 项。使用隔离 Vite 4173 与 Playwright Chromium 创建临时画布；未连接或停止真实 3000/17371、用户画布、Token、外部 Provider 或 Docker/容器。结束后已关闭本切片启动的浏览器和 Vite 实例。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/pages/canvas/project.tsx`、`web/src/lib/canvas/canvas-copy-shortcut.ts`、`canvas-copy-shortcut.test.ts` | 既有实现/测试（未修改） | 页面在有文字选区时放行浏览器原生复制；无选区时保留画布节点复制。单测固定最小分支。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 50 项更新为“人工通过”，同步未验证 48 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录隔离浏览器操作、结果和边界，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：临时画布创建“画布文本复制验证”文本节点后，DOM 文字选区保持该全文；发送 `Ctrl+C` 后选区仍存在，清除选区再粘贴没有生成“Copy”节点，证明不会落入画布内部节点复制。随后点击画布节点本体（而非带快捷键忽略标记的左侧节点列表），在无文字选区状态下发送 `Ctrl+C` + `Ctrl+V`，左侧节点计数由 1 变为 2，出现“文本 Copy”。该证据覆盖 Chromium 的 Ctrl 组合键；不外推为 macOS Cmd、系统剪贴板权限实现、触屏选择、跨浏览器或跨设备同步行为。

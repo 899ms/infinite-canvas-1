@@ -57,7 +57,7 @@
 | 47 | Agent 默认新对话 | 自动化通过 | 主清单 47；隔离空会话；不恢复、不预建、首发才建线程 | `web/e2e/agent-default-new-thread.spec.ts` 覆盖连接后的空白对话、零自动 reset 请求、旧历史不自动进入，以及首条发送携带空线程 ID；`canvas-agent/src/server/http.ts` 仅允许空闲空会话由首条 turn 懒创建 Codex 线程。 |
 | 48 | Agent 当前画布优先 | 自动化通过 | 主清单 48；双标签隔离；当前画布读取与写入不偏移 | `canvas-agent/src/agent/agent-instructions.test.ts` 固定“先读当前画布、不列举/重复导航”的实际 MCP 指令；`canvas-agent/src/canvas/session.test.ts` 覆盖 turn 绑定发起网页后，即使焦点切到另一标签，读取和写入仍只作用于原画布。 |
 | 49 | Agent 图片消息 | 自动化通过 | 主清单 49；隔离图片附件；缩略图、预览、历史和清理正确 | `web/e2e/agent-image-message.spec.ts` 以持久化 `agent-asset` 历史响应覆盖 40px 缩略图和大图预览；`canvas-agent/src/agent/message-metadata.test.ts` 覆盖重启恢复、按线程删除预览资源和超大预览拒绝。 |
-| 50 | 画布文本复制 | 未验证 | 主清单 50；文本选择；复制快捷键不冲突 | — |
+| 50 | 画布文本复制 | 人工通过 | 主清单 50；隔离 Chromium 画布；文本选择与节点复制快捷键不冲突 | 浏览器实测：选中节点文字后 `Ctrl+C` 保持原生选区，随后粘贴不产生“Copy”节点；点击画布节点本体且无文字选区时 `Ctrl+C` + `Ctrl+V` 将节点数从 1 增至 2，并生成“文本 Copy”。`web/src/lib/canvas/canvas-copy-shortcut.test.ts` 固定对应分支。 |
 | 51 | Agent 工作目录指令 | 自动化通过 | 主清单 51；隔离工作区；指令生成与请求边界正确 | `canvas-agent/src/config.test.ts` 验证隔离工作目录从独立 `agent-instructions.md` 源生成 `AGENTS.md`；`canvas-agent/src/agent/codex-client.test.ts` 验证 `turn/start` 仅含本轮请求和必要附件上下文，不重复工作目录指令。 |
 | 52 | 画布文本设置 | 未验证 | 主清单 52；隔离节点；推理强度持久化正确 | — |
 | 53 | 生图工作台参考图 | 未验证 | 主清单 53；隔离图片文件；拖放和高亮正确 | — |
