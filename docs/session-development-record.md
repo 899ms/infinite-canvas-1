@@ -1084,3 +1084,17 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、权限边界、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：初始模式为“请求批准”，切换“自动审查”后 `localStorage` 保存 `automatic` 并在刷新/重新打开面板后仍显示该模式。选择“完全访问权限”先显示“Codex 将不受沙箱限制，可访问互联网及本机任意文件”的风险确认，只有点击“启用完全访问”后才保存 `full`。回到请求批准后，受控 SSE 同时送达工作区外文件和网络访问两个审批请求；每张卡均提供“拒绝 / 允许一次 / 本会话允许”。拒绝网络请求只提交 `decline` 并在对应 resolved 后移除该卡，文件请求仍保持；再选择本会话允许只提交 `acceptForSession`，第二个 resolved 后才移除。Canvas Agent 协议单测额外证明三种选择会实际转为 app-server 的策略参数。该证据不外推为真实 Codex 对风险的分类质量、真实网络访问、真实文件改写、跨浏览器或生产权限审计。
+
+## 83. Agent 历史卡片与批量删除（2026-08-28）
+
+本切片关闭中文主清单第 46 项。Chromium 使用 Vite 临时 4173、真实 `AgentHistoryView` / `LocalAgentPanel`、内存 store 与受控 Agent HTTP 接口；不会连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-history-records.spec.ts` | 新增 | 验证历史卡片点击后直接恢复对应对话、不出现“进入”按钮；验证全选两条、确认后顺序调用归档删除接口，删除当前会话后清空活跃线程与聊天消息。 |
+| `web/src/components/agent/agent-history-view.tsx`、`web/src/components/agent/local-agent-panel.tsx` | 既有实现（本切片未修改） | 前者负责可点击卡片与多选 UI；后者负责恢复、删除确认、线程缓存移除与刷新。 |
+| `canvas-agent/src/agent/codex.ts`、`canvas-agent/src/server/http.ts` | 既有实现（本切片未修改） | 归档线程后清理计划、补充事件与附件元数据，并将活动线程切为空。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 46 项更新为“自动化通过”，同步浏览器 57 项与未验证 53 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：历史列表中“第二段对话”整张卡片可直接点击恢复，恢复后自动回到“对话”页并显示该线程的历史消息，页面没有额外“进入”按钮。返回历史后勾选全选框显示“已选 2 条”；确认删除后两个归档接口均被调用，列表显示“当前工作空间还没有对话记录”，store 的 `activeThreadId` 为空、`messages` 为零。夹具按真实服务端的单调会话 revision 模拟恢复与删除，避免把过期响应误判为前端状态问题。该证据不外推为真实 Codex 归档延迟、真实附件文件删除、跨浏览器或删除失败恢复验收。
