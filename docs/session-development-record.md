@@ -1231,3 +1231,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、缺陷修复、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：首次测试在向组装器写入内容后出现 React “Maximum update depth exceeded”。修复后，120 段文本使编辑器 `scrollHeight` 大于 `clientHeight`；鼠标滚轮后 `scrollTop` 增大，而编辑器顶部及关闭按钮的视口坐标保持不变。该证据不外推为触屏惯性滚动、所有浏览器的原生 contenteditable 行为、引用 Chip 的完整编辑路径或真实生成请求。
+
+## 94. 画布节点提示词滚动与输入回写（2026-08-28）
+
+本切片关闭中文主清单第 56 项，并修复节点提示词输入的同值更新循环。Chromium 使用 Playwright 自管的隔离 Vite 4173；新建画布和图片节点只存在于隔离浏览器存储，不读取用户文件、真实 3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/canvas/canvas-prompt-chip-input.tsx` | 修改 | 利用现有 `lastEmittedRef` 跳过相同文本的重复父级回写，避免 React 更新深度循环。 |
+| `web/e2e/canvas-node-prompt-scroll.spec.ts` | 新增 | 新建真实图片节点并写入 120 段提示词，验证输入区内部滚动且画布 transform 不变。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 56 项更新为“自动化通过”，同步浏览器 63 项与未验证 43 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、缺陷修复、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：首次测试写入长提示词后出现 React “Maximum update depth exceeded”。修复后，输入区 `scrollHeight` 大于 `clientHeight`，鼠标滚轮使输入区 `scrollTop` 增大，而画布 `.absolute.origin-top-left` 的 style transform 保持原值。该证据不外推为触屏滚动、所有浏览器的 contenteditable 行为、放大编辑弹窗、引用 Chip 的完整编辑路径或真实生成请求。

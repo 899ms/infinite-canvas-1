@@ -74,6 +74,7 @@ export function CanvasPromptChipInput({ value, references, onChange, onSubmit, c
     }, [tokens, referenceByLabel, theme, value]);
 
     const emit = (next: string) => {
+        if (next === lastEmittedRef.current) return;
         lastEmittedRef.current = next;
         onChange(next);
     };
