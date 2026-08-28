@@ -121,7 +121,7 @@ export function startHttpServer() {
         const startedAt = Date.now();
         const url = requestUrl(req, config);
         res.on("finish", () => {
-            if (req.method === "OPTIONS" || (res.statusCode < 400 && ["/health", "/canvas/state", "/canvas/activate"].includes(url.pathname))) return;
+            if (!shouldLogHttpRequest(req.method, url.pathname, res.statusCode)) return;
             logger.debug(`HTTP ${req.method} ${url.pathname}`, { status: res.statusCode, durationMs: Date.now() - startedAt });
         });
         next();
@@ -580,6 +580,11 @@ function revealLocalFile(filePath: string, isDirectory: boolean) {
 /** 结合服务配置解析当前请求 URL。 */
 function requestUrl(req: Request, config: CanvasAgentConfig) {
     return new URL(req.originalUrl || req.url || "/", config.url);
+}
+
+/** 仅在 Debug 模式记录有诊断价值的 HTTP 完结事件。 */
+export function shouldLogHttpRequest(method: string, pathname: string, statusCode: number) {
+    return method !== "OPTIONS" && (statusCode >= 400 || !["/health", "/canvas/state", "/canvas/activate"].includes(pathname));
 }
 
 /** 设置跨域响应头并记录通过 token 授权的来源。 */

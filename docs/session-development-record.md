@@ -948,3 +948,16 @@
 | `docs/session-development-record.md` | 修改 | 记录 stderr 文本边界、文件关联和验证范围，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：输入带黄色 ANSI 包装、UTC 时间与 CRLF 的 Codex stderr 后，输出只有“Codex 正在重试”；本地终端继续由 Logger 生成一次 `YYYY-MM-DD HH:mm:ss WARN`，网页 `addEventLog` 继续生成一次本地时间，故不会显示重复 ISO 时间或 ANSI 转义。定向回归、Canvas Agent 全量 198 项测试和生产构建，以及文档内容检查和生产构建通过。此项不外推为真实 Codex 子进程、生产终端或浏览器人工日志视图验收。
+
+## 73. Agent HTTP Debug 过滤回归（2026-08-28）
+
+本切片为中文主清单第 38 项增加 Agent 服务端的局部自动化证据，但不将其标记为完整通过：右侧日志时间线的去重、摘要和浏览器可见性仍需单独验收。测试不启动 HTTP 服务，因此不会读取或写入真实配置、占用 3000/17371 或访问真实 Agent、Token、图片、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/server/http.ts` | 修改 | 将 Debug HTTP 日志筛选抽为纯函数；成功的 `/health`、`/canvas/state`、`/canvas/activate` 和所有 OPTIONS 静默，错误响应和实际业务请求仍记录。 |
+| `canvas-agent/src/server/http-log-filter.test.ts` | 新增 | 用虚构 method/path/status 覆盖上述静默规则、失败健康检查、工具结果冲突和 Codex turn 业务请求。 |
+| `canvas-agent/package.json` | 修改 | 将 HTTP 过滤回归加入 Canvas Agent 的正式测试清单。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 更新 Canvas Agent 199 项测试基线，并记录局部证据与未覆盖边界。 |
+
+验证记录：`GET /health 200`、`POST /canvas/state 200`、`POST /canvas/activate 200` 与 `OPTIONS` 都不输出 Debug HTTP 日志；`GET /health 500`、`POST /canvas/result 409` 和 `POST /agent/codex/turn 200` 均保留。定向测试和生产构建通过；完整 Canvas Agent、文档与浏览器门禁将在后续完整关闭第 38 项时复跑。 
