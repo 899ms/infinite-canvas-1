@@ -1331,3 +1331,16 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 64 项更新为“自动化通过”，同步矩阵为 50 项自动化通过、36 项未验证，并记录文件关联与隔离边界。 |
 
 验证记录：在 1280×900 下，滚动中间区域后 `scrollTop` 大于 0，而封面和“复制提示词”按钮的坐标保持不变。切换至 390×520 后弹窗四边均处于视口内，底部操作仍可见。夹具最初使用 SVG Data URL，项目既有 URL 安全策略按预期降级为占位图；改为允许的 PNG Data URL 后得到实际媒体固定区证据。Web 全量门禁为 21 个 Vitest 文件 66 项、TypeScript、生产构建与 67 项 Playwright 回归通过。该证据不外推为真实远程图片加载、动画以外的浏览器渲染差异、触屏惯性滚动、系统剪贴板权限或跨设备资产同步。
+
+## 102. 提示词远程缩略图与旧缓存降级（2026-08-28）
+
+本切片关闭中文主清单第 65 项。Chromium 使用 Playwright 自管的隔离 Vite 4173，浏览器本地存储仅启用一个路由夹具来源，并在隔离 IndexedDB 的 `prompt_cache` 写入一小时前的原始缓存；不访问真实远程来源、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/prompt-thumbnail-fallback.spec.ts` | 新增 | 写入含 Linux.do 拒绝嵌入地址和 Banana Prompt Quicker 已失效参考图的一小时前缓存，验证提示词卡片、来源内容表格和详情弹窗都降级为占位图，且不发起坏图请求。 |
+| `web/src/services/api/prompt-image-url.ts`、`web/src/services/api/prompts.ts` | 既有实现（未修改） | 前者集中屏蔽已知无法嵌入/已失效缩略图；后者无论远程首读还是缓存读都再次调用过滤器后再向三处 UI 提供数据。 |
+| `web/src/components/prompts/prompt-card.tsx`、`web/src/components/layout/prompt-source-content-modal.tsx`、`web/src/pages/prompts/components/prompt-detail-dialog.tsx` | 既有实现（未修改） | 三处在过滤后空 `coverUrl` 时渲染各自的占位图，不再创建图片元素。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 65 项更新为“自动化通过”，同步矩阵为 51 项自动化通过、35 项未验证，并记录文件关联与隔离边界。 |
+
+验证记录：一小时前的 `prompt_cache` 原始记录仍带两种坏 URL；加载页面时 `withSourceMeta` 再次过滤，提示词卡片没有带该标题的图片元素。打开详情、进入配置页来源内容表格及其嵌套详情后，各区域均没有图片元素；浏览器对两条坏地址的请求列表为空。Web 全量门禁为 21 个 Vitest 文件 66 项、TypeScript、生产构建与 68 项 Playwright 回归通过。该证据覆盖已知拒绝跨域嵌入与已失效资源及旧缓存，不外推为任意未知站点的网络故障、真实 CDN 可用性、浏览器离线模式或跨设备缓存同步。
