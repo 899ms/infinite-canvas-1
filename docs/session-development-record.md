@@ -1244,3 +1244,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、缺陷修复、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：首次测试写入长提示词后出现 React “Maximum update depth exceeded”。修复后，输入区 `scrollHeight` 大于 `clientHeight`，鼠标滚轮使输入区 `scrollTop` 增大，而画布 `.absolute.origin-top-left` 的 style transform 保持原值。该证据不外推为触屏滚动、所有浏览器的 contenteditable 行为、放大编辑弹窗、引用 Chip 的完整编辑路径或真实生成请求。
+
+## 95. 画布批量结果提示词回显（2026-08-28）
+
+本切片关闭中文主清单第 57 项。Chromium 使用 Playwright 自管的隔离 Vite 4173，并在隔离 IndexedDB 的 `app_state` 中预置批量图片项目；不读取用户文件、真实 3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-batch-prompt-recall.spec.ts` | 新增 | 预置真实画布批量图片根节点，验证初始提示词回显、展开图片组、子图设为主图和再次选择根节点后仍回显原生成提示词。 |
+| `web/src/pages/canvas/project.tsx`、`web/src/components/canvas/canvas-node.tsx` | 既有实现（未修改） | 根节点在 `metadata.prompt` 保存生成提示词；批量子图是 `images` 槽位，展开后通过“设为主图”切换，不创建独立画布节点。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 57 项更新为“自动化通过”，同步浏览器 64 项与未验证 42 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、架构边界、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：预置根节点与两个成功图片槽位后，选择根节点即可看到完整生成提示词；展开“2 张”图片组，将另一张子图设为主图后，提示词不变；再次选择根节点后仍为同一提示词。该证据不外推为真实 ImageGen 多图生成、每个槽位存储独立提示词（当前模型为根节点单一生成提示词）、跨浏览器同步或用户导入的历史畸形数据。
