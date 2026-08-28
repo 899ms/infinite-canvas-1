@@ -720,3 +720,14 @@
 ## 54. FrameFlow 机器审图状态隔离回归（2026-08-28）
 
 `web/e2e/frameflow-machine-review-state.spec.ts` 使用当前 `reviewing` Auto Run 的两张图片（一张尚未审完、一张已有 Machine Review）和一张历史图片。进入全部任务范围时，当前图片显示“Codex 审图中”及 `机器审图 1/2 张`；切换历史图片后不再显示该提示，明确回退为“无机器审图记录”。该夹具仅拦截请求并返回内存 PNG，不访问真实 Agent、用户资产、3000/17371 或 Docker。矩阵第 13 项改为“自动化通过”，自动化通过数为 11、未验证数为 77。
+
+## 55. FrameFlow Preference DNA 证据与硬约束隔离回归（2026-08-28）
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-preference-dna.spec.ts` | 新增 | 以隔离路由和内存 PNG 验证 Preference DNA 的五项概览指标、强化/规避图片、评分、Comment 与不可变事实事件计数；未审核图片不得进入 DNA，页面必须声明同一需求隔离和硬约束保护。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 将主清单第 14 项标为“自动化通过”，并关联页面夹具与核心 Planner 证据。 |
+| `docs/post-development-roadmap.md` | 修改 | 将持续验收债务从 77 项同步为 76 项。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关联、隔离范围与验证结论，满足仓库 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：新增浏览器夹具返回同一 Brief 的两条已审核反馈和一条未审核图片：DNA 为净权重 `+1`、有效样本 `2`、强化 `1`、规避 `1`、质量拒绝 `1`；强化/规避卡片分别显示图片、评分、Comment 与 `2/3` 条事实事件，未审核图片不会渲染为 DNA 证据。页面同时显示“严格按需求隔离”，明确偏好不能覆盖主体、用途、画幅与必须保留/避免等硬约束。对应 Core 用例“Codex Planner 只在同一 Creative Brief 内继承人工偏好证据”通过，验证下一次 `round.plan` 带入图片 ID、有符号权重、评分、Comment、Prompt Version 与原 Prompt 字段，并将另一 Creative Brief 的偏好完全排除。所有测试使用临时 Vite 4173、内存路由和系统临时 Core 工作区，不访问真实 Agent、用户资产、3000/17371、外部 Provider 或 Docker。矩阵第 14 项改为“自动化通过”，自动化通过数为 12、未验证数为 76。
