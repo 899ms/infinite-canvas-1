@@ -1030,3 +1030,17 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的事件顺序、文件关联、隔离边界与验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：页面发送“请完整同步回复”后，用户消息下方立即显示“正在思考”；受控 `item.updated` 显示“流式片段”。历史接口在此时仍为空，待 `turn.completed` 后才返回同一 turn 的用户消息和完整 Codex 回复；面板无需切换历史或日志即自动显示“这是一条完整同步回复。”，并移除临时片段。随后模拟 `selected model is at capacity`，对话显示“当前选择的模型请求量过大，暂时无法处理。请稍后重试，或切换其他模型后再试。”；store 中 `sending`/`waiting` 均为 `false`，唯一诊断条目为“处理失败”。新增回归暴露既有 HTTP 日志用例在全并发时过早填充被历史读取临时禁用的输入框，现以同一已就绪状态消除该竞态。全量 Chromium 52 项回归通过。该证据不外推为真实 Canvas Agent SSE、超过 30 秒等待提示、真实历史持久化、跨浏览器或真实 Provider 失败验收。
+
+## 79. Agent 长回复流式交互性能（2026-08-28）
+
+本切片关闭中文主清单第 43 项。Chromium 使用 Vite 临时 4173、真实右侧 `LocalAgentPanel`、内存 EventSource、80 条内存历史消息和受控线程历史接口；不会连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-streaming-performance.spec.ts` | 新增 | 在真实面板中验证历史行 `content-visibility` 隔离、120 段增量只更新一条当前流式消息、上滚后保持阅读位置、完成事件回补完整历史，以及全过程无 `/health` 请求。 |
+| `web/src/components/agent/agent-chat.tsx`、`web/src/components/agent/agent-chat-message.tsx` | 既有实现（未修改） | 前者为非流式历史行设置 `content-visibility:auto` 并用动画帧合并滚动跟随；后者仅在 `streamId` 存在时启用 Streamdown 的词级动画。 |
+| `web/src/components/agent/local-agent-panel.tsx` | 既有实现（未修改） | 继续把同一 `item.updated` 合并到作用域内唯一的流式消息，并在完成事件后发起权威历史同步。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 43 项更新为“自动化通过”，同步未验证 56 项与浏览器 53 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录流式性能夹具、已有实现关系、验证边界与结果，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：80 条历史消息全部使用 `content-visibility:auto`，连续发送 120 段“片段”后 store 仅新增一条带 `streamId` 的当前消息，历史总数不膨胀。滚动到时间线顶部后追加“继续流式更新”，阅读位置保持顶部而不被自动跟随覆盖。`turn.completed` 后线程接口返回“完整长回复”，当前消息自动切换为完整历史版本；从开始流式到完成均未出现 `/health` 请求。该证据覆盖隔离 Chromium 的 DOM/状态/网络契约，不把无硬件性能基准的结果外推为真实 Canvas 操作负载、跨浏览器帧率、真实 SSE 吞吐或真实 Agent 服务性能。
