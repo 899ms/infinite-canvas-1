@@ -1002,3 +1002,17 @@
 | `docs/session-development-record.md` | 修改 | 记录隔离浏览器范围、文件关联和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：列表首尾分别为“日志 001”“日志 060”，初始和错误筛选后都处于底部。人工将列表滚到顶部后追加两条错误，页面显示“2 条新日志，查看最新日志”；点击后回到底部并隐藏提示。该结果不外推为跨浏览器视觉高度对齐、触屏滚动或真实 Agent 网络日志验收。
+
+## 77. Agent 对话统计与简洁消息（2026-08-28）
+
+本切片关闭中文主清单第 41 项。Chromium 使用 Vite 临时 4173、内存 Agent store 和受控会话路由夹具，不连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/agent-chat-message.tsx` | 修改 | 用户和 Codex 消息不再渲染遗留 `meta` 字段，避免显示历史时间或 Token；用户已有右对齐、无气泡/头像的简洁排版保持不变。 |
+| `web/src/components/agent/agent-chat.tsx` | 既有实现（未修改） | 在输入框上方居中显示最新一次调用的输入、缓存和输出 Token，并使用 Spring 平滑更新数值。 |
+| `web/e2e/agent-chat-usage.spec.ts` | 新增 | 打开真实面板，验证两侧消息排版、无时间/Token 元数据、最新调用三项数值，以及触发“新对话”后清空旧消息与用量。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 41 项更新为“自动化通过”，同步自动化通过 30 项、未验证 58 项与浏览器 51 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：预置用户与 Codex 历史消息的 `meta` 为日期/Token 文本时，页面两侧均不显示；用户消息容器右对齐、无图片头像且不带气泡背景。最新调用显示“输入 1,200”“缓存 300”“输出 45”；点击“新对话”后旧消息和“最新调用”均清空。该结果不外推为逐帧动画曲线、跨浏览器渲染或真实 Codex 用量验收。
