@@ -1126,3 +1126,17 @@
 | `docs/session-development-record.md` | 修改 | 记录指令与会话路由的关联、隔离范围和证据边界，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：新测试直接读取运行时 `AGENT_PROMPT`，断言其要求当前已打开画布为默认目标、先调用 `canvas_get_state`、不得先调用 `canvas_list_projects` 或 `site_navigate`，且只有显式查看/选择/切换其他画布时才例外。既有多标签会话测试进一步证明，运行中的 turn 绑定发起标签后，即使焦点变化，`canvas_get_state` 和画布写操作仍只作用于发起标签。该证据固定指令和工具路由契约，不外推为真实模型在所有自然语言表述下的工具选择概率。
+
+## 86. Agent 图片消息（2026-08-28）
+
+本切片关闭中文主清单第 49 项。Chromium 使用 Vite 临时 4173、真实 `LocalAgentPanel`、内存 EventSource 和受控历史/图片资源接口；Canvas Agent 使用临时元数据目录。两者均不连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-image-message.spec.ts` | 新增 | 从真实历史线程快照恢复携带 `agent-asset` 的用户图片消息，验证 40px 紧凑缩略图与“图片附件预览”弹层。 |
+| `web/src/components/agent/agent-chat-message.tsx` | 既有实现（未修改） | 在用户消息后右对齐渲染可点击缩略图，并由 Ant Design Image 预览管理打开/关闭。 |
+| `canvas-agent/src/agent/message-metadata.test.ts` | 既有测试 | 验证元数据重启恢复、预览资源随线程删除和输入尺寸保护。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 49 项更新为“自动化通过”，同步浏览器 59 项与未验证 50 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和证据边界，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：历史接口返回本地 `agent-asset` 后，真实 Agent 面板显示“请参考这张图”和 `参考图.png` 缩略图；缩略图使用 `size-10`（40px）紧凑样式，点击可打开带“图片附件预览”名称的预览弹层。服务端元数据单测已覆盖相同资源跨重启可读、删除线程时移除和超限拒绝。该证据不外推为真实网络下载、跨浏览器图片解码、正在生成时的真实 Codex 事件或用户手动删除失败恢复。
