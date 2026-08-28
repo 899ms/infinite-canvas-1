@@ -814,3 +814,16 @@
 | `docs/session-development-record.md` | 修改 | 记录 Ant Select 的可访问性虚拟节点与可见浮层区分、真实交互方式及验证边界。 |
 
 验证记录：首次尝试按全局 `role=option` 点击，命中了 Ant Select 为无障碍辅助渲染的隐藏虚拟 option；随后在组合框后代查找也失败，因为实际下拉浮层使用 portal。错误上下文显示真实可点击项位于可见 `.ant-select-dropdown`，而虚拟 listbox 只保留 `aria-label`/值。测试改为先滚动对应 combobox 入视口并打开，再限定 `.ant-select-dropdown:visible .ant-select-item-option` 按可见中文标签点击；该操作触发真实 `onChange` 与 URL 状态更新。目标用例通过，完整浏览器基线将在提交前重新执行；此证据仍不包括真实模型生成或跨浏览器差异。
+
+## 63. Agent 模型与推理强度隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 26 项。测试在 Vite 临时 4173 服务中拦截 Canvas Agent HTTP 接口，使用仅供测试的模型清单和内存请求记录；不连接真实 17371、3000、用户资产、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-model-controls.spec.ts` | 新增 | 覆盖模型清单过滤、模型切换后的推理强度联动、刷新持久化、发送载荷和本地“日志”回显。 |
+| `web/src/components/agent/local-agent-panel.tsx`、`web/src/components/agent/agent-chat-composer.tsx` | 既有实现（未修改） | 前者从实际模型接口过滤内部审查/重复/无有效强度项、持久化选择并把模型与强度传给 turn 与日志；后者按当前模型渲染对应强度选项。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 26 项更新为“自动化通过”，同步未验证数为 71 和浏览器回归基线。 |
+| `docs/session-development-record.md` | 修改 | 记录模型筛选、UI 交互、请求和日志证据以及隔离边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：夹具返回内部 `codex-auto-review`、两个同名 Terra、Terra、Mini 以及仅支持无效 `auto` 强度的模型。页面只显示一项 Terra 与 Mini，内部/重复/无有效强度条目均不可选；选择 Mini 后，下拉只显示“轻度”和“极高”，不会遗留 Terra 的“中”。选择“极高”并刷新后，模型和强度仍是 Mini/极高。随后输入测试任务并发送，截获 `/agent/codex/turn` 载荷为 `model=gpt-5.4-mini`、`effort=xhigh`，右侧“日志”显示 `Mini · 极高 · 验证模型请求参数`。此前两次测试失败仅因选择了旧 placeholder 而该输入框使用 accessible name，以及日志页同时在摘要与详情渲染同一文本；改用 `role=textbox` 和精确文本的首个可见实例后通过。这些结论不外推为真实账号模型目录、真实 Codex 调用、SSE 流或跨浏览器兼容性验收。
