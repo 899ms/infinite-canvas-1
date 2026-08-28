@@ -1152,3 +1152,18 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联与尚未关闭的浏览器证据边界。 |
 
 验证记录：定向 Vitest 与 TypeScript 通过。尚未覆盖真实鼠标选区、系统剪贴板权限和节点复制的浏览器交互，因此第 50 项继续保持未验证。
+
+## 88. Agent 工作目录指令（2026-08-28）
+
+本切片关闭中文主清单第 51 项。测试只创建并清理系统临时目录，不连接真实 3000/17371、用户工作区、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/config.test.ts` | 新增 | 在隔离临时工作目录调用 `ensureSiteWorkspace`，验证启动初始化将独立维护源 `agent-instructions.md` 的运行时内容写入 `AGENTS.md`。 |
+| `canvas-agent/src/agent/codex-client.test.ts` | 修改 | 验证 `turn/start` 的文本输入恰为本轮用户请求及其必要附件上下文，不会重复工作目录指令。 |
+| `canvas-agent/package.json` | 修改 | 将工作目录初始化测试纳入默认 Canvas Agent 全量测试命令。 |
+| `canvas-agent/agent-instructions.md`、`canvas-agent/src/config.ts`、`canvas-agent/src/agent/codex-client.ts` | 既有实现（未修改） | 前者是唯一工作目录指令源；配置初始化负责生成 `AGENTS.md`；Codex 客户端仅把调用方给出的本轮 prompt 转为 app-server 输入，工作目录规则由文件加载。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 51 项更新为“自动化通过”，同步 Canvas Agent 203 项与未验证 49 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和证据边界，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：临时目录中的 `AGENTS.md` 与运行时 `AGENT_PROMPT` 字节一致；受控 app-server JSON-RPC 的 `turn/start.input` 只有“请根据这张参考图整理当前画布中的节点。附件：参考图.png”，不包含完整工作目录指令。既有当前画布优先测试和会话工具路由测试继续覆盖工作目录规则加载后对画布工具的约束。该证据不外推为真实 Codex 对所有自然语言请求的遵循概率、真实 app-server 文件加载时序或跨平台工作目录权限。

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { AGENT_PROMPT } from "../config.js";
 import { CodexAppClient, normalizeCodexStderr } from "./codex-client.js";
 import { assertDraftHasNoSensitiveValues, canvasSkillSource } from "./canvas-skill-safety.js";
 
@@ -18,6 +19,25 @@ type TestClient = {
 };
 
 const emptyEventHistory = { record: () => Promise.resolve(), recordTurn: () => Promise.resolve() };
+
+test("Codex turn 只传本轮请求，不重复工作目录指令", async () => {
+    const writes: Array<Record<string, unknown>> = [];
+    const child = { stdin: { write: (line: string) => (writes.push(JSON.parse(line)), true) } };
+    const client = Reflect.construct(CodexAppClient, [child, () => undefined, emptyEventHistory]) as CodexAppClient;
+    const testClient = client as unknown as TestClient;
+    const requestText = "请根据这张参考图整理当前画布中的节点。\n\n附件：参考图.png";
+
+    const running = client.startTurn("thread-1", requestText, [], "request");
+    const request = writes.find((item) => item.method === "turn/start");
+    const input = (request?.params as { input?: Array<{ text?: string }> })?.input || [];
+
+    assert.deepEqual(input, [{ type: "text", text: requestText, text_elements: [] }]);
+    assert.equal(input[0]?.text?.includes(AGENT_PROMPT) || false, false);
+    testClient.handle({ id: request?.id, result: { turn: { id: "turn-1" } } });
+    await new Promise((resolve) => setImmediate(resolve));
+    testClient.handleNotification("turn/completed", { threadId: "thread-1", turn: { id: "turn-1", status: "completed" } });
+    await running;
+});
 
 test("Codex stderr 移除 ANSI 与上游 UTC 时间，交由本地日志时间线记录", () => {
     const text = normalizeCodexStderr("\u001b[33m2026-08-28T01:23:45.678Z Codex 正在重试\u001b[0m\r\n");
