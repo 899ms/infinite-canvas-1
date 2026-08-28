@@ -1451,3 +1451,15 @@
 | docs/session-development-record.md | 修改 | 记录本次前端子证据和未覆盖边界，满足 AGENTS.md 的文件关联记录要求。 |
 
 验证记录：隔离工具请求携带 attachment-1、标题“商品参考.png”和位置 (120, 80)；页面只请求当前 clientId 的附件端点，得到 1×2 PNG 后写入一条 image add_node 操作，尺寸为 1×2，metadata 状态为 success 且含 naturalWidth、naturalHeight、mimeType 和持久化 storageKey。Agent 收到同一 requestId 的成功回传。新增项目存储回归创建真实画布项目，写入同规格图片节点并等待画布状态持久化，随后通过该节点 storageKey 成功读取 1×2 PNG。当前仍未自动覆盖真实 Codex 根据商品信息创建文本提示词、生成配置与连线，以及真实画布刷新后再次参与生成；第 73 项继续保持未验证。
+
+## 111. Agent 对话滚动的局部浏览器证据（2026-08-28）
+
+本切片补强中文主清单第 74 项的长对话滚动行为，仍不把该项标为完整通过。Chromium 使用 Playwright 自管的隔离 Vite 4173 和内存 Agent 会话/历史响应；不连接真实 Canvas Agent、Codex、用户会话、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-chat-follow.spec.ts` | 新增 | 以 60 条隔离历史消息验证对话初始自动定位底部；手动回到顶部后显示“查看最新消息”，第 61 条消息到达不会强制滚动，点击该按钮后恢复到底部跟随。 |
+| `web/src/components/agent/agent-chat.tsx` | 既有实现（已复核） | 以 `followMessagesRef` 记录用户是否位于底部；消息和内容尺寸变化时仅在跟随状态自动滚动，反之展示统一的 `AgentScrollToBottom` 入口。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 将第 74 项的已获自动化子证据写入状态矩阵及本会话文件关联记录，但保持“未验证”状态。 |
+
+验证记录：60 条消息初始渲染后滚动容器与底部的距离不超过 2px。将 `scrollTop` 设为 0 并触发滚动事件后出现“查看最新消息”；写入第 61 条助手消息后滚动位置仍为 0，说明新消息没有中断上翻阅读。点击入口后滚动容器再次回到距底部不超过 2px，按钮消失。当前尚未覆盖从日志切回对话、恢复另一会话的自动定位，及对话与日志入口的像素级样式同构和底部留白；第 74 项继续保持未验证。
