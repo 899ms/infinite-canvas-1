@@ -907,3 +907,18 @@
 | `docs/session-development-record.md` | 修改 | 记录 SSE 夹具、真实事件路径、结果回传和隔离边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：默认模式的可访问名称为“选择工具确认模式，当前为 自动确认”，模拟 `tool_call(canvas_apply_ops)` 后获得一次带 Canvas 快照的 `/canvas/result` 回传，页面不出现等待确认卡片。打开菜单选择“手动确认”后，输入框模式立即更新，后续同一工具调用显示“等待确认”及“拒绝执行”；拒绝后回传 `requestId=tool-manual` 与“用户取消了画布工具调用”，卡片消失。初版网络 SSE 路由使用了错误的 `/agent/**` 前缀，后改为加载前内存 EventSource，使测试覆盖真实前端监听器而不受开发服务器 SSE 生命周期影响；结果接口实际为 `/canvas/result`，不是 `/agent/codex/tool-result`。全量 Web 单测 51 项、TypeScript、生产构建、Chromium 浏览器 47 项以及文档内容检查和生产构建均通过；格式门禁只剩此前已存在的 7 项 `.playwright-cli` 记录、两个 Agent 用例和 CSP 脚本，本切片新用例已格式化。该证据不外推为真实 Agent 服务、复杂 Canvas 变更、批准后执行或跨浏览器验收。
+
+## 70. Canvas Agent 与 Codex 版本诊断回归（2026-08-28）
+
+本切片关闭中文主清单第 35 项的版本诊断与基础运行契约。测试不启动 HTTP 服务、不会写入用户的 Canvas Agent 配置、不会占用 17371，也不访问 npm；版本来源、命令调用与 npm 查询都通过注入依赖在内存中验证。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/version-check.ts` | 修改 | 抽取启动版本日志和异步 npm 升级检查的可测试逻辑；保留 `checkVersions()` 的后台检查语义与既有日志文案。 |
+| `canvas-agent/src/version-check.test.ts` | 修改 | 覆盖 Windows/Unix 本机 Codex 命令、Agent/内置 `0.146.0`/本机版本日志、缺失或不匹配提示、三类可升级提醒和 npm 离线后继续启动。 |
+| `canvas-agent/src/agent/codex-client.test.ts`、`canvas-agent/src/canvas/session.test.ts` | 既有实现（未修改） | 前者覆盖同一运行线程的中断与随后 turn/start，后者覆盖网页连接目标、画布工具请求和结果回传。 |
+| `canvas-agent/src/server/http.ts` | 既有实现（未修改） | 启动回调调用 `checkVersions()`；线程创建、恢复与 turn 路由保持现有协议。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 35 项标为“自动化通过”，同步自动化通过 24 项、未验证 64 项与 Canvas Agent 195 项测试基线。 |
+| `docs/session-development-record.md` | 修改 | 记录版本诊断逻辑、运行边界、已有协议测试和验证命令，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：依赖清单把内置 `@openai/codex` 固定为 `0.146.0`。启动路径记录 Canvas Agent、内置 Codex 与本机 Codex 三种版本；未安装本机 Codex 时提示安装，版本不一致时提示两者同步升级。npm 返回较新 Agent、内置 Codex 或本机 Codex 时分别给出对应升级命令；npm 抛错时只记录“Unable to check the latest npm versions; startup will continue.”，不阻断启动。`codex-client.test.ts` 已证明 `interruptCurrentTurn` 只中断匹配的活跃线程，随后可以启动新 turn；`session.test.ts` 已证明浏览器连接、画布工具请求及结果只作用于正确客户端。定向版本检查、Canvas Agent 全量 195 项测试和生产构建通过。该证据不外推为实际全局 Codex 安装状态、真实 npm 可达性、真实 app-server 进程或跨进程恢复验收。
