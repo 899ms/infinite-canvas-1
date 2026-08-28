@@ -1270,3 +1270,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片文件关联、隔离范围、验证和不外推边界，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：同一 `composerContent` 在首发与模拟失败重试的两次 `buildNodeGenerationContext` 调用返回完全相同结果，包含的上游文本仅出现一次；`buildGenerationConfig` 在 image、video、text、audio 模式分别解析为当前对应的 imageModel、videoModel、textModel、audioModel。Web 全量单测为 19 个文件 59 项通过，TypeScript、生产构建与 64 项 Playwright 回归通过。该证据不外推为真实外部 Provider 的响应、实际密钥有效性、请求网络重试策略、用户填写无效模型时的服务端兼容性或跨设备配置同步。
+
+## 97. 画布左侧元素列表定位与预览（2026-08-28）
+
+本切片关闭中文主清单第 59 项。Chromium 使用 Playwright 自管的隔离 Vite 4173，在 IndexedDB 中预置单个远处图片节点；不读取用户文件、真实 3000/17371、Token、外部 Provider 或 Docker/容器，结束后由测试关闭服务。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-side-panel-focus-preview.spec.ts` | 新增 | 验证左侧图片元素的独立预览仅打开大图、不触发画布定位；点击元素整行则将原本不在视口的节点定位进视口并进入选中态。 |
+| `web/src/components/canvas/canvas-side-panel.tsx`、`web/src/pages/canvas/project.tsx` | 既有实现（未修改） | 前者将行点击和预览按钮分为两个事件入口；后者以 450ms 缓动聚焦节点、更新选择集，并由预览状态打开图片详情弹窗。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 59 项更新为“自动化通过”，同步浏览器 65 项与未验证 40 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片文件关联、隔离范围、验证与不外推边界，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：远处图片节点初始未渲染在可视画布 DOM；点击“放大预览”后显示标题和图片的详情弹窗，节点仍未进入 DOM，证明预览没有触发定位。关闭弹窗后点击带“定位到节点”标题的元素整行，节点出现于视口并带选中层级。Web 全量单测 19 个文件 59 项、TypeScript、生产构建和 65 项 Playwright 回归通过。该证据不外推为多选/批量导出模式、视频/音频预览、触屏交互、跨浏览器动画曲线或用户导入的异常节点数据。
