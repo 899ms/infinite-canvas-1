@@ -60,7 +60,7 @@
 | 50 | 画布文本复制 | 人工通过 | 主清单 50；隔离 Chromium 画布；文本选择与节点复制快捷键不冲突 | 浏览器实测：选中节点文字后 `Ctrl+C` 保持原生选区，随后粘贴不产生“Copy”节点；点击画布节点本体且无文字选区时 `Ctrl+C` + `Ctrl+V` 将节点数从 1 增至 2，并生成“文本 Copy”。`web/src/lib/canvas/canvas-copy-shortcut.test.ts` 固定对应分支。 |
 | 51 | Agent 工作目录指令 | 自动化通过 | 主清单 51；隔离工作区；指令生成与请求边界正确 | `canvas-agent/src/config.test.ts` 验证隔离工作目录从独立 `agent-instructions.md` 源生成 `AGENTS.md`；`canvas-agent/src/agent/codex-client.test.ts` 验证 `turn/start` 仅含本轮请求和必要附件上下文，不重复工作目录指令。 |
 | 52 | 画布文本设置 | 人工通过 | 主清单 52；隔离 Chromium 画布；推理强度、请求组装与持久化正确 | `web/src/services/api/text-reasoning.test.ts` 覆盖节点优先级、自动省略 `reasoning`、指定档位发送 `reasoning.effort` 与自定义脚本变量；浏览器实测文本节点“高”和配置节点文本模式“极高”刷新后保持。 |
-| 53 | 生图工作台参考图 | 未验证 | 主清单 53；隔离图片文件；拖放和高亮正确 | — |
+| 53 | 生图工作台参考图 | 自动化通过 | 主清单 53；隔离 Chromium；图片拖放、非图片过滤与高亮正确 | `web/e2e/image-reference-drop.spec.ts` 向真实生图参考图区投放两张 PNG 与一个文本文件，验证拖入高亮和提示、仅两张图片上传并渲染缩略图，以及 drop 后状态复位。 |
 | 54 | 视频创作台参考资产 | 未验证 | 主清单 54；隔离图片/音视频；分类与限制正确 | — |
 | 55 | 画布组装提示词 | 未验证 | 主清单 55；长提示词；正文可滚动 | — |
 | 56 | 画布节点提示词 | 未验证 | 主清单 56；长提示词；滚动不缩放画布 | — |

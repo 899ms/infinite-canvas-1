@@ -1192,3 +1192,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离浏览器范围与验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：文本节点的“推理 · 自动”设置弹层显示自动、低、中、高、极高五档；选择“高”并刷新画布后，重新打开文本编辑仍显示“推理 · 高”。生成配置节点切换到“文本”后出现同一设置，选择“极高”并刷新后，模式仍为文本且显示“推理 · 极高”。新增单测同时验证自动档的 Responses 请求体没有 `reasoning`，高档为 `{ effort: "high" }`，自定义脚本可读取 `reasoningEffort`。该证据不外推为真实 API 密钥、真实 OpenAI 响应、跨浏览器/跨设备同步或所有用户自定义脚本的正确性。
+
+## 91. 生图工作台参考图拖放（2026-08-28）
+
+本切片关闭中文主清单第 53 项。Chromium 使用 Playwright 自管的隔离 Vite 4173；文件通过浏览器内存 `DataTransfer` 构造，不读取用户文件、真实 3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/image-reference-drop.spec.ts` | 新增 | 在真实生图工作台验证参考图区的拖入提示/高亮、两张 PNG 上传和缩略图渲染、文本文件忽略以及 drop 后状态复位。 |
+| `web/src/pages/image/index.tsx` | 既有实现（未修改） | `addReferences` 仅保留 `image/*`；拖放区阻止浏览器默认导航，维护嵌套拖入深度并显示可见高亮。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 53 项更新为“自动化通过”，同步浏览器 60 项与未验证 46 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：初始参考图区显示“暂无参考图，可将图片拖到这里”。内存 PNG 拖入后边框变为高亮并显示“松开即可添加参考图”；随后一次 drop 两张 PNG 和一份 `text/plain`，页面显示“参考一.png”“参考二.png”缩略图，未显示“忽略.txt”，高亮状态移除。该证据不外推为操作系统文件拖放、超大图片、剪贴板输入、网络图片解码或跨浏览器行为。
