@@ -1520,3 +1520,15 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 在第 79 项写入已获得的自动化子证据、当前 80 项浏览器基线及未覆盖边界，满足 `AGENTS.md` 的对话级文件关联记录要求。 |
 
 验证记录：测试从浅色存储状态进入首页，设置弹层的 `.ant-modal-content` 容器、边框和正文均获得非透明计算色；按 Escape 关闭后，点击“切换到深色主题”使根节点进入 dark 状态，重新打开同一设置弹层后这三项计算色与浅色结果不同。定向 Playwright、完整 80 项 Playwright 回归与 Web TypeScript 均通过。当前未覆盖版本发布弹层、渠道编辑抽屉、Select/Popover、图片编辑器、移动端及像素级对比，故第 79 项继续保持未验证。
+
+## 117. 画布缩放稳定性的局部浏览器证据（2026-08-28）
+
+本切片补强中文主清单第 80 项，但不将该项标为完整通过。Chromium 使用 Playwright 自管的隔离 Vite 4173 与新建的浏览器本地画布；不读取用户项目、用户资产、真实 3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-zoom-stability.spec.ts` | 新增 | 从真实画布页新建隔离画布，连续将 `range` 缩放设为 5%–500% 的交错值，逐次断言受控 value，再重置为 100%，并捕获 React 循环类浏览器错误。 |
+| `web/src/pages/canvas/project.tsx`、`web/src/components/canvas/canvas-zoom-controls.tsx` | 既有实现（已复核） | `setZoomScale` 将比例夹在 0.05–5 并以当前视口中心换算位置；缩放控件把同一受控比例投影到 5–500 的滑杆和百分比显示。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 在第 80 项写入已有自动化子证据、当前 81 项浏览器基线和边界，满足 `AGENTS.md` 的对话级文件关联记录要求。 |
+
+验证记录：隔离新画布中的滑杆依次接受 65、140、35、275、5、500、100、175、45、100，并且每一次都回显对应受控值；点击“重置视图”后回到 100%。全过程没有捕获 `Maximum update depth`、`Too many re-renders` 或 hooks 数量变化类 pageerror。定向用例、完整 81 项 Playwright 回归与 Web TypeScript 均通过。当前未覆盖滚轮手势、节点尺寸拖拽、缩放时的选区/连线命中、极端视口和真实用户历史项目，故第 80 项继续保持未验证。
