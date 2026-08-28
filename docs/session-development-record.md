@@ -1437,3 +1437,16 @@
 | docs/frameflow-acceptance-matrix-2026-08-28.md、docs/post-development-roadmap.md、docs/session-development-record.md | 修改 | 将第 72 项更新为“自动化通过”，同步矩阵为 58 项自动化通过、28 项未验证，以及当前 Web/浏览器质量基线。 |
 
 验证记录：第一页收到 mcp_tool_call(item.completed) 后日志仅有“工具完成”，没有提前出现“本轮完成”。第二页在此之后建立 EventSource 连接，hello.codex 的 busy、threadId 和 turnId 使其进入运行态，文本框为 contenteditable=false，发送被停止按钮替代。两页再收到 conversation_changed(ready)、turn.completed 与 codex_state(busy:false) 后，两个文本框均恢复可输入，且两页日志各出现一次“本轮完成”。该证据不外推为真实跨设备 SSE、浏览器崩溃恢复、真实 Codex 长任务或网络中断重连。
+
+## 110. 本地 Agent 图片附件画布写入的前端子证据（2026-08-28）
+
+本切片补强中文主清单第 73 项的前端附件落画布链路，仍不把该项标为完整通过。Chromium 使用 Playwright 自管的隔离 Vite 4173、内存 EventSource、内存 Agent 附件响应和浏览器本地图片存储；不连接真实 Agent、Codex、用户画布、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| web/e2e/agent-attachment-nodes.spec.ts | 新增 | 触发真实前端 canvas_create_attachment_nodes 分支，验证附件从 Agent 响应读取后写入图片节点操作、保持 1×2 比例、位置和标题，并生成可持久化的图片元数据后回传成功。 |
+| web/src/components/agent/local-agent-panel.tsx | 既有实现（已复核） | attachmentNodeOps 按 clientId 获取附件、上传图片、按原尺寸比例生成 image 节点和 imageMetadata，再交给发起画布的 applyOps。 |
+| canvas-agent/src/canvas/session.test.ts | 既有实现（已复核） | 已覆盖附件仅能由发起标签页读取和落画布，另一标签页或附件不存在时拒绝。 |
+| docs/session-development-record.md | 修改 | 记录本次前端子证据和未覆盖边界，满足 AGENTS.md 的文件关联记录要求。 |
+
+验证记录：隔离工具请求携带 attachment-1、标题“商品参考.png”和位置 (120, 80)；页面只请求当前 clientId 的附件端点，得到 1×2 PNG 后写入一条 image add_node 操作，尺寸为 1×2，metadata 状态为 success 且含 naturalWidth、naturalHeight、mimeType 和持久化 storageKey。Agent 收到同一 requestId 的成功回传。当前仍未自动覆盖真实 Codex 根据商品信息创建文本提示词、生成配置与连线，以及真实画布刷新后再次参与生成；第 73 项继续保持未验证。
