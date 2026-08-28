@@ -91,6 +91,39 @@ test("自定义 JSON 来源的非数组或不可访问刷新会显示失败并�
     }
 });
 
+test("提示词来源界面以卡片展示状态和带文字操作，定时拉取区保持独立", async ({ page }) => {
+    await mountCustomSources(page);
+    await page.route("**/prompt-source-valid.json", async (route) => {
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify([sourcePrompt("来源界面缓存")]) });
+    });
+    await page.route("**/prompt-source-offline.json", async (route) => {
+        await route.fulfill({ contentType: "application/json", body: JSON.stringify([sourcePrompt("第二来源缓存")]) });
+    });
+
+    await page.goto("/config");
+    await page.getByRole("tab", { name: "提示词来源" }).click();
+    const row = sourceRow(page, "标准 JSON 来源");
+    const enabled = row.getByRole("switch", { name: "标准 JSON 来源 · 启用来源" });
+    await expect(enabled).toBeVisible();
+    await expect(row.getByText("0 条", { exact: true })).toBeVisible();
+    await expect(row.getByText("尚未拉取", { exact: true })).toBeVisible();
+    await expect(row.getByRole("button", { name: "查看内容" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "立即拉取" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "编辑来源" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "删除" })).toBeVisible();
+    const [switchBox, titleBox] = await Promise.all([enabled.boundingBox(), page.getByText("标准 JSON 来源", { exact: true }).boundingBox()]);
+    expect(switchBox).not.toBeNull();
+    expect(titleBox).not.toBeNull();
+    expect(switchBox!.x).toBeLessThan(titleBox!.x);
+
+    const schedule = page.getByText("定时拉取", { exact: true }).locator("..");
+    expect(await schedule.evaluate((element) => getComputedStyle(element).borderTopWidth)).not.toBe("0px");
+    await row.getByRole("button", { name: "立即拉取" }).click();
+    await expect(row.getByText("1 条", { exact: true })).toBeVisible();
+    await expect(row.getByText("正常", { exact: true })).toBeVisible();
+    await expect(row.getByText(/上次成功/)).toBeVisible();
+});
+
 function sourceRow(page: Page, name: string) {
     return page.getByText(name, { exact: true }).locator("xpath=../../..");
 }
