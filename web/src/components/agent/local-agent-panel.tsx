@@ -995,8 +995,19 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
         const current = useAgentStore.getState();
         if (!current.connected || current.sending || current.waiting || current.loadingThreads || ["preparing", "running"].includes(current.conversation.status)) return;
         const operation = beginThreadOperation();
+        loadThreadsSequenceRef.current += 1;
         clearSkillSelection();
-        setAgentState({ activeTab: "chat", activity: rt("creatingConversation") });
+        setAgentState({
+            activeTab: "chat",
+            activity: rt("creatingConversation"),
+            activeThreadId: "",
+            activeTurnId: "",
+            messages: [],
+            tokenUsage: null,
+            pendingTool: null,
+            pendingApprovals: [],
+            conversation: { ...current.conversation, threadId: "", status: "preparing", mcpStatuses: {}, error: undefined },
+        });
         try {
             const result = await fetchAgentJson<AgentWorkspaceResponse>(endpoint, token, "/agent/codex/threads/reset", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ clientId: clientIdRef.current, permissionMode }) });
             if (threadOperationRef.current !== operation) return;

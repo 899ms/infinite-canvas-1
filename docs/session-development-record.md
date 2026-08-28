@@ -827,3 +827,16 @@
 | `docs/session-development-record.md` | 修改 | 记录模型筛选、UI 交互、请求和日志证据以及隔离边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：夹具返回内部 `codex-auto-review`、两个同名 Terra、Terra、Mini 以及仅支持无效 `auto` 强度的模型。页面只显示一项 Terra 与 Mini，内部/重复/无有效强度条目均不可选；选择 Mini 后，下拉只显示“轻度”和“极高”，不会遗留 Terra 的“中”。选择“极高”并刷新后，模型和强度仍是 Mini/极高。随后输入测试任务并发送，截获 `/agent/codex/turn` 载荷为 `model=gpt-5.4-mini`、`effort=xhigh`，右侧“日志”显示 `Mini · 极高 · 验证模型请求参数`。此前两次测试失败仅因选择了旧 placeholder 而该输入框使用 accessible name，以及日志页同时在摘要与详情渲染同一文本；改用 `role=textbox` 和精确文本的首个可见实例后通过。这些结论不外推为真实账号模型目录、真实 Codex 调用、SSE 流或跨浏览器兼容性验收。
+
+## 64. Agent 新对话即时清空与线程隔离回归（2026-08-28）
+
+本切片关闭中文主清单第 27 项。Vite 临时 4173 的测试夹具预置一个已经完成的旧会话，故意暂停 `/agent/codex/threads/reset` 响应，再以仅供测试的新会话响应恢复；不连接真实 17371、3000、用户资产、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/local-agent-panel.tsx` | 修改 | `startNewThread` 发起重置前立即清空活动线程、消息、工具/审批与 token 使用量，并递增历史读取序列，使在途旧历史请求失效；会话进入准备态直到服务返回新会话。 |
+| `web/e2e/agent-new-thread.spec.ts` | 新增 | 验证延迟重置期间旧消息立即消失；新会话准备完成后的首条任务带新线程 ID；历史列表不出现夹具的新空线程。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 27 项标为“自动化通过”，同步未验证数为 70 和浏览器回归基线。 |
+| `docs/session-development-record.md` | 修改 | 记录即时 UI 状态、异步历史失效、请求绑定和隔离边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
+
+验证记录：原实现先等待重置接口再应用会话状态，因此网络准备期间仍可能看到旧消息；同时在途历史读取没有被新对话操作明确作废。现在点击“新对话”同步设置空活动线程、空消息和 `preparing` 会话，随后异步重置；按钮运行时输入不可提交，服务返回 `thread-new` 后才恢复可发送状态。夹具首先确认“旧会话消息”已消失，再输入“只发送到新会话”，截获 `/agent/codex/turn` 的 `threadId=thread-new`；进入历史后仅显示旧会话，没有 `thread-new` 空历史条目。实现仅采用项目既有的 Zustand `setAgentState` 补丁和序列号失效机制；React 19.2 的状态批处理说明支持在事件处理器启动异步请求前先提交一致的 UI 状态（[React 官方文档](https://react.dev/learn/queueing-a-series-of-state-updates)）。未对真实多标签 SSE、实际 Codex 空线程目录或跨浏览器行为作外推。
