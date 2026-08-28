@@ -1398,3 +1398,15 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 69 项更新为“自动化通过”，同步矩阵为 55 项自动化通过、31 项未验证，以及 Web 24 个文件/69 项测试基线。 |
 
 验证记录：隔离生图和视频提交均返回形如 `image-N`、`video-N` 的 `taskId`；同一任务表中可汇总 `queued=1`、`running=1`、`succeeded=1`、`failed=1`，并以 `taskId` 仅返回目标运行中生图任务。向 `generation_get_status` 提交当前画布的 `nodeIds` 时，只返回该画布的 `loading→running` 配置节点及其项目 ID，不混入其他节点或工作台任务。Canvas Agent 的两客户端测试激活第二页后，状态查询工具仅发送给第二页，第一页没有收到调用。Web 全量测试为 24 个 Vitest 文件 69 项、TypeScript 通过；Canvas Agent 203 项测试通过。该证据不外推为真实模型队列、跨浏览器本地状态复制、真实多窗口焦点事件或生产 Agent 服务可用性。
+
+## 107. 本地 Agent 多标签页画布隔离（2026-08-28）
+
+本切片关闭中文主清单第 70 项。验证使用 Canvas Agent 的两至三条伪 SSE 连接和内存画布快照，不启动浏览器真实 Agent、Codex、用户画布、3000/17371、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/canvas/session.test.ts` | 既有实现（已复核） | 两客户端分别上报不同画布，验证焦点切换后的读取/写入目标；turn 绑定首个客户端后切换焦点，读取和文本创建仍只访问首个客户端；关闭活动页回退到最近仍连接页；绑定页断开时拒绝操作而不转投另一页；另一页返回同一请求 ID 被拒绝。 |
+| `canvas-agent/src/canvas/session.ts`、`canvas-agent/src/server/http.ts` | 既有实现（已复核） | `activeClientId` 根据焦点维护，`boundClientId` 覆盖当前 turn 的工具目标；HTTP 在 turn 启动时绑定发起 `clientId`，完成或失败后释放。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 70 项更新为“自动化通过”，同步矩阵为 56 项自动化通过、30 项未验证。 |
+
+验证记录：两个客户端分别保存 `canvas-first`、`canvas-second` 后，焦点切换让读取按活动页返回，文本写入只向第二页发送；turn 绑定第一页后即使焦点改到第二页，读取和创建操作仍只抵达第一页，释放绑定后才返回第二页。活动页关闭后读取回退到尚连接页面；绑定页关闭时请求报“当前没有已连接画布”，第二页没有收到工具调用，重连同一 clientId 后才恢复。对同一 requestId，第二页回传返回 `false`，只有请求第一页可结算结果。Canvas Agent 203 项测试已通过。该证据不外推为真实浏览器窗口焦点 API、网络重连时序、跨设备连接或真实 Codex 执行。
