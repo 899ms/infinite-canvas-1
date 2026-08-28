@@ -1179,3 +1179,16 @@
 | `docs/session-development-record.md` | 修改 | 记录隔离浏览器操作、结果和边界，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：临时画布创建“画布文本复制验证”文本节点后，DOM 文字选区保持该全文；发送 `Ctrl+C` 后选区仍存在，清除选区再粘贴没有生成“Copy”节点，证明不会落入画布内部节点复制。随后点击画布节点本体（而非带快捷键忽略标记的左侧节点列表），在无文字选区状态下发送 `Ctrl+C` + `Ctrl+V`，左侧节点计数由 1 变为 2，出现“文本 Copy”。该证据覆盖 Chromium 的 Ctrl 组合键；不外推为 macOS Cmd、系统剪贴板权限实现、触屏选择、跨浏览器或跨设备同步行为。
+
+## 90. 画布文本设置验收（2026-08-28）
+
+本切片关闭中文主清单第 52 项。浏览器使用隔离 Vite 4173 与 Playwright Chromium；未连接或停止真实 3000/17371、用户画布、Token、外部 Provider 或 Docker/容器。结束后已关闭本切片启动的浏览器和 Vite 实例。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/services/api/text-reasoning.test.ts` | 新增 | 固定节点值优先于全局默认值、OpenAI 自动档省略 `reasoning`、指定档位写入 `reasoning.effort`，以及自定义脚本读取 `reasoningEffort`。 |
+| `web/src/lib/canvas/canvas-generation-helpers.ts`、`web/src/services/api/image.ts`、`web/src/services/api/model-plugin.ts`、相关画布设置组件 | 既有实现（未修改） | 分别合并节点配置、组装 OpenAI Responses、将变量传入自定义脚本，以及在文本节点和文本模式配置节点渲染五档设置。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 52 项更新为“人工通过”，同步未验证 47 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离浏览器范围与验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：文本节点的“推理 · 自动”设置弹层显示自动、低、中、高、极高五档；选择“高”并刷新画布后，重新打开文本编辑仍显示“推理 · 高”。生成配置节点切换到“文本”后出现同一设置，选择“极高”并刷新后，模式仍为文本且显示“推理 · 极高”。新增单测同时验证自动档的 Responses 请求体没有 `reasoning`，高档为 `{ effort: "high" }`，自定义脚本可读取 `reasoningEffort`。该证据不外推为真实 API 密钥、真实 OpenAI 响应、跨浏览器/跨设备同步或所有用户自定义脚本的正确性。
