@@ -1410,3 +1410,16 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 70 项更新为“自动化通过”，同步矩阵为 56 项自动化通过、30 项未验证。 |
 
 验证记录：两个客户端分别保存 `canvas-first`、`canvas-second` 后，焦点切换让读取按活动页返回，文本写入只向第二页发送；turn 绑定第一页后即使焦点改到第二页，读取和创建操作仍只抵达第一页，释放绑定后才返回第二页。活动页关闭后读取回退到尚连接页面；绑定页关闭时请求报“当前没有已连接画布”，第二页没有收到工具调用，重连同一 clientId 后才恢复。对同一 requestId，第二页回传返回 `false`，只有请求第一页可结算结果。Canvas Agent 203 项测试已通过。该证据不外推为真实浏览器窗口焦点 API、网络重连时序、跨设备连接或真实 Codex 执行。
+
+## 108. 本地 Agent 多标签页会话同步（2026-08-28）
+
+本切片关闭中文主清单第 71 项。测试使用两条伪 SSE 连接和内存 Agent 会话状态，不启动真实 Codex、浏览器、用户项目、3000/17371、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/canvas/session.test.ts` | 修改 | 新增两客户端回归：共享会话切换、同线程用户消息与运行状态同时广播；运行中写操作锁拒绝，结束后回到 `ready` 并可重新取得写锁。 |
+| `canvas-agent/src/canvas/session.ts`、`canvas-agent/src/server/http.ts` | 既有实现（已复核） | 会话、线程和消息事件站点级广播；`codexMutation` 统一保护新建、恢复、删除和发送端点，忙碌时返回 `CONVERSATION_BUSY`。 |
+| `web/src/components/agent/local-agent-panel.tsx` | 既有实现（已复核） | 接收会话/工作空间/聊天广播，按当前线程过滤输出，并在运行时禁用发送、新建、恢复和删除。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 71 项更新为“自动化通过”，同步矩阵为 57 项自动化通过、29 项未验证及 Agent 204 项测试基线。 |
+
+验证记录：两个客户端均收到 `thread-shared` 的工作空间事件、同一 `turn-shared` 用户消息及 `{ busy: true }` 状态；会话状态为 `running` 时无法取得任何 Codex 写锁，模拟发送、新建、恢复或删除都会在 HTTP 统一守卫中得到 `CONVERSATION_BUSY`。将运行状态置回结束后，会话恢复 `ready` 且可再次取得写锁。前端对非当前 threadId 的聊天和 Agent 事件提前返回，不渲染到当前对话。Canvas Agent 全量 204 项测试通过。该证据不外推为真实多窗口浏览器网络、实际 Codex 输出或跨设备一致性。
