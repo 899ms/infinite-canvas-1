@@ -82,7 +82,7 @@
 | 72 | 本地 Agent 运行状态同步 | 自动化通过 | 主清单 72；双标签长任务；忙碌状态同步 | web/e2e/agent-cross-tab-running.spec.ts 在两个真实浏览器页面中覆盖工具完成后第二页建立 SSE 连接、运行状态即时回放与结束收束；canvas-agent/src/canvas/session.test.ts 覆盖站点级状态广播。 |
 | 73 | 本地 Agent 图片附件落画布 | 未验证 | 主清单 73；隔离附件；归属与关闭失败正确 | `canvas-agent/src/canvas/session.test.ts` 覆盖发起页归属与关闭拒绝；`web/e2e/agent-attachment-nodes.spec.ts` 覆盖附件图片、分析文本、生成配置及两条入配置连线的前端工具流；`web/e2e/canvas-attachment-persistence.spec.ts` 覆盖图片节点写入真实项目后按 storageKey 读取。 |
 | 74 | Agent 对话滚动 | 未验证 | 主清单 74；长会话；跟随和跳转正确 | `web/e2e/agent-chat-follow.spec.ts` 覆盖历史长对话初始定位、手动上翻后暂停跟随、新消息不抢占阅读位置与“查看最新消息”回到底部；日志/历史切换和视觉同构仍待验证。 |
-| 75 | Agent 消息区分 | 未验证 | 主清单 75；多类消息；布局清晰不溢出 | — |
+| 75 | Agent 消息区分 | 未验证 | 主清单 75；多类消息；布局清晰不溢出 | `web/e2e/agent-message-layout.spec.ts` 覆盖用户右侧透明文本、助手左侧 Markdown、双图片附件、错误色彩与深浅主题横向溢出保护；完整视觉验收仍待验证。 |
 | 76 | 画布选择与平移 | 未验证 | 主清单 76；不同工具与快捷键；交互不冲突 | — |
 | 77 | 文档站国际化 | 未验证 | 主清单 77；中英文路径；语言和搜索保持正确 | — |
 | 78 | 国际化基础框架 | 未验证 | 主清单 78；切换与刷新；界面文案同步 | — |
