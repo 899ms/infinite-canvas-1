@@ -116,6 +116,7 @@ test("Agent 附件工具在发起画布持久化原比例图片节点并回传�
                     naturalWidth: 1,
                     naturalHeight: 2,
                     mimeType: "image/png",
+                    storageKey: expect.stringMatching(/^image:/),
                 }),
             }),
         ]);
