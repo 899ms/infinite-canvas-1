@@ -13,6 +13,7 @@ import { uploadImage } from "@/services/image-storage";
 import { uploadMediaFile } from "@/services/file-storage";
 import { nanoid } from "nanoid";
 import { getDataUrlByteSize, readImageMeta } from "@/lib/image-utils";
+import { shouldAllowNativeCopy } from "@/lib/canvas/canvas-copy-shortcut";
 import { generateInteriorCanvasCandidates } from "@/lib/canvas/interior-canvas-generation";
 import { generateInteriorCanvasPrompt } from "@/lib/canvas/interior-canvas-prompt-generation";
 import { applyCodexCanvasImageSlotFailure, applyCodexCanvasImageSlotSuccess, finalizeCodexCanvasImageGeneration, initializeCodexCanvasImageGenerationNodes, prepareCodexCanvasImageReferences, requestCodexCanvasImages, runCodexCanvasImageSlots } from "@/lib/canvas/canvas-image-generation";
@@ -1347,7 +1348,7 @@ function InfiniteCanvasPage() {
             const key = event.key.toLowerCase();
             const isModifierShortcut = event.metaKey || event.ctrlKey;
 
-            if (isModifierShortcut && key === "c" && window.getSelection()?.toString()) return;
+            if (isModifierShortcut && key === "c" && shouldAllowNativeCopy(Boolean(window.getSelection()?.toString()))) return;
 
             if (isModifierShortcut && !event.altKey && key === "z") {
                 event.preventDefault();

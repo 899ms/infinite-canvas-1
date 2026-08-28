@@ -1140,3 +1140,15 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的文件关联、隔离范围和证据边界，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：历史接口返回本地 `agent-asset` 后，真实 Agent 面板显示“请参考这张图”和 `参考图.png` 缩略图；缩略图使用 `size-10`（40px）紧凑样式，点击可打开带“图片附件预览”名称的预览弹层。服务端元数据单测已覆盖相同资源跨重启可读、删除线程时移除和超限拒绝。该证据不外推为真实网络下载、跨浏览器图片解码、正在生成时的真实 Codex 事件或用户手动删除失败恢复。
+
+## 87. 画布文本复制保护（2026-08-28）
+
+本切片为中文主清单第 50 项补充可回归的快捷键分支，不关闭该项的浏览器验收。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/lib/canvas/canvas-copy-shortcut.ts`、`canvas-copy-shortcut.test.ts` | 新增 | 固定“有文本选区时放行原生复制、无选区时继续节点复制”的最小判定。 |
+| `web/src/pages/canvas/project.tsx` | 修改 | 页面级 `Ctrl/Cmd+C` 在调用 `copySelectedNodes` 前使用该判定，保留既有输入、文本域和 contenteditable 排除。 |
+| `docs/session-development-record.md` | 修改 | 记录本切片的文件关联与尚未关闭的浏览器证据边界。 |
+
+验证记录：定向 Vitest 与 TypeScript 通过。尚未覆盖真实鼠标选区、系统剪贴板权限和节点复制的浏览器交互，因此第 50 项继续保持未验证。
