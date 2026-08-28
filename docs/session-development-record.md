@@ -1545,3 +1545,16 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 81 项升级为自动化通过，同步未验证项、浏览器基线和对话级文件关联记录。 |
 
 验证记录：准备态显示“正在启动 MCP 服务”和 `infinite-canvas`，输入为 contenteditable=false、发送禁用。投递 `infinite-canvas=ready`、`notion=failed` 的 warning 后，页面显示“部分 MCP 服务初始化失败”和 `notion`，输入恢复可编辑且填入消息后“发送”可用。服务端会话单测进一步固定：清单未完成或有 starting 服务时不能离开 preparing；可选失败为 warning，但 Infinite Canvas MCP 缺失或 notLoggedIn 会带错误进入 failed。定向浏览器、完整 82 项 Playwright 与 Canvas Agent 204 项测试均通过。
+
+## 119. Agent 输入区窄面板布局（2026-08-28）
+
+本切片关闭中文主清单第 82 项。Chromium 使用 Playwright 自管的隔离 Vite 4173、Agent HTTP 路由夹具和内存 Agent store；不连接真实 Canvas Agent、Codex、用户会话、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-composer-narrow-layout.spec.ts` | 新增 | 在真实右侧 Agent 面板固定 360px，再切为 700px；验证输入提示、上传图片、工具确认、权限模式和发送的可访问名称/可见性、草稿发送语义及面板横向溢出。 |
+| `web/src/components/agent/agent-chat-composer.tsx`、`web/src/components/agent/agent-chat-prompt-input.tsx` | 既有实现（已复核） | 输入区将操作控制设为固定收缩项，面板宽度不足时以图标形式保留可访问名称；长宽度再通过 container query 展示文字。 |
+| `web/src/components/agent/agent-panel.tsx` | 既有实现（已复核） | 面板宽度限制为 360–760px，并将实际宽度传给具有 container query 的输入区。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 82 项更新为自动化通过，并同步当前浏览器基线、未验证数量和文件关联记录。 |
+
+验证记录：360px 时输入提示与上传、自动确认、请求批准、发送图标均可见，空草稿发送禁用；输入“窄面板输入仍可发送”后发送启用，面板 `scrollWidth <= clientWidth`。切换为 700px 后输入仍可编辑，全部操作保持可见/可访问且无横向溢出。定向浏览器与完整 83 项 Playwright 回归均通过。
