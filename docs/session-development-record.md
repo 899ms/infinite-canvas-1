@@ -961,3 +961,16 @@
 | `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 更新 Canvas Agent 199 项测试基线，并记录局部证据与未覆盖边界。 |
 
 验证记录：`GET /health 200`、`POST /canvas/state 200`、`POST /canvas/activate 200` 与 `OPTIONS` 都不输出 Debug HTTP 日志；`GET /health 500`、`POST /canvas/result 409` 和 `POST /agent/codex/turn 200` 均保留。定向测试和生产构建通过；完整 Canvas Agent、文档与浏览器门禁将在后续完整关闭第 38 项时复跑。
+
+## 74. Agent 排查日志隔离浏览器回归（2026-08-28）
+
+本切片关闭中文主清单第 39 项。Chromium 使用 Vite 临时 4173 与内存 Agent store/HTTP 夹具，不连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-log-diagnostics.spec.ts` | 新增 | 预置信息、连续警告和结构化错误日志后打开真实右侧面板；验证错误筛选、警告折叠为“重复 2 次”、详情、原始 JSON 与清空。 |
+| `web/src/components/agent/agent-log-view.tsx` | 既有实现（未修改） | 提供固定连接摘要、筛选、聚合、详情、原始 JSON、复制和清空入口。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 39 项更新为“自动化通过”，同步自动化通过 27 项、未验证 61 项与浏览器 48 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录隔离浏览器范围、控件语义和验证结论，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：面板启动会真实追加连接失败事件，故错误筛选显示 2 条而不是夹具的 1 条；测试以实际可见计数选择筛选。连续相同“模型正在重试”折叠为“重复 2 次”；展开错误可查看详情，原始 JSON 包含 `request-test`，清空后按钮禁用。定向 Chromium 回归通过；不外推为真实 Canvas Agent 网络、复制权限失败、长日志滚动跟随或跨浏览器验收。
