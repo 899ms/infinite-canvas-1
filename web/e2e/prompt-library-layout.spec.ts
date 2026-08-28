@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const promptSourceStoreKey = "infinite-canvas:prompt_source_store_v2";
-const builtInSourceIds = ["banana-prompt-quicker", "davidwu-gpt-image2-prompts", "freestylefly-gpt-image-2", "awesome-gpt-image", "awesome-gpt4o-image-prompts", "youmind-gpt-image-2", "youmind-nano-banana-pro"];
+const builtInSourceIds = ["banana-prompt-quicker", "davidwu-gpt-image2-prompts", "awesome-gpt-image", "awesome-gpt4o-image-prompts", "youmind-gpt-image-2", "youmind-nano-banana-pro"];
 const fixtureUrl = "http://127.0.0.1:4173/prompt-layout-fixture.json";
 const tags = Array.from({ length: 48 }, (_, index) => `布局验收标签-${String(index + 1).padStart(2, "0")}-不可压缩`);
 const prompts = [

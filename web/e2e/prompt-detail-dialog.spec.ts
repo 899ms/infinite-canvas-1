@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const promptSourceStoreKey = "infinite-canvas:prompt_source_store_v2";
-const builtInSourceIds = ["banana-prompt-quicker", "davidwu-gpt-image2-prompts", "freestylefly-gpt-image-2", "awesome-gpt-image", "awesome-gpt4o-image-prompts", "youmind-gpt-image-2", "youmind-nano-banana-pro"];
+const builtInSourceIds = ["banana-prompt-quicker", "davidwu-gpt-image2-prompts", "awesome-gpt-image", "awesome-gpt4o-image-prompts", "youmind-gpt-image-2", "youmind-nano-banana-pro"];
 const fixtureUrl = "http://127.0.0.1:4173/prompt-detail-fixture.json";
 const promptTitle = "详情弹窗长内容提示词";
 const dataImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlA30cAAAAASUVORK5CYII=";

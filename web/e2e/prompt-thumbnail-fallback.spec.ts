@@ -7,7 +7,7 @@ const sourceName = "缩略图安全夹具";
 const title = "已失效缩略图提示词";
 const blockedCover = "https://linux.do/uploads/default/expired-thumbnail.jpeg";
 const missingReference = "https://cdn.jsdelivr.net/gh/glidea/banana-prompt-quicker@main/images/afadan_ref1.jpg";
-const builtInSourceIds = ["banana-prompt-quicker", "davidwu-gpt-image2-prompts", "freestylefly-gpt-image-2", "awesome-gpt-image", "awesome-gpt4o-image-prompts", "youmind-gpt-image-2", "youmind-nano-banana-pro"];
+const builtInSourceIds = ["banana-prompt-quicker", "davidwu-gpt-image2-prompts", "awesome-gpt-image", "awesome-gpt4o-image-prompts", "youmind-gpt-image-2", "youmind-nano-banana-pro"];
 const stalePrompt = {
     id: "stale-thumbnail",
     title,

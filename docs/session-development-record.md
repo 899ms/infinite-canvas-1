@@ -1344,3 +1344,18 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 65 项更新为“自动化通过”，同步矩阵为 51 项自动化通过、35 项未验证，并记录文件关联与隔离边界。 |
 
 验证记录：一小时前的 `prompt_cache` 原始记录仍带两种坏 URL；加载页面时 `withSourceMeta` 再次过滤，提示词卡片没有带该标题的图片元素。打开详情、进入配置页来源内容表格及其嵌套详情后，各区域均没有图片元素；浏览器对两条坏地址的请求列表为空。Web 全量门禁为 21 个 Vitest 文件 66 项、TypeScript、生产构建与 68 项 Playwright 回归通过。该证据覆盖已知拒绝跨域嵌入与已失效资源及旧缓存，不外推为任意未知站点的网络故障、真实 CDN 可用性、浏览器离线模式或跨设备缓存同步。
+
+## 103. 提示词来源默认集、筛选与失败恢复（2026-08-28）
+
+本切片关闭中文主清单第 66 项。实时只读读取 Image Prompts 统一仓库后，六个当前默认来源数量依次为 323、494、53、76、126、129；已不再把数量为 535 的 Freestylefly 作为新默认来源。所有浏览器验证使用 Playwright 自管的隔离 Vite 4173 和路由夹具；不写入真实来源配置、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/services/api/prompt-source-presets.ts` | 修改 | 默认来源从七项收敛为当前清单指定的六个统一仓库 JSON URL。 |
+| `web/src/services/api/prompt-source-presets.test.ts` | 新增 | 固定默认来源数量、顺序、启用状态和统一仓库 URL。 |
+| `web/src/stores/use-prompt-source-store.ts`、`web/src/stores/use-prompt-source-store.test.ts` | 修改、新增 | 将历史保存的 Freestylefly 内置来源无损迁移为自定义来源，保留 URL、启用状态和用户可删除性。 |
+| `web/e2e/prompt-source-data.spec.ts` | 新增 | 以六条路由夹具验证独立启用、来源与标签筛选；以两个自定义 JSON 来源验证非数组及 503 后仍显示失败且保留可查看缓存。 |
+| `web/e2e/prompt-library-layout.spec.ts`、`web/e2e/prompt-detail-dialog.spec.ts`、`web/e2e/prompt-thumbnail-fallback.spec.ts` | 修改 | 更新隔离持久化夹具，使其与六个默认来源集一致。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 66 项更新为“自动化通过”，同步矩阵为 52 项自动化通过、34 项未验证和当前质量门禁数量。 |
+
+验证记录：实时来源读取确认六个文档指定数量为 323、494、53、76、126、129；默认来源单测固定同一顺序和 URL。隔离浏览器先显示 6 条一来源一夹具的提示词，按“香蕉标签”和 Banana 来源可收敛到 1 条；关闭 Banana 后刷新，合计为 5 条。两个标准 JSON 自定义来源初次均可查看内容，之后一个返回对象根、另一个返回 503，均显示“失败”，但再次“查看内容”仍保留原缓存。迁移单测确认旧 Freestylefly 内置来源不会消失，而会成为启用状态不变的自定义来源。Web 全量门禁为 23 个 Vitest 文件 68 项、TypeScript、生产构建与 70 项 Playwright 回归通过。该证据不外推为未来上游条目数量、真实公网连续可用性、所有未知 JSON 格式或跨设备来源同步。
