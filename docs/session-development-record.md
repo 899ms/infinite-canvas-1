@@ -960,4 +960,4 @@
 | `canvas-agent/package.json` | 修改 | 将 HTTP 过滤回归加入 Canvas Agent 的正式测试清单。 |
 | `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 更新 Canvas Agent 199 项测试基线，并记录局部证据与未覆盖边界。 |
 
-验证记录：`GET /health 200`、`POST /canvas/state 200`、`POST /canvas/activate 200` 与 `OPTIONS` 都不输出 Debug HTTP 日志；`GET /health 500`、`POST /canvas/result 409` 和 `POST /agent/codex/turn 200` 均保留。定向测试和生产构建通过；完整 Canvas Agent、文档与浏览器门禁将在后续完整关闭第 38 项时复跑。 
+验证记录：`GET /health 200`、`POST /canvas/state 200`、`POST /canvas/activate 200` 与 `OPTIONS` 都不输出 Debug HTTP 日志；`GET /health 500`、`POST /canvas/result 409` 和 `POST /agent/codex/turn 200` 均保留。定向测试和生产构建通过；完整 Canvas Agent、文档与浏览器门禁将在后续完整关闭第 38 项时复跑。
