@@ -46,8 +46,22 @@ test("FrameFlow 待审与运行血缘默认保持同一最新任务上下文", a
     await expect(page).toHaveURL(/view=review.*autoRunId=auto-run-new/);
     await expect(page.getByAltText("待审图片 image-ne")).toBeVisible();
     await expect(page.getByAltText("待审图片 image-ol")).toHaveCount(0);
+    const reviewScope = page.getByLabel("选择自动跑任务");
+    await reviewScope.scrollIntoViewIfNeeded();
+    await reviewScope.click();
+    await page.locator(".ant-select-dropdown:visible .ant-select-item-option").filter({ hasText: "全部任务与手动生成" }).click();
+    await expect(page).toHaveURL(/view=review.*autoRunId=all/);
+    await expect(page.getByAltText("待审图片 image-ol")).toBeVisible();
+    await page.reload();
+    await expect(page).toHaveURL(/view=review.*autoRunId=all/);
+    await expect(page.getByAltText("待审图片 image-ol")).toBeVisible();
 
-    await page.goto("/frameflow?view=lineage&autoRunId=all");
+    await page.goto("/frameflow?view=lineage");
+    await expect(page).toHaveURL(/view=lineage.*autoRunId=auto-run-new.*runId=run-new/);
+    const lineageScope = page.getByLabel("选择当前任务");
+    await lineageScope.scrollIntoViewIfNeeded();
+    await lineageScope.click();
+    await page.locator(".ant-select-dropdown:visible .ant-select-item-option").filter({ hasText: "全部运行与手动生成" }).click();
     await expect(page).toHaveURL(/view=lineage.*autoRunId=all/);
     await expect(page.getByRole("button", { name: /批次 run-old/ })).toBeVisible();
     await page.reload();

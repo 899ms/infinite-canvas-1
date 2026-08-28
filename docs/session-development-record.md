@@ -801,3 +801,16 @@
 | `docs/session-development-record.md` | 修改 | 记录真实浏览器存储夹具、失败诊断、文件关系和验证边界，满足 `AGENTS.md` 的对话级可追溯要求。 |
 
 验证记录：首次精确文本断言失败，是因为仪表盘将来源 `manual` 与采集内容渲染在同一容器中，非持久化或状态错误；改为匹配可见内容后通过。第一条用例依次调用三个真实 store API，刷新后重新导入模块并确认知识库采集、PromptFill 模板和图片反馈仍在。第二条用例只在各 store 完成水合后替换现有 `IDBDatabase.prototype.transaction`，对 `prompt_knowledge_base` 与 `image_feedback` 对象仓库抛出 `QuotaExceededError`；三次保存均为 rejected，三个 Zustand 容器没有出现待写数据，三条错误均进入仪表盘告警。再预置内存数据并调用三类 `hydrate`，读取失败后内存数据保持且告警继续显示。目标两项浏览器回归和 Web 类型检查通过；全套浏览器基线将在提交前重新执行，不把此隔离 IndexedDB 夹具外推为其他业务存储或生产浏览器配额验收。
+
+## 62. FrameFlow 默认任务主动范围切换回归（2026-08-28）
+
+本切片关闭中文主清单第 02 项。测试延续既有 Vite 4173 内存路由夹具，只模拟两个活动 Auto Run 及其图片/批次；不访问真实 Agent、3000、17371、用户资产、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-task-context.spec.ts` | 修改 | 先验证待审和运行与血缘无 `autoRunId` 直达时自动定位最新任务；再实际点击两处 Ant Select 的可见浮层选项，选择“全部任务与手动生成”及“全部运行与手动生成”，确认旧图片/批次出现，刷新后均保持 `autoRunId=all`。 |
+| `web/src/pages/frameflow/review-view.tsx`、`web/src/pages/frameflow/index.tsx` | 既有实现（未修改） | 分别提供待审任务范围与运行血缘任务范围的 Select、URL 写入及刷新读取逻辑。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 02 项标为“自动化通过”，同步自动化通过数为 16、未验证数为 72。 |
+| `docs/session-development-record.md` | 修改 | 记录 Ant Select 的可访问性虚拟节点与可见浮层区分、真实交互方式及验证边界。 |
+
+验证记录：首次尝试按全局 `role=option` 点击，命中了 Ant Select 为无障碍辅助渲染的隐藏虚拟 option；随后在组合框后代查找也失败，因为实际下拉浮层使用 portal。错误上下文显示真实可点击项位于可见 `.ant-select-dropdown`，而虚拟 listbox 只保留 `aria-label`/值。测试改为先滚动对应 combobox 入视口并打开，再限定 `.ant-select-dropdown:visible .ant-select-item-option` 按可见中文标签点击；该操作触发真实 `onChange` 与 URL 状态更新。目标用例通过，完整浏览器基线将在提交前重新执行；此证据仍不包括真实模型生成或跨浏览器差异。
