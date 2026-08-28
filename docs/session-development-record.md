@@ -1494,3 +1494,16 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 记录第 78 项的自动化子证据、完整回归基线与未覆盖范围，满足 `AGENTS.md` 的本次文件关联记录要求。 |
 
 验证记录：从中文首页点击“切换到 English”后，顶部“我的画布”即时变为 `My Canvases`，按钮变为“Switch to 简体中文”；设置弹层即时显示 `Settings & Preferences`、`Providers` 与 `Add provider`，图片工作台显示名为 `Model` 的组合框。刷新页面后英文仍保持。再切回中文并刷新，按钮恢复为“切换到 English”。定向 Playwright 为 1 项通过，随后完整 Playwright 为 79 项通过；Web TypeScript 与文档内容检查也通过。该证据不外推为版本发布弹层、移动端导航、渠道编辑器、所有模型下拉项、全部路由/提示词/错误文案或文档站的中英文搜索保持；第 78 项继续保持未验证。
+
+## 115. 文档站国际化路由与搜索（2026-08-28）
+
+本切片关闭中文主清单第 77 项。使用 Next 生产构建和隔离 Playwright CLI 浏览器，服务仅绑定 `127.0.0.1:4302`；不访问用户配置、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `docs/src/lib/i18n.ts` | 修改 | 固定英文与简体中文均使用显式 URL 前缀，避免默认英文路径被 Next/Fumadocs 双向重定向而循环；`localizePath` 同步生成 `/en/...` 或 `/zh-CN/...`。 |
+| `docs/src/lib/layout.shared.tsx` | 修改 | 将文档导航改为统一 locale 路径，并用当前 Fumadocs 16 实际注册的翻译键翻译语言选择、搜索触发器/弹层、空结果、移动端菜单及目录标题。 |
+| `docs/AGENTS.md`、`docs/CLAUDE.md` | 新增（Next 16 自动生成） | `next dev` 自动写入的版本规则入口与其别名；规则要求随文档站工作提交，避免下次启动重复产生未跟踪文件。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 77 项标为人工通过，更新当前文档站质量结论，并记录本次文件关联和验证边界。 |
+
+验证记录：修复前访问 `/en` 会重定向到 `/`，而 `/` 又重写到 `/en`，浏览器报重定向循环。修复后生产服务根路径仅 307 至 `/en/`；`/en/docs/overview/quick-start` 与 `/zh-CN/docs/overview/quick-start` 均为 200。浏览器从英文“Choose a language”切换“简体中文”后，同一页面转为中文 URL、标题“快速开始”、中文导航与“搜索文档”；输入“画布”得到中文结果。切回英文后回到 `/en/docs/overview/quick-start`，输入 `canvas` 得到英文结果；中文路径刷新后仍保持中文。`npm run types:check`、`npm run build` 与内容检查通过，生产浏览器为 0 个 console error。生产环境另有远程首页预加载图片未使用的浏览器 warning，未影响路由或搜索结果；该项不外推为全部文档正文的翻译完整性、远程图片可用性或 Docker 部署。

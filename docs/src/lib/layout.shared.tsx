@@ -1,7 +1,7 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import { appNames, gitConfig } from './shared';
 import { ArrowUpRight } from 'lucide-react';
-import { i18n } from './i18n';
+import { i18n, localizePath } from './i18n';
 import { uiTranslations } from 'fumadocs-ui/i18n';
 
 const githubUrl = `https://github.com/${gitConfig.user}/${gitConfig.repo}`;
@@ -13,33 +13,16 @@ export const translations = i18n.translations().extend(uiTranslations()).add('ui
   },
   'zh-CN': {
     displayName: '简体中文',
-    search: '搜索文档',
-    searchNoResult: '没有找到结果',
-    searchOpen: '打开搜索',
-    searchClose: '关闭搜索',
-    toc: '本页目录',
-    tocNoHeadings: '本页没有标题',
-    tocInline: '本页内容',
-    chooseLanguage: '选择语言',
-    nextPage: '下一页',
-    previousPage: '上一页',
-    chooseTheme: '选择主题',
-    themeToggle: '切换主题',
-    themeLight: '浅色',
-    themeDark: '深色',
-    themeSystem: '跟随系统',
-    codeBlockCopy: '复制代码',
-    codeBlockCopied: '已复制',
-    menuToggle: '切换菜单',
-    pageActionsCopyMarkdown: '复制 Markdown',
-    pageActionsOpen: '打开',
-    pageActionsOpenGitHub: '在 GitHub 中打开',
-    pageActionsViewMarkdown: '查看 Markdown',
-    sidebarOpen: '打开侧边栏',
-    sidebarCollapse: '收起侧边栏',
-    notFoundTitle: '页面不存在',
-    notFoundDescription: '你访问的页面不存在。',
-    notFoundLink: '返回首页',
+    'Choose a language(language switcher)': '选择语言',
+    'Choose a language(language switcher)(aria-label)': '选择语言',
+    'Search(search trigger)': '搜索文档',
+    'Open Search(search trigger)(aria-label)': '打开搜索',
+    'Search(search dialog)': '搜索文档',
+    'Close Search(search dialog)(aria-label)': '关闭搜索',
+    'No results found(search dialog)': '没有找到结果',
+    'Toggle Menu(mobile menu)(aria-label)': '切换菜单',
+    'On this page(table of contents)': '本页目录',
+    'No Headings(table of contents)': '本页没有标题',
   },
 });
 
@@ -59,7 +42,7 @@ export function baseOptions(locale: string): BaseLayoutProps {
     links: [
       {
         text: chinese ? '文档导航' : 'Documentation',
-        url: `${chinese ? '/zh-CN' : ''}/docs/overview/quick-start`,
+        url: localizePath(locale, '/docs/overview/quick-start'),
         on: 'nav',
       },
       {

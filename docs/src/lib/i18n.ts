@@ -6,10 +6,10 @@ export const i18n = defineI18n({
   defaultLanguage: 'en',
   languages: ['en', 'zh-CN'],
   parser: 'dot',
-  hideLocale: 'default-locale',
+  hideLocale: 'never',
   fallbackLanguage: null,
 });
 
 export function localizePath(locale: string, path: string) {
-  return locale === i18n.defaultLanguage ? path : `/${locale}${path}`;
+  return `/${locale}${path}`;
 }
