@@ -1532,3 +1532,16 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 在第 80 项写入已有自动化子证据、当前 81 项浏览器基线和边界，满足 `AGENTS.md` 的对话级文件关联记录要求。 |
 
 验证记录：隔离新画布中的滑杆依次接受 65、140、35、275、5、500、100、175、45、100，并且每一次都回显对应受控值；点击“重置视图”后回到 100%。全过程没有捕获 `Maximum update depth`、`Too many re-renders` 或 hooks 数量变化类 pageerror。定向用例、完整 81 项 Playwright 回归与 Web TypeScript 均通过。当前未覆盖滚轮手势、节点尺寸拖拽、缩放时的选区/连线命中、极端视口和真实用户历史项目，故第 80 项继续保持未验证。
+
+## 118. Agent MCP 初始化状态（2026-08-28）
+
+本切片关闭中文主清单第 81 项。浏览器部分使用 Playwright 自管的隔离 Vite 4173、内存 EventSource 和 Agent HTTP 路由夹具；服务端部分使用 Canvas Agent 内存会话单测；均不连接真实 Codex、用户会话、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-mcp-initialization.spec.ts` | 新增 | 在真实右侧 Agent 面板注入 preparing 会话和 MCP 状态，验证服务启动提示、输入/发送阻断；再投递可选服务失败的 warning 会话，验证失败服务可见且输入恢复发送。 |
+| `canvas-agent/src/canvas/session.test.ts` | 既有实现（已复核） | 验证对话 revision 单调递增、全部 MCP 终态前保持 preparing、可选 MCP 失败进入 warning，以及必需 Infinite Canvas MCP 缺失或失败进入 failed。 |
+| `web/src/components/agent/local-agent-panel.tsx`、`web/src/components/agent/agent-chat.tsx` | 既有实现（已复核） | 前者将会话状态映射为 bootstrap 状态并以 preparing/warning 决定 composer 可用性，后者只在无用户/助手消息时显示 MCP 初始化进度与每项服务状态。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 81 项升级为自动化通过，同步未验证项、浏览器基线和对话级文件关联记录。 |
+
+验证记录：准备态显示“正在启动 MCP 服务”和 `infinite-canvas`，输入为 contenteditable=false、发送禁用。投递 `infinite-canvas=ready`、`notion=failed` 的 warning 后，页面显示“部分 MCP 服务初始化失败”和 `notion`，输入恢复可编辑且填入消息后“发送”可用。服务端会话单测进一步固定：清单未完成或有 starting 服务时不能离开 preparing；可选失败为 warning，但 Infinite Canvas MCP 缺失或 notLoggedIn 会带错误进入 failed。定向浏览器、完整 82 项 Playwright 与 Canvas Agent 204 项测试均通过。
