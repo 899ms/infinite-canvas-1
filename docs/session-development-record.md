@@ -1295,3 +1295,15 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 60 项更新为“自动化通过”，同步 Web 20 文件/62 项与未验证 39 项基线，并记录文件关联。 |
 
 验证记录：内存导出 JSON 含应用标识、版本、渠道/默认模型/生成偏好、WebDAV 和提示词来源计划；修改状态后导入精确恢复；`{invalid` 被拒绝且现有 API Key 不变。定向 Vitest 为 3 项通过。该证据不外推为浏览器下载权限、操作系统文件选择器、真实凭据有效性或 WebDAV 网络连接。
+
+## 99. 模型渠道方舟协议与参考限制（2026-08-28）
+
+本切片关闭中文主清单第 61 项。测试使用内存渠道、图片 Data URL 和 Axios 拦截器，不请求真实方舟、真实 API Key、用户媒体、3000/17371 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/lib/ark-channel-protocol.test.ts` | 新增 | 验证方舟默认基址、任意模型名按 `apiFormat=ark` 分流、1080p 和参考视频边界；拦截图片 JSON 请求、视频任务创建和查询。 |
+| `web/src/stores/use-config-store.ts`、`web/src/services/api/image.ts`、`web/src/services/api/video.ts`、`web/src/lib/seedance-video.ts` | 既有实现（未修改） | 分别提供方舟地址/渠道解析、JSON 图片请求、方舟视频任务协议和参考媒体边界。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 61 项更新为“自动化通过”，同步 Web 21 文件/66 项与未验证 38 项基线，并记录关联证据。 |
+
+验证记录：自定义“任意生图模型”和“任意视频模型”在方舟渠道下均走 `api/v3`：生图请求 `images/generations` 使用 JSON `image` 数组，视频请求 `contents/generations/tasks` 并查询同一任务 ID；1080p 不依赖 `fast` 命名，200MB、15 秒与 1280×720 参考视频通过，3840×2161 被像素上限拒绝。Web 全量单测 21 个文件 66 项、TypeScript 与生产构建通过。该证据不外推为真实方舟鉴权、服务端模型可用性、真实视频下载或浏览器渠道编辑抽屉的逐控件可用性。
