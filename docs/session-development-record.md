@@ -1507,3 +1507,16 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 77 项标为人工通过，更新当前文档站质量结论，并记录本次文件关联和验证边界。 |
 
 验证记录：修复前访问 `/en` 会重定向到 `/`，而 `/` 又重写到 `/en`，浏览器报重定向循环。修复后生产服务根路径仅 307 至 `/en/`；`/en/docs/overview/quick-start` 与 `/zh-CN/docs/overview/quick-start` 均为 200。浏览器从英文“Choose a language”切换“简体中文”后，同一页面转为中文 URL、标题“快速开始”、中文导航与“搜索文档”；输入“画布”得到中文结果。切回英文后回到 `/en/docs/overview/quick-start`，输入 `canvas` 得到英文结果；中文路径刷新后仍保持中文。`npm run types:check`、`npm run build` 与内容检查通过，生产浏览器为 0 个 console error。生产环境另有远程首页预加载图片未使用的浏览器 warning，未影响路由或搜索结果；该项不外推为全部文档正文的翻译完整性、远程图片可用性或 Docker 部署。
+
+## 116. 全局设置弹层主题的局部浏览器证据（2026-08-28）
+
+本切片补强中文主清单第 79 项，但不将该项标为完整通过。Chromium 使用 Playwright 自管的隔离 Vite 4173 与独立浏览器本地存储；不读取用户配置、用户资产、真实 3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/global-modal-theme.spec.ts` | 新增 | 从真实首页“配置”入口打开 Ant Design 设置弹层；浅色读取容器/边框/正文计算色，关闭后通过真实主题切换按钮进入深色并重开，验证颜色均非透明且与浅色结果不同。 |
+| `web/src/components/layout/app-providers.tsx`、`web/src/lib/app-theme.ts` | 既有实现（已复核） | `AppProviders` 根据持久化主题向全局 Ant Design `ConfigProvider` 传入亮/暗 algorithm；主题适配器同时覆盖通用 token 和组件 token。 |
+| `web/src/components/layout/app-config-modal.tsx`、`web/src/components/ui/animated-theme-toggler.tsx` | 既有实现（已复核） | 前者是实际 `Modal` 入口，后者在根节点、`color-scheme` 与主题 store 间同步真实点击切换。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 在第 79 项写入已获得的自动化子证据、当前 80 项浏览器基线及未覆盖边界，满足 `AGENTS.md` 的对话级文件关联记录要求。 |
+
+验证记录：测试从浅色存储状态进入首页，设置弹层的 `.ant-modal-content` 容器、边框和正文均获得非透明计算色；按 Escape 关闭后，点击“切换到深色主题”使根节点进入 dark 状态，重新打开同一设置弹层后这三项计算色与浅色结果不同。定向 Playwright、完整 80 项 Playwright 回归与 Web TypeScript 均通过。当前未覆盖版本发布弹层、渠道编辑抽屉、Select/Popover、图片编辑器、移动端及像素级对比，故第 79 项继续保持未验证。
