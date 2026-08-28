@@ -55,7 +55,7 @@
 | 45 | Agent 权限控制 | 自动化通过 | 主清单 45；隔离审批；权限语义正确 | `web/e2e/agent-permission-controls.spec.ts` 覆盖三种模式选择、完全访问风险确认、刷新持久化与两个并发审批卡的逐一决定/确认回收；`canvas-agent/src/agent/codex-client.test.ts` 覆盖请求批准、自动审查与完全访问分别传给 Codex 的审批、沙箱和自动审查策略。 |
 | 46 | Agent 历史记录 | 自动化通过 | 主清单 46；隔离历史；恢复和删除一致 | `web/e2e/agent-history-records.spec.ts` 覆盖卡片直接恢复、无“进入”按钮、全选两条、批量删除以及删除当前对话后消息清空；`canvas-agent/src/agent/codex-history.test.ts` 继续覆盖历史投影与恢复。 |
 | 47 | Agent 默认新对话 | 自动化通过 | 主清单 47；隔离空会话；不恢复、不预建、首发才建线程 | `web/e2e/agent-default-new-thread.spec.ts` 覆盖连接后的空白对话、零自动 reset 请求、旧历史不自动进入，以及首条发送携带空线程 ID；`canvas-agent/src/server/http.ts` 仅允许空闲空会话由首条 turn 懒创建 Codex 线程。 |
-| 48 | Agent 当前画布优先 | 未验证 | 主清单 48；双标签画布；目标绑定正确 | `canvas-agent/src/canvas/session.test.ts` 有局部覆盖 |
+| 48 | Agent 当前画布优先 | 自动化通过 | 主清单 48；双标签隔离；当前画布读取与写入不偏移 | `canvas-agent/src/agent/agent-instructions.test.ts` 固定“先读当前画布、不列举/重复导航”的实际 MCP 指令；`canvas-agent/src/canvas/session.test.ts` 覆盖 turn 绑定发起网页后，即使焦点切到另一标签，读取和写入仍只作用于原画布。 |
 | 49 | Agent 图片消息 | 未验证 | 主清单 49；隔离附件；缩略图和历史正确 | `canvas-agent/src/agent/message-metadata.test.ts` 有局部覆盖 |
 | 50 | 画布文本复制 | 未验证 | 主清单 50；文本选择；复制快捷键不冲突 | — |
 | 51 | Agent 工作目录指令 | 未验证 | 主清单 51；隔离工作区；指令生成与请求边界正确 | — |

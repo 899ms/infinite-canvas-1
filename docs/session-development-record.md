@@ -1112,3 +1112,17 @@
 | `docs/session-development-record.md` | 修改 | 记录本切片的实现、隔离范围和证据边界，满足 `AGENTS.md` 的对话级记录要求。 |
 
 验证记录：连接空闲 Agent 后，对话区不自动恢复“旧对话”历史，且不会向 `/agent/codex/threads/reset` 发请求；输入框可直接输入“第一条消息才建线程”，发送请求的 `threadId` 为空。服务端只接受这种 `idle + 空 threadId` 组合进入首次 turn，`runCodexTurn` 随后创建真实 Codex 线程并经事件切换会话，因此连接和未发送的新对话不产生持久历史记录。该证据不外推为真实 Codex App Server 的线程创建延迟、真实历史存储、断线重连或跨浏览器行为验收。
+
+## 85. Agent 当前画布优先（2026-08-28）
+
+本切片关闭中文主清单第 48 项。验证只使用 Canvas Agent 进程内会话和本地指令源，不连接真实 3000/17371、用户资产、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/agent/agent-instructions.test.ts` | 新增 | 将实际注入 MCP Server 的 `AGENT_PROMPT` 固定为“当前已打开画布优先、先读状态、禁止无谓列举/导航、仅显式切换时例外”的契约。 |
+| `canvas-agent/package.json` | 修改 | 把该指令契约加入默认 Canvas Agent 全量测试命令。 |
+| `canvas-agent/agent-instructions.md`、`canvas-agent/src/canvas/session.test.ts` | 既有实现（未修改） | 前者为 Codex/MCP 提供当前画布优先决策规则；后者已经验证 turn 绑定发起标签后，焦点切到另一标签也不会让读取或写入越过原画布。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 48 项更新为“自动化通过”，同步 Canvas Agent 201 项与未验证 51 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录指令与会话路由的关联、隔离范围和证据边界，满足 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：新测试直接读取运行时 `AGENT_PROMPT`，断言其要求当前已打开画布为默认目标、先调用 `canvas_get_state`、不得先调用 `canvas_list_projects` 或 `site_navigate`，且只有显式查看/选择/切换其他画布时才例外。既有多标签会话测试进一步证明，运行中的 turn 绑定发起标签后，即使焦点变化，`canvas_get_state` 和画布写操作仍只作用于发起标签。该证据固定指令和工具路由契约，不外推为真实模型在所有自然语言表述下的工具选择概率。
