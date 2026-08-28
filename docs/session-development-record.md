@@ -1371,3 +1371,16 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 67 项更新为“自动化通过”，同步矩阵为 53 项自动化通过、33 项未验证。 |
 
 验证记录：自定义来源卡片初始显示左侧开关、`0 条`和“尚未拉取”，并提供“查看内容”“立即拉取”“编辑来源”“删除”四个文字按钮；开关的视口 x 坐标小于标题，确认其位于左侧。点击“立即拉取”后，卡片更新为 `1 条`、`正常`和“上次成功”时间。定时拉取标题的父区有非零边框。当前代码版本的完整 Playwright 为 71 项通过；第 66 项已验证的 Web 23 个 Vitest 文件 68 项、TypeScript 与生产构建未发生业务实现变更。该证据不外推为长来源列表虚拟化、网络慢速状态、所有主题细节、删除确认后的永久配置变化或跨设备同步。
+
+## 105. 画布提示词库直接搜索与插入标题（2026-08-28）
+
+本切片关闭中文主清单第 68 项。Chromium 使用 Playwright 自管的隔离 Vite 4173：本地存储禁用六个内置来源，仅启用一个内存路由的公开提示词来源；审核提示词通过浏览器内存导入。测试不读取或写入用户资产、真实 3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-prompt-library.spec.ts` | 新增 | 验证公开库没有“我的提示词”分组，输入来源关键字无需展开来源即可显示匹配项；导入审核运行时库后点击“插入画布”，从真实导航后的 Zustand 画布状态断言文本节点类型、标题、正文、提示词和成功状态。 |
+| `web/src/lib/canvas/prompt-library.ts` | 修改 | 创建文本节点后显式将调用方传入的提示词标题写入 `CanvasNodeData.title`，避免仅保留默认“文本”节点标题。 |
+| `web/src/pages/prompts/index.tsx`、`web/src/pages/prompts/dashboard.tsx` | 既有实现（未修改） | 前者提供公开来源直接搜索与无“我的提示词”分组的入口；后者从审核通过的运行时词库调用 `insertPromptIntoCanvas` 并导航到目标画布。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 68 项更新为“自动化通过”，同步矩阵为 54 项自动化通过、32 项未验证及浏览器 72 项回归基线。 |
+
+验证记录：公开库加载单一内存来源后，页面没有“我的提示词”Tab；输入“无需展开来源”直接显示“无需展开来源的画布搜索命中”。导入审核迁移夹具后，运行时词库中的“QA 雨夜肖像”点击“插入画布”即导航到新画布，状态中的节点为 `text`，标题仍为“QA 雨夜肖像”，`content` 和 `prompt` 均为 `cinematic street portrait in neon rain, natural pose`，状态为 `success`。Web 全量门禁为 23 个 Vitest 文件 68 项、TypeScript、生产构建与 72 项 Playwright 回归通过。该证据不外推为真实远程来源持续可用、未审核个人内容、跨设备同步、所有历史损坏项目数据或真实生成服务。
