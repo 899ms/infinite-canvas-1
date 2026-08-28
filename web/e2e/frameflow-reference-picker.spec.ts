@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 
 const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
-test("FrameFlow 创建页导入隔离参考图并在刷新后恢复受控绑定", async ({ page }) => {
-    const commands: Array<{ type?: string; input?: { referenceImageIds?: string[] } }> = [];
+test("FrameFlow 创建页导入隔离参考图、刷新恢复并重新填写新工作流", async ({ page }) => {
+    const commands: Array<{ type?: string; input?: { referenceImageIds?: string[] }; idempotencyKey?: string }> = [];
     const asset = {
         id: "reference-asset",
         kind: "image",
@@ -18,19 +18,12 @@ test("FrameFlow 创建页导入隔离参考图并在刷新后恢复受控绑定"
         ({ asset }) => {
             localStorage.setItem("canvas-agent-url", "http://127.0.0.1:4173");
             localStorage.setItem("canvas-agent-token", "frameflow-reference-picker-token");
-            const request = indexedDB.open("infinite-canvas");
-            request.onupgradeneeded = () => {
-                if (!request.result.objectStoreNames.contains("app_state")) request.result.createObjectStore("app_state");
-            };
-            request.onsuccess = () => {
-                const transaction = request.result.transaction("app_state", "readwrite");
-                transaction.objectStore("app_state").put(JSON.stringify({ state: { assets: [asset] }, version: 0 }), "infinite-canvas:asset_store");
-            };
         },
         { asset },
     );
     await page.route("**/agent/frameflow/references/import?**", async (route) => {
         expect(route.request().headers()["content-type"]).toContain("image/png");
+        expect(route.request().postDataBuffer()?.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
         await route.fulfill({
             contentType: "application/json",
             body: JSON.stringify({
@@ -83,19 +76,17 @@ test("FrameFlow 创建页导入隔离参考图并在刷新后恢复受控绑定"
         await route.fulfill({ contentType: "application/json", body: JSON.stringify({ ok: true, data }) });
     });
     await page.goto("/frameflow?view=create");
-    await page.waitForFunction(async () => {
-        return await new Promise<boolean>((resolve, reject) => {
-            const request = indexedDB.open("infinite-canvas");
-            request.onerror = () => reject(request.error);
-            request.onsuccess = () => {
-                const transaction = request.result.transaction("app_state", "readonly");
-                const read = transaction.objectStore("app_state").get("infinite-canvas:asset_store");
-                read.onerror = () => reject(read.error);
-                read.onsuccess = () => resolve(Boolean(read.result));
-            };
-        });
-    });
-    await page.reload();
+    await page.waitForFunction(async () => (await import("/src/stores/use-asset-store.ts")).useAssetStore.getState().hydrated);
+    await page.evaluate(async (asset) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1;
+        canvas.height = 1;
+        const context = canvas.getContext("2d");
+        context?.fillRect(0, 0, 1, 1);
+        const storedAsset = { ...asset, data: { ...asset.data, dataUrl: canvas.toDataURL("image/webp"), mimeType: "image/webp" } };
+        const { useAssetStore } = await import("/src/stores/use-asset-store.ts");
+        useAssetStore.setState({ assets: [storedAsset], hydrated: true });
+    }, asset);
     await page.getByRole("button", { name: "选择", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "选择 FrameFlow 参考图" }).getByAltText("隔离参考图")).toBeVisible();
     await page.getByRole("button", { name: "隔离参考图" }).click();
@@ -113,4 +104,13 @@ test("FrameFlow 创建页导入隔离参考图并在刷新后恢复受控绑定"
     await expect(page.getByRole("heading", { name: "Prompt Version 1" })).toBeVisible();
     await expect(page.getByText("已恢复 1 张受控参考图")).toBeVisible();
     await expect(page.getByText("已绑定 1 张受控参考图")).toBeVisible();
+
+    await page.getByRole("button", { name: "重新填写" }).click();
+    await expect(page.getByRole("heading", { name: "Prompt Version 1" })).toHaveCount(0);
+    await expect(page.getByLabel("主体")).toHaveValue("");
+    await expect(page.getByText("未选择参考图，可直接使用文字 Brief")).toBeVisible();
+    await page.getByLabel("主体").fill("重新填写的隔离商品");
+    await page.getByRole("button", { name: "让 Codex 生成 Prompt" }).click();
+    await expect.poll(() => commands.map((command) => command.type)).toEqual(["brief.create", "round.plan", "brief.create", "round.plan"]);
+    expect(commands[0]?.idempotencyKey).not.toEqual(commands[2]?.idempotencyKey);
 });

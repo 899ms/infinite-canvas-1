@@ -18,7 +18,7 @@
 | 08 | FrameFlow 自动跑风格 | 自动化通过 | 主清单 08；隔离 Auto Run；规划、生成、评审、停止与恢复一致 | `web/e2e/frameflow-auto-run.spec.ts` 覆盖自由方向、名称、画幅、探索方式、每轮数量与最大轮数的创建设置，以及“Codex 规划第 1 轮”即时状态、停止和同一任务恢复入口；`core.test.ts` 覆盖逐轮规划/生成/机器审图、停止于规划/生成/审图、迟到结果、失败恢复、重启与 `auto_run.extended` 原血缘追加。 |
 | 09 | FrameFlow 演化轨迹 | 自动化通过 | 主清单 09；隔离三轮 Auto Run；按真实轮次比较与打开血缘 | `web/e2e/frameflow-trajectory.spec.ts` 覆盖三轮横向比较、Machine Review、Prompt Revision、Prompt Diff 展开、390px 横向轨道与对应 Run 血缘跳转；`auto-run-trajectory.ts` 只从同一 `auto_run.iteration_started` 事件投影轮次，Core 测试覆盖实际多轮血缘。 |
 | 10 | FrameFlow 跨轮总结 | 自动化通过 | 主清单 10；两轮完整机器审图；总结证据与更新可追溯 | `web/e2e/frameflow-trajectory.spec.ts` 覆盖生成、刷新保留、新轮次待更新及强制更新请求；`core.test.ts` 覆盖自动后台生成、不可变 `auto_run.trajectory_summarized`、真实证据轮次、重启保留与不改写 Preference DNA。 |
-| 11 | FrameFlow 创建页 | 未验证 | 主清单 11；隔离参考图与 Brief；批准和生成独立 | 核心测试有领域局部覆盖；`web/e2e/frameflow-task-context.spec.ts` 覆盖空用途创建 Brief、先规划/批准 Prompt、后独立提交 Run。参考图导入与刷新恢复仍待验收 |
+| 11 | FrameFlow 创建页 | 未验证 | 主清单 11；隔离参考图与 Brief；批准和生成独立 | `web/e2e/frameflow-task-context.spec.ts` 覆盖空用途创建 Brief、先规划/批准 Prompt、后独立提交 Run；`frameflow-reference-picker*.spec.ts` 覆盖 WebP→PNG、四张上限/搜索/取消/空资产、超 20MB 阻断、受控 ID 绑定、刷新恢复及重新填写的新幂等键。非法图 Agent 拒绝与完整真实生成路径仍待验收。 |
 | 12 | FrameFlow 待审页 | 未验证 | 主清单 12；隔离图片；评分、评论、隐藏和删除语义正确 | HTTP 闭环；`web/e2e/frameflow-task-context.spec.ts` 覆盖同一任务筛选，以及隐藏与恢复的独立反馈回写。评分、评论和删除仍待验收 |
 | 13 | FrameFlow 机器审图状态 | 未验证 | 主清单 13；隔离 Auto Run；状态仅出现在当前评审图片 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |
 | 14 | FrameFlow Preference DNA 页 | 未验证 | 主清单 14；隔离反馈；证据与硬约束保持分离 | `canvas-agent/src/frameflow/core.test.ts` 有领域局部覆盖 |

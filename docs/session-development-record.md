@@ -699,3 +699,16 @@
 | `docs/session-development-record.md` | 修改 | 记录本次测试夹具、修正过的测试时序和验收边界，满足对话级可追溯要求。 |
 
 验证记录：第一次扩展后，`/agent/frameflow/commands` 和 `/agent/frameflow/query` 的拦截模式错误地要求 URL 带查询字符串，造成请求没有命中、界面安全地吞下错误并停留在填写页；改为覆盖无查询参数路径后，发现原生 IndexedDB 写入与应用首次 localForage 水合的竞态。用例现先在页面内确认 `infinite-canvas/app_state` 的 `infinite-canvas:asset_store` 已存在，再重载后打开选择器，因此不把夹具初始化时序误判为产品缺陷。最终断言命令顺序为 `brief.create`、`round.plan`，并确认第一个命令的 `referenceImageIds` 为 `controlled-reference`；首次与刷新后的 Prompt 均显示受控绑定。目标用例和本文件格式检查通过。图片超过 20MB/非法格式、1–4 上限、搜索/取消/空资产、重新填写的全新幂等键，以及批准后真实 ImageGen 路径仍未覆盖，故第 11 项状态继续保持“未验证”，不将该隔离夹具外推为真实生成或生产部署验收。
+
+## 52. FrameFlow 创建页参考图边界与新工作流隔离回归（2026-08-28）
+
+本切片继续补齐第 11 项，但不改变其“未验证”状态。所有浏览器数据为 Playwright 的内存路由、浏览器 Canvas 生成的 1×1 WebP 或 Vite 隔离页面中直接设置的 Zustand 资产 store；不读取真实用户资产、不连接 3000/17371、不调用外部 Provider，也不使用 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/frameflow-reference-picker.spec.ts` | 修改 | 将成功夹具改为浏览器 Canvas 生成的有效 WebP，导入拦截明确断言 `image/png` 内容类型和 PNG 文件头；覆盖 Brief/Prompt 受控 ID 绑定、刷新恢复及“重新填写”后第二次 `brief.create`/`round.plan` 使用不同工作流幂等键。 |
+| `web/e2e/frameflow-reference-picker-limits.spec.ts` | 新增 | 在 Vite 浏览器页直接设置应用正在使用的 Zustand 资产 store，覆盖资产名称/标签搜索、取消不回写、选择上限 4 张和第五张禁用、解除一张后重新启用、空资产明确引导，以及 20MB 以上 PNG 在浏览器端阻断且不会调用参考图导入、Brief 或 Prompt 命令。 |
+| `web/src/pages/frameflow/reference-asset-picker.tsx`、`web/src/pages/frameflow/create-view.tsx`、`web/src/lib/frameflow-reference.ts` | 既有实现（未修改） | 分别提供选择器边界、工作流重置和栅格图 PNG 化/20MB 限制。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 更新第 11 项当前已有证据和本次对话级可追溯记录。 |
+
+验证记录：选择器夹具写入 5 张合成图片后，按“建筑”标签搜索仅显示“建筑光影”；连续选中 4 张时计数为 `4/4` 且第五张禁用，取消第 4 张后为 `3/4` 且第五张重新可选。点击 Modal 的取消按钮后创建页仍显示“未选择参考图”，重新打开计数回到 `0/4`；空资产单独显示“我的资产里还没有图片，请先到‘我的资产’导入”且确认按钮禁用。超大用例用路由返回 `20 * 1024 * 1024 + 1` 字节的 PNG，页面显示“转换后超过 20MB”，Prompt 不出现且所有 `/agent/frameflow/**` 请求数组为空。首次 WebP 夹具使用手写 Base64，Chromium 无法解码；改为浏览器 Canvas 生成有效 WebP 后，参考图导入路由接收到明确 PNG MIME 与 8 字节 PNG 签名。高并发复跑曾暴露 IndexedDB 预置与应用水合的夹具竞争；页面内直接写入又会在 localForage 已打开状态下悬挂。因此改为等待持久化水合结束后，直接设置 Vite 页面正在使用的 Zustand 资产 store：保留真实页面和组件交互，但不再依赖持久化层时序。该方式下完整 Playwright 29 项在 16 worker 下通过，文档内容检查也通过。非法图由 Agent 返回的验证错误、其他格式和真实已批准 Prompt 到 ImageGen 受控路径仍未被该夹具覆盖，主清单第 11 项继续保持“未验证”。
