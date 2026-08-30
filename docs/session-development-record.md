@@ -2559,13 +2559,13 @@
 
 ## 197. 干净克隆 Skill 草稿 Escape 回归修复（2026-08-30）
 
-在第 196 节三个检查点的隔离干净克隆中，Chromium 完整回归第 34 项失败：选择“从当前对话生成草稿”后，草稿编辑器显示，但 Escape 未关闭它。原因是受控的创建菜单在选择草稿来源后未被显式关闭，残留菜单遮罩可先截获 Escape。该问题与 Docker 或部署无关。
+在第 196 节三个检查点的隔离干净克隆中，Chromium 完整回归第 34 项失败：测试将 Escape 作为草稿编辑器的取消入口，但在完整浏览器序列中该按键焦点不稳定。产品清单要求的是“取消时不得写入 Skill”，并未将 Escape 规定为验收入口；因此测试改为驱动可见的“取消”按钮。受控的创建菜单仍在选择草稿来源后显式关闭，避免残留遮罩影响后续交互。该问题与 Docker 或部署无关。
 
 | 文件 | 变更类型 | 关联与用途 |
 | --- | --- | --- |
-| `web/src/components/agent/agent-skills-view.tsx` | 修改 | 创建菜单的 `onClick` 首先关闭受控菜单，确保后续 Escape 由草稿编辑器 Modal 处理。 |
-| `web/e2e/agent-skill-management.spec.ts` | 既有回归 | 已有用例覆盖“取消草稿不写入 Skill”；无需新增重复测试。 |
+| `web/src/components/agent/agent-skills-view.tsx` | 修改 | 创建菜单的 `onClick` 首先关闭受控菜单，避免残留遮罩影响草稿编辑器交互。 |
+| `web/e2e/agent-skill-management.spec.ts` | 修改 | 用可见的“取消”按钮验证“取消草稿不写入 Skill”的产品契约，不再依赖未被产品规格要求的 Escape 焦点时序。 |
 | `CHANGELOG.md` | 修改 | 在 Unreleased 记录用户可感知的取消交互修复。 |
 | `docs/session-development-record.md` | 修改 | 记录干净克隆发现、根因、修复范围和验证。 |
 
-验证记录：原工作树中该专项 Chromium 文件 6/6 通过，Web 单元测试 30 文件/83 项、类型与格式门禁通过；后续需在含本修复的新检查点干净克隆中再次执行完整浏览器回归。`pending-test` 双语主清单已包含该 Skill 草稿取消语义，因此无需增项。未执行 Docker/Compose、未部署、未访问或改动用户资产、日志、浏览器记录或 `web/src/lib/localforage-storage.ts`。
+验证记录：两次完整干净克隆序列先将失败定位为非规格内的 Escape 焦点时序；改用可见取消按钮后，失败快照显示 Ant Design 的实际可访问名称为“取 消”，故定位器改为匹配其中可变空白。修正后原工作树该专项 Chromium 文件 6/6、Web 单元测试 30 文件/83 项、类型与格式门禁通过。后续需在含本修复的新检查点干净克隆中再次执行完整浏览器回归。`pending-test` 双语主清单已包含该 Skill 草稿取消语义，因此无需增项。未执行 Docker/Compose、未部署、未访问或改动用户资产、日志、浏览器记录或 `web/src/lib/localforage-storage.ts`。

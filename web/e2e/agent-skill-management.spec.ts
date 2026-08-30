@@ -201,7 +201,7 @@ test("Skill 草稿入口校验来源且取消草稿不写入 Skill", async ({ pa
     await page.getByRole("menuitem", { name: /从当前对话生成草稿/ }).click();
     const editor = page.getByRole("dialog");
     await expect(editor.getByLabel("Skill 标识")).toHaveValue("draft-flow");
-    await page.keyboard.press("Escape");
+    await editor.getByRole("button", { name: /取\s*消/ }).click();
     await expect(editor).toHaveCount(0);
     await expect(page.getByText("draft-flow", { exact: true })).toHaveCount(0);
 
@@ -209,7 +209,8 @@ test("Skill 草稿入口校验来源且取消草稿不写入 Skill", async ({ pa
     await expect(page.getByRole("menuitem", { name: /从当前画布生成草稿/ })).not.toHaveAttribute("aria-disabled", "true");
     await page.getByRole("menuitem", { name: /从当前画布生成草稿/ }).click();
     await expect(editor.getByLabel("Skill 标识")).toHaveValue("draft-flow");
-    await page.keyboard.press("Escape");
+    await editor.getByRole("button", { name: /取\s*消/ }).click();
+    await expect(editor).toHaveCount(0);
     expect(draftRequests.map((request) => request.source)).toEqual(["conversation", "canvas"]);
     expect(draftRequests[0]).toMatchObject({ threadId: "thread-draft" });
     expect(draftRequests.every((request) => request.clientId.length > 0)).toBe(true);
