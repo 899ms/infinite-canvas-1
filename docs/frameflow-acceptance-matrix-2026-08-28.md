@@ -4,11 +4,11 @@
 
 此矩阵的逐项来源是 `docs/content/docs/progress/pending-test.zh-CN.mdx`，编号按该页从上到下固定。每项的“入口、测试数据、预期结果”均以同编号的中文主清单为准：未验收项只能在隔离浏览器 origin 或临时 Agent 工作区中执行，不得使用正常 3000/17371 端口或真实资产。`—` 表示尚无可复核证据，不能解读为通过。
 
-状态只允许使用：`未验证`、`自动化通过`、`人工通过`、`已失效`、`阻塞`。当前只有完整事实内核项已有覆盖其全部非 UI 领域语义的自动化证据；Docker 项按本轮明确范围标为阻塞。其他已有局部测试的条目仍保留 `未验证`，避免把局部证据误报为完整验收。
+状态只允许使用：`未验证`、`自动化通过`、`人工通过`、`已失效`、`阻塞`。当前只有完整事实内核项已有覆盖其全部非 UI 领域语义的自动化证据；用户已明确移除 Docker/容器部署需求，对应项标为已失效。其他已有局部测试的条目仍保留 `未验证`，避免把局部证据误报为完整验收。
 
 | ID | 验收项 | 状态 | 入口 / 测试数据 / 预期 | 现有证据或阻塞原因 |
 | ---: | --- | --- | --- | --- |
-| 01 | Docker 当前源码部署 | 阻塞 | 主清单 01；Docker 环境；当前源码容器链路 | 本轮明确不包含 Docker/容器部署 |
+| 01 | Docker 当前源码部署 | 已失效 | 原主清单 01；Docker 环境；当前源码容器链路 | 2026-08-29 用户明确确认项目不需要 Docker/容器部署；不执行、不维护此验收线。 |
 | 02 | FrameFlow 默认任务定位 | 自动化通过 | 主清单 02；隔离 Auto Run；URL 任务范围保持一致 | `web/e2e/frameflow-task-context.spec.ts` 覆盖不带 ID 直接打开待审/运行与血缘时定位最新活动任务；并在两处真实 Ant Select 浮层中主动选择全部范围，确认旧任务/批次出现且刷新后保持 `autoRunId=all`。 |
 | 03 | 浏览器业务数据失败保护 | 自动化通过 | 主清单 03；隔离 IndexedDB；失败不得静默丢数据 | `web/e2e/prompt-dashboard-storage.spec.ts` 使用真实浏览器 IndexedDB：知识库、PromptFill 与图片反馈写入后刷新仍保持；拦截既有 IndexedDB 连接的事务并抛出配额错误后，三类写入均拒绝且不提交内存，读取失败保留当前内存并显示统一安全告警。 |
 | 04 | 配置与生成控件可访问性及按需加载 | 人工通过 | 主清单 04；键盘与屏幕阅读器；可达且按需加载 | 隔离 Playwright CLI 实测生图的 16 倍数对齐/透明背景、视频清晰度/时长、提示词来源、画布图片信息开关及 Agent/插件入口均有可读名称与状态；焦点上的 Space 正确切换开关。配置页首访未加载渠道编辑器或脚本编辑器，点击编辑渠道和调用脚本后对应界面正常出现。 |
@@ -18,18 +18,18 @@
 | 08 | FrameFlow 自动跑风格 | 自动化通过 | 主清单 08；隔离 Auto Run；规划、生成、评审、停止与恢复一致 | `web/e2e/frameflow-auto-run.spec.ts` 覆盖自由方向、名称、画幅、探索方式、每轮数量与最大轮数的创建设置，以及“Codex 规划第 1 轮”即时状态、停止和同一任务恢复入口；`core.test.ts` 覆盖逐轮规划/生成/机器审图、停止于规划/生成/审图、迟到结果、失败恢复、重启与 `auto_run.extended` 原血缘追加。 |
 | 09 | FrameFlow 演化轨迹 | 自动化通过 | 主清单 09；隔离三轮 Auto Run；按真实轮次比较与打开血缘 | `web/e2e/frameflow-trajectory.spec.ts` 覆盖三轮横向比较、Machine Review、Prompt Revision、Prompt Diff 展开、390px 横向轨道与对应 Run 血缘跳转；`auto-run-trajectory.ts` 只从同一 `auto_run.iteration_started` 事件投影轮次，Core 测试覆盖实际多轮血缘。 |
 | 10 | FrameFlow 跨轮总结 | 自动化通过 | 主清单 10；两轮完整机器审图；总结证据与更新可追溯 | `web/e2e/frameflow-trajectory.spec.ts` 覆盖生成、刷新保留、新轮次待更新及强制更新请求；`core.test.ts` 覆盖自动后台生成、不可变 `auto_run.trajectory_summarized`、真实证据轮次、重启保留与不改写 Preference DNA。 |
-| 11 | FrameFlow 创建页 | 未验证 | 主清单 11；隔离参考图与 Brief；批准和生成独立 | `web/e2e/frameflow-task-context.spec.ts` 覆盖空用途创建 Brief、先规划/批准 Prompt、后独立提交 Run；`frameflow-reference-picker*.spec.ts` 覆盖 WebP→PNG、四张上限/搜索/取消/空资产、超 20MB 阻断、受控 ID 绑定、刷新恢复及重新填写的新幂等键。非法图 Agent 拒绝与完整真实生成路径仍待验收。 |
+| 11 | FrameFlow 创建页 | 人工通过 | 主清单 11；隔离临时 Agent、临时浏览器 origin 与无参考图 Brief；创建、规划、批准、生成独立完成 | 在用户授权的本机 Codex 账户下，2026-08-29 以 `brief.create → round.plan → prompt.approve → run.start` 完成一条真实 ImageGen 链路。请求 1 张，Run 仅有 1 个 slot、1 次尝试并成功回写 1 张 1254×1254 PNG；隔离 Web 的“运行与血缘”页显示“成功”“1/1 张已生成”、结果图、Prompt Version 与 Brief 血缘。既有 `frameflow-task-context.spec.ts`、`frameflow-reference-picker*.spec.ts` 继续覆盖隔离页面的顺序、参考图和恢复边界。 |
 | 12 | FrameFlow 待审页 | 自动化通过 | 主清单 12；隔离图片；评分、评论、隐藏和删除语义正确 | `web/e2e/frameflow-review-feedback.spec.ts` 覆盖五星、Comment、软删除与永久删除的独立命令载荷和页面回显；`frameflow-task-context.spec.ts` 覆盖同一任务筛选及隐藏/恢复；`core.test.ts` 覆盖临时工作区内的评分、评论、隐藏和恢复领域语义。 |
 | 13 | FrameFlow 机器审图状态 | 自动化通过 | 主清单 13；隔离 Auto Run；状态仅出现在当前评审图片 | `frameflow-machine-review-state.spec.ts` 覆盖当前审图批次与历史图片的状态隔离；`core.test.ts` 覆盖机器审图中断恢复。 |
 | 14 | FrameFlow Preference DNA 页 | 自动化通过 | 主清单 14；隔离反馈；证据与硬约束保持分离 | `web/e2e/frameflow-preference-dna.spec.ts` 覆盖五项 DNA 指标、强化/规避图片、评分、Comment 和事实事件计数，并确认未审核图片不出现；`core.test.ts` 的“Codex Planner 只在同一 Creative Brief 内继承人工偏好证据”覆盖下一轮 Planner 的完整证据上下文、跨需求隔离与原 Prompt 字段快照。 |
 | 15 | FrameFlow 运行与血缘页面 | 自动化通过 | 主清单 15；隔离 Run；任务过滤、重试和隔离一致 | `web/e2e/frameflow-lineage.spec.ts` 覆盖当前任务过滤、全部运行范围、失败 slot 定向重试、生成结果与尝试次数回显、Decision/Diff 按需展开，以及取消后迟到文件隔离提示；`core.test.ts` 覆盖只重跑指定失败 slot、保留成功图片和取消后 quarantine。 |
 | 16 | FrameFlow 事实内核 | 自动化通过 | 主清单 16；临时工作区与 PNG；事件、血缘、取消及重启一致 | `canvas-agent/src/frameflow/core.test.ts` |
 | 17 | 资产瀑布流回归 | 人工通过 | 主清单 17；隔离资产库；布局和筛选可用 | 隔离 Playwright CLI 实测 4:3 QA 图片在 292px 瀑布流列内以原比例渲染；搜索、无匹配清除、图片/标签入口、高评分排序、232/292px 密度切换、ZIP 导入导出以及 soft delete 的隐藏/恢复路径均可用。 |
-| 18 | 可移植设计系统与启动链路 | 阻塞 | 主清单 18；干净目录与 Docker；本地/容器均使用当前源码 | 干净 Web 安装已验证；Docker 验收不在本轮范围 |
+| 18 | 可移植设计系统与启动链路 | 已失效 | 原主清单 18；其中 Docker/容器启动链路 | 2026-08-29 用户明确移除 Docker/容器部署需求；已验证的干净 Web 安装证据保留，但不再要求容器启动验收。 |
 | 19 | 个人提示词运行时 | 自动化通过 | 主清单 19；隔离个人库；审核和偏好排序正确 | `personal-prompt-options.test.ts` 覆盖五星优先、低评分降权与软删除排序；`personal-prompt-runtime.spec.ts` 在生图、视频及画布图片节点验证公开/个人库双视图、已审核过滤与待修复项隔离。 |
 | 20 | 提示词迁移与审核 | 自动化通过 | 主清单 20；`web/qa-fixtures/prompt-migration.json`；待修复引用保留 | `import-export.test.ts` 覆盖 QA 血缘与三类缺失引用项的待修复/审核拒绝；`prompt-migration.spec.ts` 在隔离浏览器验证 10 条待修复项的滚动访问，以及机器校验、人工通过入口禁用 |
 | 21 | 室内设计工作流 | 人工通过 | 主清单 21；隔离平面图；8 节点、10 连线和 Agent 引导 | `interior-canvas-workflow.test.ts` 验证 8 节点、10 连线和三个 Codex 节点语义；隔离 Playwright CLI 实际上传 QA 平面图、选择整图并创建画布，确认 8 个节点、三段 Codex 引导和视频节点可见。真实 Agent/生图/视频调用不在本项证据范围。 |
-| 22 | 上游 v0.15.1 回归 | 未验证 | 主清单 22；隔离画布；上游功能保持可用 | — |
+| 22 | 上游 v0.15.1 回归 | 自动化通过 | 主清单 22；隔离画布；上游功能保持可用 | `web/e2e/prompt-source-data.spec.ts` 覆盖迁移后的 Freestylefly 来源仍按原 URL 拉取并可按来源筛选；`canvas-batch-prompt-recall.spec.ts` 覆盖 2–4 图组的背板/展开/主图切换、失败槽位重试删除和提示词回显，`canvas-image-generation.test.ts` 覆盖单图初始主图、尺寸及配置状态归并；`canvas-node-prompt-scroll.spec.ts` 覆盖节点提示词编辑的实时画布更新且不触发缩放。Agent 图片预览、画布/Skill 引用、语言切换和本地存储分别由 49、78、85、86、94 项对应回归覆盖。 |
 | 23 | 设计系统回归 | 人工通过 | 主清单 23；深浅主题与键盘；主题和焦点稳定 | `web/index.html` 在模块加载前恢复主题 class、`color-scheme` 与 `theme-color`；隔离 Playwright CLI 实测深色首屏、浅色切换后的 `#fafaf9` 主题色、画布卡片 Tab/Enter 打开及选择、重命名、导出、删除，并确认生图、视频与画布音频设置面板的可达控件。 |
 | 24 | 按需加载与标题 Token 回归 | 自动化通过 | 主清单 24；各路由首访；骨架和标题 Token 正确 | `web/e2e/routes.spec.ts` 覆盖共享懒加载骨架、首页 display token、八个工作台 title token 的深浅主题 700 字重、资产空态文案，以及隔离 Agent 状态下从顶部打开、收起再打开后连接、对话、历史和日志保持。 |
 | 25 | 提示词筛选响应式回归 | 人工通过 | 主清单 25；1100px 断点；筛选可滚动可键盘操作 | 隔离 Playwright CLI 在 1000px 实测分类/标签轨道均为 `overflow-x:auto`、`nowrap` 且有溢出；键盘 Enter 切换分类、Tab 后 Space 切换标签。1280px 回归左侧 sticky 纵向滚动栏与换行筛选项。 |
@@ -38,9 +38,9 @@
 | 28 | Agent 读取画布卡片 | 自动化通过 | 主清单 28；隔离历史；类型统计、空态与错误可恢复 | `canvas-agent/src/agent/codex-history.test.ts` 覆盖历史恢复中的 `canvas_get_state`：精确汇总文本、图片、配置、视频、音频、分组、其他节点和连线；空画布显示“当前画布为空”，失败状态保留真实错误文本。 |
 | 29 | Agent 首次发送响应 | 自动化通过 | 主清单 29；隔离线程；用户消息即时出现且草稿不会丢失 | `web/e2e/agent-first-send.spec.ts` 覆盖首次发送时输入立即清空并显示用户消息；发送失败恢复原草稿与错误；请求在途写入的新草稿在成功响应后保持。 |
 | 30 | Agent 动态工具信息 | 自动化通过 | 主清单 30；隔离工具调用；具体名称、失败原因与历史一致 | `web/src/components/agent/agent-event-formatters.test.ts` 覆盖实时动态工具卡片和日志的具体工具名/失败原因；`canvas-agent/src/agent/codex-history.test.ts` 覆盖历史恢复后的同名、结果文本和错误详情。 |
-| 31 | Agent 画布生图 | 未验证 | 主清单 31；隔离画布与 Agent；只在真实结果后声明完成 | — |
+| 31 | Agent 画布生图 | 人工通过 | 主清单 31；隔离临时 Agent、临时浏览器 origin 和新建空画布；仅在真实结果后检查节点 | 在用户授权的本机 Codex 账户下，画布 UI 选择“低 · 1:1 · 1 张”并发起真实 Codex ImageGen。页面先出现“生成中”图片节点，完成后仅写回 1 个图片节点并可打开实际图片预览；网络记录确认 `canvas-images` 与 `local-image` 都返回 200。直接 Agent 验证显示原生端在 count=1 时会给出两个候选文件路径，但画布按请求数量只落入一个方形结果节点。既有 `config.test.ts`、`session.test.ts` 继续覆盖工作区指令与工具写入契约。 |
 | 32 | Agent 顶部栏 | 自动化通过 | 主清单 32；360px 隔离面板；标题、操作同列且标签可横向滚动 | `web/e2e/agent-panel-header.spec.ts` 以最小 360px 面板验证“Agent”标题、连接设置、四个内容标签、新对话和收起操作可见且垂直中心对齐；标签栏使用 `overflow-x:auto`。 |
-| 33 | Agent Markdown 样式 | 未验证 | 主清单 33；长 Markdown；主题和溢出正确 | — |
+| 33 | Agent Markdown 样式 | 自动化通过 | 主清单 33；隔离长 Markdown；代码、链接、主题和溢出正确 | `web/e2e/agent-markdown-style.spec.ts` 驱动真实 Agent 消息组件，验证代码块全宽、紧凑正文、隐藏语言标题及复制控件焦点显示；验证外链确认、本地 `/Users/` 路径改为文件管理器定位请求，并在深浅主题下保持无横向溢出。 |
 | 34 | Agent 工具确认模式 | 自动化通过 | 主清单 34；隔离 SSE 画布写入；自动回传或手动确认 | `web/e2e/agent-tool-confirmation.spec.ts` 通过内存 EventSource 触发真实前端 `tool_call(canvas_apply_ops)`：默认自动确认立即回传 canvas 结果；切换手动确认后显示等待确认卡片，拒绝会回传“用户取消了画布工具调用”。 |
 | 35 | Canvas Agent Codex 升级 | 自动化通过 | 主清单 35；隔离 Codex 协议与版本诊断；启动可继续 | `canvas-agent/src/version-check.test.ts` 验证启动必报 Agent、内置 `0.146.0` 与本机 Codex 版本，缺失/不匹配/可升级均提示，npm 查询失败仅警告且不抛出；`codex-client.test.ts` 覆盖同线程中断、随后新 turn 启动及 Codex 事件归属，`session.test.ts` 覆盖画布工具请求与回传。 |
 | 36 | Canvas Agent Debug | 自动化通过 | 主清单 36；隔离临时日志目录；正常/Debug 级别、按日追加与脱敏正确 | `canvas-agent/src/utils/logger.test.ts` 覆盖普通模式只输出 Info/Warn/Error，Debug 模式写入隔离临时目录的同日追加文件；日志正文与详情中的凭据、Bearer 和 Data URL 均被遮蔽，单行格式稳定。 |
@@ -69,7 +69,7 @@
 | 59 | 画布左侧元素列表 | 自动化通过 | 主清单 59；隔离画布；整行定位选中，图片预览不触发定位 | `web/e2e/canvas-side-panel-focus-preview.spec.ts` 预置一个初始不在视口的图片节点：点击独立预览按钮仅打开大图且节点仍未进入 DOM，关闭后点击元素整行才将节点平滑定位到视口并选中。 |
 | 60 | 配置与用户偏好 | 自动化通过 | 主清单 60；隔离配置导入导出；恢复与错误提示正确 | `web/src/services/config-file.test.ts` 覆盖导出渠道、默认模型、生成偏好、提示词来源和 WebDAV；在变更状态后导入恢复完整内容；错误 JSON 被拒绝且保持当前设置。 |
 | 61 | 模型渠道协议 | 自动化通过 | 主清单 61；隔离渠道；方舟格式与限制正确 | `web/src/lib/ark-channel-protocol.test.ts` 覆盖方舟默认地址、任意模型名按渠道协议分流、1080p 与 200MB/像素边界；并拦截请求验证图片以 JSON 提交参考图，视频以方舟任务创建与查询端点执行。 |
-| 62 | 图片编辑弹窗 | 未验证 | 主清单 62；隔离图片；缩放和遮罩同步 | — |
+| 62 | 图片编辑弹窗 | 自动化通过 | 主清单 62；隔离图片；连续缩放与遮罩同步 | `web/e2e/canvas-image-editors.spec.ts` 从真实图片节点工具栏分别打开局部遮罩、裁剪和切图；连续滚轮缩放 100%→144%，验证遮罩 canvas 与图片重合、裁剪框保持图片内、切图线保持 stage 中心和覆盖高度；Alt 调整遮罩笔刷直径时圆心跟随鼠标。 |
 | 63 | 提示词中心布局 | 自动化通过 | 主清单 63；隔离提示词来源；防抖、滚动和布局正确 | `web/e2e/prompt-library-layout.spec.ts` 以两条内存提示词和 48 个长标签验证标题/总数居中、220ms 内搜索仍保留旧结果而随后查询生效、桌面两栏且左侧独立纵向滚动、右侧搜索框后直接出现卡片、窄屏单列无横向溢出；同时确认无“我的提示词”Tab，加入资产操作直接写入资产库。 |
 | 64 | 提示词详情弹窗 | 自动化通过 | 主清单 64；隔离长内容与参考图；固定区和滚动区正确 | `web/e2e/prompt-detail-dialog.spec.ts` 以长提示词和多参考图验证上方媒体、底部复制/加入资产操作保持固定，只有中间内容可滚动；桌面和 390px 窄屏下弹窗均不超出视口。 |
 | 65 | 提示词远程缩略图 | 自动化通过 | 主清单 65；隔离坏 URL 与旧缓存；安全降级且无资源错误 | `web/e2e/prompt-thumbnail-fallback.spec.ts` 写入一小时前的原始坏缩略图缓存，验证已知拒绝跨域嵌入和已失效地址在卡片、来源内容表格与详情弹窗均降级为占位图，且浏览器不请求坏图。 |
@@ -80,36 +80,36 @@
 | 70 | 本地 Agent 多标签页隔离 | 自动化通过 | 主清单 70；双标签；工具只写入发起页 | `canvas-agent/src/canvas/session.test.ts` 双客户端覆盖焦点读写、turn 绑定后焦点切换不改变目标、关闭活动页回退、绑定页断开不落入另一页，以及仅请求页可回传工具结果。 |
 | 71 | 本地 Agent 多标签页会话同步 | 自动化通过 | 主清单 71；双标签；线程状态同步 | `canvas-agent/src/canvas/session.test.ts` 覆盖站点级会话切换、同线程聊天与运行状态广播到两页；运行期统一写操作锁拒绝会话变更，结束后恢复；前端按线程过滤事件并禁用运行期操作。 |
 | 72 | 本地 Agent 运行状态同步 | 自动化通过 | 主清单 72；双标签长任务；忙碌状态同步 | web/e2e/agent-cross-tab-running.spec.ts 在两个真实浏览器页面中覆盖工具完成后第二页建立 SSE 连接、运行状态即时回放与结束收束；canvas-agent/src/canvas/session.test.ts 覆盖站点级状态广播。 |
-| 73 | 本地 Agent 图片附件落画布 | 未验证 | 主清单 73；隔离附件；归属与关闭失败正确 | `canvas-agent/src/canvas/session.test.ts` 覆盖发起页归属与关闭拒绝；`web/e2e/agent-attachment-nodes.spec.ts` 覆盖附件图片、分析文本、生成配置及两条入配置连线的前端工具流；`web/e2e/canvas-attachment-persistence.spec.ts` 覆盖图片节点写入真实项目后按 storageKey 读取。 |
-| 74 | Agent 对话滚动 | 未验证 | 主清单 74；长会话；跟随和跳转正确 | `web/e2e/agent-chat-follow.spec.ts` 覆盖历史长对话初始定位、手动上翻后暂停跟随、新消息不抢占阅读位置与“查看最新消息”回到底部；日志/历史切换和视觉同构仍待验证。 |
-| 75 | Agent 消息区分 | 未验证 | 主清单 75；多类消息；布局清晰不溢出 | `web/e2e/agent-message-layout.spec.ts` 覆盖用户右侧透明文本、助手左侧 Markdown、双图片附件、错误色彩与深浅主题横向溢出保护；完整视觉验收仍待验证。 |
-| 76 | 画布选择与平移 | 未验证 | 主清单 76；不同工具与快捷键；交互不冲突 | `web/e2e/canvas-tool-mode.spec.ts` 覆盖工具栏选择→移动，以及空格临时反转光标但不改变持久模式；框选、Ctrl、节点拖拽等仍待验证。 |
+| 73 | 本地 Agent 图片附件落画布 | 自动化通过 | 主清单 73；隔离附件；归属、刷新与生成参与正确 | `canvas-agent/src/canvas/session.test.ts` 覆盖发起页归属与关闭拒绝；`web/e2e/agent-attachment-nodes.spec.ts` 覆盖附件图片、分析文本、生成配置及两条入配置连线的前端工具流；`web/e2e/canvas-attachment-persistence.spec.ts` 覆盖图片节点按 storageKey 读取；`web/e2e/canvas-attachment-reload-generation.spec.ts` 从同构 IndexedDB 项目/图片数据启动，刷新后通过真实配置节点请求路径确认持久化图片进入 Codex ImageGen `attachments`，并回写成功图片节点。 |
+| 74 | Agent 对话滚动 | 自动化通过 | 主清单 74；长会话；跟随和跳转正确 | `web/e2e/agent-chat-follow.spec.ts` 覆盖初始定位、手动上翻后暂停跟随、新消息不抢占、32px 居中圆形向下按钮、底部无额外留白、点击回到底部及日志切回对话后的自动定位；`web/e2e/agent-history-records.spec.ts` 通过真实历史恢复入口加载 60 条另一会话消息并确认自动定位最新。聊天和日志复用 `AgentScrollToBottom`，固定同一尺寸、居中和样式。 |
+| 75 | Agent 消息区分 | 自动化通过 | 主清单 75；多类消息；布局清晰不溢出 | `web/e2e/agent-message-layout.spec.ts` 覆盖用户右侧透明长文本、助手左侧 Markdown 标题/粗体、双图片附件、错误色彩，以及浅深主题下的可见性与根文档无横向溢出。 |
+| 76 | 画布选择与平移 | 自动化通过 | 主清单 76；不同工具与快捷键；交互不冲突 | `web/e2e/canvas-tool-mode.spec.ts` 覆盖工具栏选择→移动与空格临时反转；`web/e2e/canvas-tool-interactions.spec.ts` 在隔离双文本节点项目覆盖节点拖动、Shift 追加、选择框、175% 缩放下物理恒定的虚线、左键/中键及节点上的平移、Control 临时反转、普通按钮空格不重触发、文本编辑器输入空格、slider 保留空格和真实 Agent Tab/配置 Radio 的空格语义。 |
 | 77 | 文档站国际化 | 人工通过 | 主清单 77；中英文路径；语言和搜索保持正确 | 生产 Next 服务的隔离 Playwright CLI 实测：默认根路径重定向至 `/en/`，`/en/docs/overview/quick-start` 与 `/zh-CN/docs/overview/quick-start` 均返回 200；语言菜单在同一路径间切换并刷新后保持语言；中文“画布”和英文 `canvas` 均返回对应索引。 |
-| 78 | 国际化基础框架 | 未验证 | 主清单 78；切换与刷新；界面文案同步 | `web/e2e/i18n-basic.spec.ts` 已覆盖顶部中英文切换、首页导航、设置弹层的 Ant Design 标签、工作台模型选择控件以及双向刷新保持；版本弹层、移动端导航、渠道编辑器和全量可见文案仍待验证。 |
-| 79 | 全局弹层主题 | 未验证 | 主清单 79；深浅主题；弹层颜色一致 | `web/e2e/global-modal-theme.spec.ts` 从真实首页设置入口预置浅色，读取 Ant Design 设置弹层的容器、边框和正文计算色；关闭后经真实主题按钮切至深色并重开弹层，确认三项颜色不透明且主题结果改变。版本发布弹层、抽屉、下拉浮层和图片编辑器仍待验证。 |
-| 80 | 画布节点缩放稳定性 | 未验证 | 主清单 80；重复缩放；无 React 循环错误 | `web/e2e/canvas-zoom-stability.spec.ts` 在真实画布页将缩放滑杆反复设置为 5%–500% 的交错值并重置至 100%，确认受控值稳定且浏览器没有 Maximum update depth、重复渲染错误。滚轮缩放、节点缩放和不同视口仍待验证。 |
+| 78 | 国际化基础框架 | 自动化通过 | 主清单 78；切换与刷新；界面文案同步 | `web/e2e/i18n-basic.spec.ts` 以中文初始状态覆盖顶部双向切换和刷新保持、首页/工作台、设置弹层及模型控件；覆盖版本发布弹层的中英文标题/字段、渠道编辑抽屉的中英文标题/字段，以及 390px 移动导航抽屉的中英文标题/链接。 |
+| 79 | 全局弹层主题 | 自动化通过 | 主清单 79；深浅主题；弹层颜色一致 | `web/e2e/global-modal-theme.spec.ts` 覆盖真实设置 Modal 的容器/边框/正文、渠道编辑 Drawer 与其 Select 浮层，并在浅深主题下比较计算色；`web/e2e/agent-skill-management.spec.ts` 覆盖真实“创建 Skill” Dropdown/Menu 的浮层底色和菜单项悬停色。源码检索确认当前没有 Cascader、TreeSelect 实例；全局 Ant token 为浅色提供白色浮层和轻灰交互态、为深色提供深色浮层和低对比交互态。 |
+| 80 | 画布节点缩放稳定性 | 自动化通过 | 主清单 80；重复缩放；无 React 循环错误 | `web/e2e/canvas-zoom-stability.spec.ts` 覆盖缩放滑杆 5%–500% 交错值与重置，并在隔离画布对选中节点的四个真实角控制柄逐一拖拽：拖拽期间工具条卸载、节点尺寸/位置实时变化、松开后工具条恢复，全程没有 `Maximum update depth`、重复渲染或 hooks 数量错误。 |
 | 81 | Agent MCP 初始化状态 | 自动化通过 | 主清单 81；隔离线程；准备态与阻塞规则正确 | `web/e2e/agent-mcp-initialization.spec.ts` 以真实右侧面板覆盖准备态的 MCP 服务提示与输入阻断、可选服务失败 warning 后恢复发送；`canvas-agent/src/canvas/session.test.ts` 覆盖等待全部终态、可选 MCP 失败 warning，以及必需 Infinite Canvas MCP 缺失/失败时进入 failed。 |
 | 82 | Agent 输入框窄屏布局 | 自动化通过 | 主清单 82；多面板宽度；图标与提示正确 | `web/e2e/agent-composer-narrow-layout.spec.ts` 在真实右侧 Agent 面板的 360px 与 700px 宽度下验证输入提示、上传、工具确认、权限与发送按钮可见/可访问；空草稿禁发、填入后可发，两个宽度均无横向溢出。 |
-| 83 | Agent 本地 Skill 管理 | 未验证 | 主清单 83；隔离工作区 Skill；读写边界与同步正确 | `canvas-agent/src/skills/store.test.ts` 有局部覆盖 |
-| 84 | Agent Skill 草稿生成 | 未验证 | 主清单 84；隔离线程与画布；草稿安全且可中断 | `canvas-agent/src/canvas/session.test.ts` 有局部覆盖 |
-| 85 | Agent Skill 调用 | 未验证 | 主清单 85；隔离 Skill；原子 token 与持久化正确 | — |
-| 86 | Agent 输入框快捷引用 | 未验证 | 主清单 86；隔离素材；插入、键盘和预览正确 | — |
-| 87 | Agent 消息元数据 | 未验证 | 主清单 87；隔离附件；精确身份恢复与删除正确 | `canvas-agent/src/agent/message-metadata.test.ts` 有局部覆盖 |
-| 88 | Agent 对话实时与历史一致性 | 未验证 | 主清单 88；隔离长任务；刷新后事件一致 | `canvas-agent/src/agent/codex-history.test.ts` 有局部覆盖 |
-| 89 | 工作台历史图片清理 | 未验证 | 主清单 89；隔离历史；记录和专属文件语义正确 | — |
-| 90 | 画布多图生成 | 未验证 | 主清单 90；隔离多图；槽位、主图和展开正确 | — |
-| 91 | 画布多图主图切换 | 未验证 | 主清单 91；隔离多图；中心和缩放保持正确 | — |
-| 92 | 画布多图失败槽位 | 未验证 | 主清单 92；隔离失败槽位；重试和删除范围正确 | — |
-| 93 | 画布多图尺寸调整 | 未验证 | 主清单 93；隔离多图；收起后稳定缩放 | — |
-| 94 | 本地存储设置 | 未验证 | 主清单 94；隔离 IndexedDB；统计刷新不阻塞 | — |
-| 95 | Agent 命令记录 | 未验证 | 主清单 95；隔离命令；聚合、展开和恢复正确 | `canvas-agent/src/agent/codex-history.test.ts` 有局部覆盖 |
+| 83 | Agent 本地 Skill 管理 | 自动化通过 | 主清单 83；隔离工作区 Skill；读写边界与同步正确 | `web/e2e/agent-skill-management.spec.ts` 覆盖项目/个人/系统/管理员 Skill 的搜索、来源筛选、刷新错误详情、启停、托管新建/编辑/删除、外部来源只读、双标签 `skills_changed` 同步，以及断连后迟到的列表和详情请求不得回写列表或编辑器；`canvas-agent/src/skills/store.test.ts` 覆盖 revision 冲突拒绝覆盖、托管字段清空时保留非托管元数据、原子更新和安全路径。 |
+| 84 | Agent Skill 草稿生成 | 自动化通过 | 主清单 84；隔离线程与画布；草稿安全且可中断 | `web/e2e/agent-skill-management.spec.ts` 覆盖三入口中的空上下文禁用、对话/画布草稿的 `source`/`threadId`/`clientId` 绑定、画布状态同步和取消后零写入；新增双页面用例覆盖草稿请求进行中时当前页与收到 `codex_state` 的第二页统一禁用创建、选择、编辑和删除，完成后恢复。`canvas-agent/src/canvas/session.test.ts`、`src/agent/codex-client.test.ts` 覆盖 mutation 互斥、共享 busy 状态恢复、临时 turn 中断、静默无历史和草稿安全清洗。 |
+| 85 | Agent Skill 调用 | 自动化通过 | 主清单 85；隔离 Skill；原子 token 与持久化正确 | `web/e2e/agent-first-send.spec.ts` 通过真实输入 `/`、候选菜单和回车选择验证 Skill token 位于正文；两次发送均断言 `$product-grid` 文本标记与结构化 `skill.name/path`，失败保留选择、成功清除选择。另覆盖重新读取后服务端停用 Skill 时撤销正文 token/结构化选择，以及新建对话时清空选择。`web/e2e/agent-skill-selection-lifecycle.spec.ts` 覆盖删除已选托管 Skill 和断开连接时同时清除正文 token/结构化选择；`web/e2e/agent-reference-history-refresh.spec.ts` 覆盖刷新后的权威历史中 Skill 与画布引用仍以原正文顺序渲染。 |
+| 86 | Agent 输入框快捷引用 | 自动化通过 | 主清单 86；隔离素材；插入、键盘、预览与刷新恢复正确 | `web/e2e/agent-first-send.spec.ts` 通过真实输入 `@`、候选菜单和 Tab 选择验证文本素材 token 位于正文；发送请求精确携带 `nodeId`、标签、标题、类型和文本，并在用户消息中保留引用标签。另覆盖按光标连续插入图片/视频/音频 token、三类悬浮预览，以及 Backspace/Delete 整块删除后状态层引用同步移除。`web/e2e/agent-reference-history-refresh.spec.ts` 通过真实页面刷新后的自动重连和权威历史读取，验证图片引用标签与悬浮预览保持可见。 |
+| 87 | Agent 消息元数据 | 自动化通过 | 主清单 87；隔离附件；精确身份恢复与删除正确 | `canvas-agent/src/agent/message-metadata.test.ts` 覆盖重启、thread/turn 精确匹配、线程删除隔离、未知版本保护和预览资产删除；`web/e2e/agent-image-message.spec.ts` 覆盖历史附件的紧凑缩略图与预览弹窗，`agent-history-records.spec.ts` 覆盖历史切换后的全选删除，`agent-running-reconnect.spec.ts` 覆盖第二页刷新、首发页断线后由权威历史收束。 |
+| 88 | Agent 对话实时与历史一致性 | 自动化通过 | 主清单 88；隔离长任务；刷新后事件一致 | `web/e2e/agent-realtime-reply.spec.ts` 覆盖流式片段、完成后权威历史回补、重复完成事件不重复用户/助手消息及失败收束；`agent-running-reconnect.spec.ts` 覆盖第二页在长任务中完成真实页面刷新后重新接续运行态、首发页关闭后由第二页取得权威最终历史、移除旧流式片段并恢复可发送状态。`canvas-agent/src/agent/codex-history.test.ts` 覆盖终态 turn、补充事件持久化/去重/顺序。 |
+| 89 | 工作台历史图片清理 | 自动化通过 | 主清单 89；隔离 localforage 服务；记录和专属文件语义正确 | `web/src/services/file-storage.test.ts` 模拟同一数据库的媒体、图片记录和视频记录仓，验证两类生成记录都会保留引用媒体、孤立媒体被回收，移除两类记录后才回收相应媒体；工作台删除操作随后调用同一全局清理入口。 |
+| 90 | 画布多图生成 | 自动化通过 | 主清单 90；隔离四图；折叠背板、展开槽位、主图和收起正确 | `web/e2e/canvas-batch-prompt-recall.spec.ts` 预置一个四图根节点，验证收起时最多三张背板与“4 张”计数，展开后成功、生成中、失败三个独立槽位都可见；展开卸载节点悬浮工具栏，成功子图切换为主图后点击画布空白处收起。 |
+| 91 | 画布多图主图切换 | 自动化通过 | 主清单 91；隔离横竖图；中心与等比尺寸保持正确 | `web/e2e/canvas-batch-prompt-recall.spec.ts` 将横向主图切换为纵向成功子图，验证根节点变为 180×320，且以节点内联画布坐标计算的中心保持不变；该坐标不受页面初始化时视口恢复的瞬时屏幕位置影响。 |
+| 92 | 画布多图失败槽位 | 自动化通过 | 主清单 92；隔离双失败槽位；重试和删除范围正确 | `web/e2e/canvas-batch-prompt-recall.spec.ts` 通过受控 Canvas Agent 路由重试其中一张失败图，验证请求 `count` 为 1、仅目标槽位变为成功且另一失败槽位保持错误；删除另一失败槽位后，组计数更新为 2 张并保持展开。 |
+| 93 | 画布多图尺寸调整 | 自动化通过 | 主清单 93；隔离纵图图片组；收起后稳定等比缩放 | `web/e2e/canvas-batch-prompt-recall.spec.ts` 在主图切换为 900×1600 纵图并收起图片组后，实际拖拽右下角缩放控制柄，验证节点尺寸变大、纵横比保持 1600:900 且图片组保持收起。 |
+| 94 | 本地存储设置 | 自动化通过 | 主清单 94；隔离 IndexedDB；统计刷新不阻塞 | `web/e2e/config-local-storage.spec.ts` 打开真实设置弹层的本地存储页，验证主数据库及应用状态仓库统计显示；点击刷新统计后可立即切换到偏好设置并返回，统计仍可见且刷新按钮恢复可用。 |
+| 95 | Agent 命令记录 | 自动化通过 | 主清单 95；隔离两条命令；聚合、展开和恢复正确 | `web/e2e/agent-process-timeline-live.spec.ts` 连续推送两条实时命令，验证聚合摘要、展开后的两条命令与输出，并在完成事件的权威历史回补后保留该聚合及展开内容；`canvas-agent/src/agent/codex-history.test.ts` 继续覆盖标准历史缺命令时的补充事件恢复和去重。 |
 
 ## 当前结论
 
-- 已自动化通过：59 项（02、03、05、06、07、08、09、10、12、13、14、15、16、19、20、24、26、27、28、29、30、32、34、35、36、37、38、39、40、41、42、43、44、45、46、47、48、49、51、53、54、55、56、57、58、59、60、61、63、64、65、66、67、68、69、70、71、81、82）。
-- 人工通过：6 项（04、17、21、23、25、77）。
-- 阻塞：2 项（01、18），原因均为当前明确排除 Docker/容器部署。
-- 未验证：26 项。虽然其中若干项已有单元或局部浏览器回归，其范围不足以覆盖主清单对应的完整可见行为，仍需逐项人工或补充自动化验收。
+- 已自动化通过：83 项（02、03、05、06、07、08、09、10、12、13、14、15、16、19、20、22、24、26、27、28、29、30、32、33、34、35、36、37、38、39、40、41、42、43、44、45、46、47、48、49、51、53、54、55、56、57、58、59、60、61、62、63、64、65、66、67、68、69、70、71、72、73、74、75、76、78、79、80、81、82、83、84、85、86、87、88、89、90、91、92、93、94、95）。
+- 人工通过：10 项（04、11、17、21、23、25、31、50、52、77）。
+- 已失效：2 项（01、18），用户已明确确认不需要 Docker/容器部署。
+- 未验证：0 项。第 11、31 项已用隔离临时 Agent 与可见浏览器完成一次真实 ImageGen 人工闭环；该人工证据不替代跨账户、跨浏览器、Provider 异常或生产网络的持续验收。
 - 本次新增的 `FrameFlow HTTP 隔离夹具覆盖停止、恢复、反馈、血缘与 Requirement 归档闭环` 是阶段 B 的 P0 自动化证据；其余仍按本矩阵继续关闭，不将它外推为 95 项全部通过。
 - `canvas-agent/src/frameflow/core.test.ts` 以一次性工作区验证机器审图失败后原 Auto Run 进入失败态，原生成批次保持可追溯；重新启动后只补充缺失审图并在同一任务完成。该证据不覆盖页面刷新或 UI 设置交互。
 - `web/e2e/frameflow-task-context.spec.ts` 以隔离浏览器 origin 验证自动跑失败卡片在刷新后仍保留失败原因与原批次，点击“继续自动跑”后调用该任务的恢复端点并回写完成态；不包含真实模型调用。

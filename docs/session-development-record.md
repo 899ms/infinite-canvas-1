@@ -1558,3 +1558,1001 @@
 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 82 项更新为自动化通过，并同步当前浏览器基线、未验证数量和文件关联记录。 |
 
 验证记录：360px 时输入提示与上传、自动确认、请求批准、发送图标均可见，空草稿发送禁用；输入“窄面板输入仍可发送”后发送启用，面板 `scrollWidth <= clientWidth`。切换为 700px 后输入仍可编辑，全部操作保持可见/可访问且无横向溢出。定向浏览器与完整 83 项 Playwright 回归均通过。
+
+## 120. Agent 持久化图片附件刷新后参与生成（2026-08-28）
+
+本切片关闭中文主清单第 73 项。Chromium 使用 Playwright 自管的隔离 Vite 4173、隔离 IndexedDB、受控 Canvas Agent HTTP 路由夹具；不连接真实 Canvas Agent、Codex、用户项目、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-attachment-reload-generation.spec.ts` | 新增 | 在与产品同构的 `app_state`/`image_files` IndexedDB 数据中预置含 `storageKey` 的图片、文本和生成配置节点；启动后写入真实图片 Blob，刷新项目页，再通过真实配置节点“开始生成”入口拦截 Canvas Agent 请求，验证恢复后的参考图进入 `attachments` 且成功图节点回写。 |
+| `web/e2e/agent-attachment-nodes.spec.ts`、`web/e2e/canvas-attachment-persistence.spec.ts` | 既有实现（未修改） | 前者覆盖 Agent 附件工具创建图片/文本/配置/连线并回传结果，后者覆盖图片节点的项目存储键读取；共同组成第 73 项完整前端证据。 |
+| `canvas-agent/src/canvas/session.test.ts` | 既有实现（未修改） | 覆盖发起网页归属、关闭发起页的工具失败和不回退到另一画布。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 73 项更新为自动化通过，并同步浏览器 84 项、自动化通过 60 项、未验证 25 项的当前基线。 |
+| `docs/session-development-record.md` | 修改 | 记录此次对话的文件关联、隔离边界与验证结果，满足根 `AGENTS.md` 的要求。 |
+
+验证记录：先以同页面读取的存储测试尝试跨文档跳转，发现其仅证明当前页面上下文而不能可靠构造下一次启动数据；因此用现有画布 E2E 相同的 IndexedDB 预置方式作为刷新起点，且只在首次加载写入。项目加载后将 1×2 PNG 写入 `image_files`，刷新页面后由 `storageKey` 重新取回，并从真实“商品主图生成”配置节点点击“开始生成”。路由夹具实际收到一条 `/agent/codex/canvas-images` 请求，其中 `attachments[0]` 带原图片 Data URL；返回的图片经真实上传路径回写为成功图片节点。定向浏览器用例通过；该证据不声称真实 Codex/外部 ImageGen 的可用性或用户凭据有效性。
+
+## 121. 全局设置弹层主题回归定位兼容（2026-08-28）
+
+第 73 项新增回归纳入全量并发浏览器门禁后，既有第 79 项用例暴露出 Ant Design 当前 Modal 结构已使用 `.ant-modal-container`：ARIA `dialog` 下不再存在旧的 `.ant-modal-content` 后代。此修复只更新测试定位，不改动应用样式或业务代码。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/global-modal-theme.spec.ts` | 修改 | 将浅深主题计算色读取目标从失效的 `.ant-modal-content` 改为实际的 `.ant-modal-container`，继续以真实设置弹层验证容器、边框和正文颜色。 |
+| `docs/session-development-record.md` | 修改 | 记录门禁失败诊断、测试兼容修正及其文件关联，满足根 `AGENTS.md` 的要求。 |
+
+验证记录：第一次 16 并发完整回归为 83 通过、该单项超时；单独重跑同样失败，排除单纯资源争用。检查可见 `dialog` 的 DOM class 后确认它含 `ant-modal-container` 而不含旧内容类。定位修正后单项通过，重新执行 `npx playwright test --reporter=dot` 获得 84 passed（37.3s）。
+
+## 122. Agent 对话滚动完整验收（2026-08-28）
+
+本切片关闭中文主清单第 74 项。Chromium 使用 Playwright 自管的隔离 Vite 4173、内存 Agent store、历史和 HTTP 路由夹具；不连接真实 Canvas Agent、Codex、用户会话、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-chat-follow.spec.ts` | 修改 | 在既有长会话跟随回归上补充居中向下按钮的 32px 尺寸/绝对定位、底部无额外留白，以及由“日志”切回“对话”后自动定位到最新消息。 |
+| `web/e2e/agent-history-records.spec.ts` | 修改 | 将恢复的第二会话扩展为 60 条消息，并在真实历史卡片恢复入口后断言对话时间线自动定位底部。 |
+| `web/src/components/agent/agent-scroll-to-bottom.tsx` | 既有实现（未修改） | 聊天与日志共同复用的居中圆形向下按钮，固定尺寸、左侧居中和主题样式。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 74 项更新为自动化通过，并同步自动化通过 61 项、未验证 24 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录此次对话的文件关联、隔离边界与验证结果，满足根 `AGENTS.md` 的要求。 |
+
+验证记录：60 条历史消息初始打开时位于底部；手动置顶后显示 32×32、绝对定位且水平居中的“查看最新消息”圆形按钮，新到达的第 61 条消息不改变阅读位置。点击该按钮后重新贴底，内容末项到内容容器底边的空隙不超过 1px。再次上翻后切换至“日志”并切回“对话”，对话时间线自动回到最新。历史页点击“第二段对话”后，真实恢复接口返回另一条 60 消息会话，时间线同样自动贴底。两项定向浏览器用例通过；该证据不外推为真实 Agent 网络抖动、超长富媒体消息或不同浏览器的滚动曲线验收。
+
+## 123. Agent 消息布局与 Markdown 验收（2026-08-28）
+
+本切片关闭中文主清单第 75 项。Chromium 使用 Playwright 自管的隔离 Vite 4173、内存 Agent 会话和 HTTP 路由夹具；不连接真实 Canvas Agent、Codex、用户会话、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-message-layout.spec.ts` | 修改 | 在既有双主题消息布局回归中补充 Markdown 标题语义和粗体计算字重断言，防止渲染器退化为纯文本。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 75 项更新为自动化通过，并同步自动化通过 62 项、未验证 23 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录此次对话的文件关联、隔离边界与验证结果，满足根 `AGENTS.md` 的要求。 |
+
+验证记录：隔离会话中同时放入长用户文本、两张 PNG 附件、带二级标题和粗体的助手 Markdown，以及错误消息。实际页面显示用户在右、助手在左，用户容器没有圆角/背景气泡，助手标题以 heading 渲染、强调文本字重不低于 600，错误正文为红色。两次真实主题切换后，所有消息和附件仍可见，根文档没有横向溢出。定向浏览器用例通过；不外推为真实外部 Markdown 内容的所有 HTML 边界或屏幕阅读器专项验收。
+
+## 124. 画布选择与平移交互补强（2026-08-28）
+
+本切片关闭中文主清单第 76 项。Chromium 使用 Playwright 自管的隔离 Vite 4173 和启动前写入的双文本节点 IndexedDB 项目；不读取或写入用户画布、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-tool-interactions.spec.ts` | 新增 | 验证节点拖动、Shift 追加选择、框选虚线在 100%/175% 缩放下按反比写入 SVG 参数、左键/节点/中键平移、Control 临时反转、普通文本按钮的 Space 不重触发、真实“编辑文本”输入空格、slider、配置 Radio 及 Agent Tab 的空格键。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 76 项更新为自动化通过，并同步自动化通过 63 项、未验证 22 项和浏览器完整回归 85 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录此次对话的文件关联、隔离边界与未外推范围，满足根 `AGENTS.md` 的要求。 |
+
+验证记录：预置节点 A/B 后，节点 A 可拖动且内联位置改变；按 Shift 选中 B 后两者同时带选择层级。空白区域拖动显示选择框，在 100% 时 `stroke-dasharray=6 4`、`stroke-width=1`，175% 时分别为 `6/1.75 4/1.75` 与 `1/1.75`，经画布缩放后保持物理虚线长度、间距和粗细。切到移动模式后左键拖动、从节点 A 拖动和中键拖动均改变世界 transform，节点上的平移不改变节点自身位置；按 Control 临时回到选择框且释放后恢复移动。普通“文本”按钮获焦后按 Space 不新增节点而仅临时反转工具，缩放 slider 获焦后保持自身值且不临时反转；通过节点“编辑文本”入口打开 textarea 后，Space 真实写入正文。创建配置节点后聚焦隐藏原生 Radio 按 Space 可切换“文本”模式而不改变画布工具；打开真实 Agent 面板后聚焦“日志”Tab 按 Space 可切换标签而不改变画布工具。定向浏览器用例通过，故第 76 项更新为自动化通过。
+
+## 125. 国际化基础框架与移动端顶部栏（2026-08-28）
+
+本切片关闭中文主清单第 78 项。Chromium 使用 Playwright 自管的隔离 Vite 4173 和独立浏览器存储；不读取或写入用户配置、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/i18n-basic.spec.ts` | 修改 | 扩展现有双向语言切换回归：增加中文/英文版本发布弹层字段、渠道编辑抽屉字段，及 390px 移动导航抽屉的标题和主要链接。 |
+| `web/src/components/layout/user-status-actions.tsx` | 修改 | 修复 390px 下右侧操作区覆盖导航菜单的问题：小屏保留 Agent 与语言入口，文档、设置、主题、版本和 GitHub 等重复入口在桌面断点显示；设置仍可从移动导航进入。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 78 项更新为自动化通过，同步自动化通过 64 项、未验证 21 项和浏览器 86 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录此次会话的测试、修复、文件关联、隔离范围和未外推边界，满足根 `AGENTS.md` 要求。 |
+
+验证记录：初始中文首页打开“查看版本更新”后显示“版本更新 / 当前版本 / 最新版本”；切换 English 后同一真实弹层显示 `Release updates / Current version / Latest version`。设置弹层中的 `Add provider` 打开渠道编辑抽屉，显示 `Edit provider / Provider name / Provider models / Select models`。390px 下首次点击移动菜单曾被右侧“打开 Agent”覆盖，浏览器点击日志确认是布局碰撞；修复后“打开导航菜单”可实际点击，抽屉在中文显示“导航 / 我的画布 / 生图工作台”，切至 English 后显示 `Navigation / My Canvases / Image Studio`。两条定向 Playwright 用例通过；随后完整浏览器回归 86 项通过，Web TypeScript 与文档内容检查通过（英文摘要 25 项、中文权威清单与状态矩阵各 95 项）。该证据不外推为每条业务错误、动态 Provider 返回或文档正文的逐字翻译验收。
+
+## 126. Agent 本地 Skill 管理增强验收（2026-08-28）
+
+本切片增强中文主清单第 83 项，但不将该项标为完整通过。浏览器使用 Playwright 自管的隔离 Vite 4173、内存 EventSource 和 Agent HTTP 路由夹具；Skill 存储单测使用系统临时工作区。两者均不连接真实 Codex、用户工作区、用户 Skill、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-skill-management.spec.ts` | 新增 | 真实技能面板覆盖项目/个人/系统/管理员范围、关键词与来源筛选、可滚动加载错误详情、启停、托管 Skill 的新建/编辑/删除、外部 Skill 不显示编辑删除入口，以及两个已连接页面接收同一 `skills_changed` 后的列表同步。 |
+| `canvas-agent/src/skills/store.test.ts` | 既有实现（复核） | 11 条存储层测试验证托管目录创建、revision 冲突拒绝覆盖或删除、清空显示元数据时保留图标/品牌色、校验失败不提前写入、原子更新不遗留临时文件及安全路径边界。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 为第 83 项补充可复核证据，并同步浏览器回归基线至 88 项；状态仍为未验证。 |
+| `docs/session-development-record.md` | 修改 | 记录此次会话的文件关联、隔离范围、验证结果和未覆盖边界，满足根 `AGENTS.md` 要求。 |
+
+验证记录：技能面板首先显示项目托管 Skill、个人/系统/管理员外部 Skill 和 1 条加载错误；错误详情在真实 Modal 内显示。关键词“个人”和“个人”来源筛选均只保留个人 Skill；外部 Skill 没有编辑/删除操作。托管 Skill 从“已启用”切换为“已停用”，随后可由真实“创建 Skill”表单创建、编辑显示名称并在确认框中删除。第二页同时连接后，模拟服务端向两个 SSE 连接广播 `skills_changed`，两页均重新读取并显示新增的 `shared-skill`。定向浏览器 2 项与存储层 11 项均通过；随后完整浏览器回归 88 项、Web TypeScript 和文档内容检查均通过。当前尚未以断开/切换 Agent 的迟到读请求、外部编辑器在编辑中的冲突、真实 Codex 发现结果和全部草稿来源完成端到端验收，因此第 83 项保持未验证。
+
+## 127. 全局弹层主题完整回归（2026-08-28）
+
+本切片关闭中文主清单第 79 项。Chromium 使用 Playwright 自管的隔离 Vite 4173、独立浏览器本地存储、内存 EventSource 和 Agent HTTP 路由夹具；不读取或写入用户配置、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/lib/app-theme.ts` | 修改 | 补齐全局 Ant token：浅色浮层白底、轻灰悬停/选中态；深色浮层深底、低对比悬停/选中态。修复 Dropdown 实际读取 `controlItemBgHover`、而非仅读取 `Menu.itemHoverBg` 的设计系统遗漏。 |
+| `web/e2e/global-modal-theme.spec.ts` | 修改 | 在既有设置 Modal 主题回归基础上，增加真实渠道编辑 Drawer 与首个 Select 浮层的浅深主题计算色和交互态覆盖。 |
+| `web/e2e/agent-skill-management.spec.ts` | 修改 | 增加真实“创建 Skill” Dropdown/Menu 回归，确认菜单表面色及“空白创建”菜单项的真实悬停色随主题切换改变。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 79 项更新为自动化通过，并同步浏览器 90 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本对话的实现、测试、范围和文件关联，满足根 `AGENTS.md` 要求。 |
+
+验证记录：先在浅色主题打开设置 Modal，读取容器、边框和正文的计算色；再通过渠道编辑入口打开 Drawer 和 Select，读取浮层表面及首项悬停色。关闭后切换深色主题，三类浮层均获得不同且非透明的真实计算色。Skill 面板的“创建 Skill”菜单进一步证明 Dropdown 的表面与“空白创建”菜单项悬停态实际读取全局 token。源码检索未发现 Cascader 或 TreeSelect 实例。定向浏览器 5 项通过；完整浏览器、类型检查和文档检查的结果以本节后的最终门禁为准。此证据不声称真实外部 Agent/Provider 可用，也不外推为当前不存在组件的行为。
+
+## 128. 画布节点四角缩放稳定性（2026-08-28）
+
+本切片关闭中文主清单第 80 项。浏览器测试使用 Playwright 自管的隔离 Vite 4173 与预置 IndexedDB 画布；不读取或写入用户配置、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/canvas/canvas-node.tsx` | 修改 | 为四个既有节点缩放控制柄增加稳定的 `data-node-resize-handle` 标记，不影响渲染或交互；用于可靠回归定位与调试。 |
+| `web/e2e/canvas-zoom-stability.spec.ts` | 修改 | 保留滑杆跨范围稳定性测试，并新增预置文本节点的四角真实拖拽：断言缩放过程中工具条隐藏、节点内联尺寸/位置变化、松开后工具条恢复和零 React 循环错误。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 80 项更新为自动化通过，并同步浏览器 91 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本对话的实现、隔离测试与文件关联，满足根 `AGENTS.md` 要求。 |
+
+验证记录：隔离项目的选中文本节点依次从左上、右上、左下、右下控制柄向外拖拽。每次按下并移动后，“编辑文本”节点工具条立即卸载，节点 style 已实时发生变化；松开鼠标后工具条重新出现。原有用例还将缩放滑杆按 65、140、35、275、5、500、100、175、45、100 的顺序交错设置并重置 100。两项定向测试均未捕获 `Maximum update depth`、`Too many re-renders` 或 hooks 数量变更错误；完整门禁结果以本节后的最终检查为准。
+
+## 129. Agent Skill 断连迟到请求验收（2026-08-28）
+
+本切片关闭中文主清单第 83 项。浏览器使用 Playwright 自管的隔离 Vite 4173、内存 EventSource、受控 Agent HTTP 路由和独立浏览器存储；不连接真实 Codex、用户工作区、用户 Skill、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-skill-management.spec.ts` | 修改 | 为 Skill GET 列表和详情路由加入可控延迟，并验证断连重置后即使旧响应迟到，也不会重新写回列表或打开编辑器。 |
+| `web/src/stores/use-agent-skill-store.ts`、`web/src/components/agent/agent-skills-view.tsx` | 既有实现（复核） | 前者以 `loadSequence` 和 `connectionRevision` 丢弃过期列表，后者在详情读取、保存、删除、启停和草稿操作前后核对连接修订、URL 与 Token。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 83 项更新为自动化通过，并同步浏览器 92 项基线。 |
+| `docs/session-development-record.md` | 修改 | 记录本对话的延迟夹具、验证边界和文件关联，满足根 `AGENTS.md` 要求。 |
+
+验证记录：先完成正常 Skill 列表读取，再让手动“重新读取 Skill”的下一次列表响应阻塞。断连并重置后释放旧响应，页面未恢复 `product-grid`。重新连接并完成当前列表读取后，再让“编辑 product-grid”的详情响应阻塞；断连并重置后释放旧详情，列表仍为空且未出现编辑 Modal。该用例与既有搜索、范围筛选、错误详情、启停、托管读写、字段清空/revision 冲突和双标签同步回归共同覆盖第 83 项；完整门禁结果以本节后的最终检查为准。
+
+## 130. Agent Skill 草稿入口补强（2026-08-28）
+
+本切片为中文主清单第 84 项增加浏览器子证据，不将该项标为完整通过。测试使用 Playwright 自管的隔离 Vite 4173、内存 EventSource 和受控 Agent HTTP 路由；不连接真实 Codex、用户工作区、用户 Skill、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-skill-management.spec.ts` | 修改 | 覆盖三种创建入口中空上下文的两个草稿入口禁用、对话/画布草稿请求的 `source`、`threadId`、`clientId` 绑定，以及 Escape 取消草稿后零 Skill 写入；画布路径同时覆盖 `/canvas/state` 同步前置请求。 |
+| `canvas-agent/src/agent/codex-client.test.ts`、`canvas-agent/src/agent/codex.ts`、`canvas-agent/src/server/http.ts` | 既有实现（复核） | 覆盖静默结构化 turn、不广播/不写历史、全局 Skill 变更通知、权限请求拒绝、画布源脱敏、普通斜杠文本保留、敏感草稿拒绝与断开客户端返回冲突。 |
+| `docs/session-development-record.md` | 修改 | 记录本轮草稿入口的实现关联、隔离边界和未覆盖范围，满足根 `AGENTS.md` 要求。 |
+
+验证记录：空对话、空画布时，“从当前对话生成草稿”和“从当前画布生成草稿”均为禁用菜单项。注入已完成对话和可用画布后，两个真实入口分别向 `/agent/codex/skills/draft` 提交 `conversation`/`canvas`，对话请求携带当前 `thread-draft`，两个请求均有当前 `clientId`；画布路径先成功同步 `/canvas/state`。返回草稿后打开可编辑表单，按 Escape 取消后没有创建 `draft-flow`，夹具内 Skill 列表仍为空。Skill 页面 5 项浏览器回归通过；Canvas Agent 静默草稿/会话专项 73 项通过；完整浏览器 93 项、Web TypeScript 和文档内容检查通过。运行中前端统一拒绝与多标签外部 MCP 焦点仍待浏览器专项验收，因此第 84 项保持未验证。
+
+## 131. Agent Skill 调用正文 token 回归（2026-08-28）
+
+本切片为中文主清单第 85 项增加浏览器子证据，不将该项标为完整通过。测试使用 Playwright 自管的隔离 Vite 4173 与受控 Agent HTTP 路由；不连接真实 Codex、用户工作区、用户 Skill、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-first-send.spec.ts` | 修改 | 在既有首次发送夹具中提供隔离 `product-grid` Skill，覆盖输入 `/`、候选菜单、回车选择、正文原子 token、失败保留选择和重试成功清除选择；两次请求均校验 `$product-grid` 文本标记及结构化 `skill.name/path`。 |
+| `web/src/components/agent/agent-chat-prompt-input.tsx`、`web/src/components/agent/local-agent-panel.tsx` | 既有实现（复核） | 前者将候选 Skill 作为 contenteditable 内的 `data-agent-token-kind=skill` token 插入，并同步选择；后者发送时将选择写入消息元数据及 `/agent/codex/turn` 的结构化 Skill 输入，只在服务成功接受后按 revision 清除。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 为第 85 项添加局部证据，将浏览器用例数量更新为 94，并如实记录本轮完整并发运行的既有节点缩放时序失败及单文件重试结果。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关系、隔离边界、验证结果和仍待关闭的场景，满足根 `AGENTS.md` 要求。 |
+
+验证记录：在真实右侧 Agent 面板输入“请整理产品信息 /”后，候选菜单显示“产品九宫格”；按 Enter 后该 Skill 出现在输入正文的 `data-agent-token-kind=skill` 原子 token 内，而不在输入框外另列。第一次受控发送返回 `500 / Skill 发送失败`：token 与选择保留，截获请求精确包含 `prompt: 请整理产品信息 $product-grid` 和 `{ name: product-grid, path }`。第二次放行后，同样的结构化输入再次发送成功，选择清空且输入区为空。定向浏览器回归 3 项、Web TypeScript 与文档内容检查通过。完整 94 项回归的并发执行曾在既有“节点四角反复缩放”用例出现一次工具条卸载时序失败；该文件单独重试 2 项通过，故不能把本轮记录为一次完整无干扰全绿。新建对话、断开连接、Skill 停用/删除后的失效清理，以及历史刷新后的 token 位置仍未完成专门浏览器验收，因此第 85 项保持未验证。
+
+## 132. Agent 画布快捷引用正文 token 回归（2026-08-28）
+
+本切片为中文主清单第 86 项增加浏览器子证据，不将该项标为完整通过。测试使用 Playwright 自管的隔离 Vite 4173、内存 Agent store 与受控 Agent HTTP 路由；不连接真实 Codex、用户画布、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-first-send.spec.ts` | 修改 | 注入独立文本节点，在真实 Agent 输入框覆盖 `@` 候选、Tab 选择、内嵌 `data-agent-token-kind=resource` token、精确请求元数据和发送后用户消息的可访问引用标签。 |
+| `web/src/components/agent/agent-chat-prompt-input.tsx`、`web/src/components/agent/local-agent-panel.tsx`、`web/src/components/agent/agent-chat-message.tsx` | 既有实现（复核） | 分别负责把画布资源候选插入 contenteditable、以 `nodeId` 汇总结构化发送元数据，以及在用户消息内还原为引用标签。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 为第 86 项添加局部证据，将浏览器用例数量更新为 95，并保留并发完整回归的既有节点缩放时序风险。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关系、隔离边界、验证结果和仍待关闭的引用场景，满足根 `AGENTS.md` 要求。 |
+
+验证记录：注入标题“产品说明”、内容“适合夏季通勤的轻量防晒衣”的文本节点后，在真实右侧 Agent 面板输入“请改写 @”，候选菜单出现“产品说明”；按 Tab 后 token 出现在输入正文且显示 `@文本1`。发送请求的 `messageText` 保持正文顺序，`messageMetadata.canvasReferences` 精确携带 `reference-text`、`文本1`、标题、`text` 类型和原始文本；用于 Codex 的 prompt 亦含同一 `mention`、`nodeId`、标题与类型。发送成功后用户消息仍显示带“产品说明”可访问名称的引用标签。定向浏览器回归共 4 项通过。多引用按光标插入、Backspace/Delete 整块删除、图片/视频/音频预览与刷新恢复仍未完成专门浏览器验收，因此第 86 项保持未验证。
+
+## 133. Agent 历史消息元数据还原回归（2026-08-28）
+
+本切片为中文主清单第 87 项增加浏览器子证据，不将该项标为完整通过。浏览器使用 Playwright 自管的隔离 Vite 4173 与受控历史 HTTP 路由；元数据存储测试使用系统临时目录。两者均不连接真实 Codex、用户工作区、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-history-records.spec.ts` | 修改 | 在既有 60 条隔离历史夹具中给靠近末尾的用户消息提供 Skill 与文本画布引用，覆盖恢复后用户消息正文、可访问引用标签和 Skill 路径标题均可见。 |
+| `canvas-agent/src/agent/message-metadata.test.ts` | 既有实现（复核） | 覆盖元数据跨重启、按 `threadId`/`turnId` 而非仅 `clientMessageId` 匹配、线程删除隔离、预览资产随线程删除、未知版本/缺失 manifest 拒绝覆盖和超大预览拒绝。 |
+| `web/src/components/agent/agent-chat-message.tsx`、`web/src/components/agent/local-agent-panel.tsx` | 既有实现（复核） | 前者按恢复的 `canvasReferences` 与 Skill 元数据解析用户消息 token；后者读取并标准化历史消息。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 为第 87 项添加可复核的前后端证据和未覆盖边界，满足根 `AGENTS.md` 要求。 |
+
+验证记录：恢复“第二段对话”后，带有 `请改写 @文本1 $product-grid` 的历史用户消息仍显示正文、名称“历史产品说明”的画布引用标签以及 `product-grid` Skill 的路径标题；历史列表保持自动定位末尾。Agent 元数据单测覆盖持久化重启、精确身份匹配及删除隔离。真实 Canvas Agent 重启后经服务端历史接口恢复、图片附件悬浮预览、跨页面恢复与删除线程后的完整前端资产清理仍未完成专项浏览器验收，因此第 87 项保持未验证。
+
+## 134. Agent 实时完成事件幂等回归（2026-08-28）
+
+本切片为中文主清单第 88 项增加浏览器子证据，不将该项标为完整通过。测试使用 Playwright 自管的隔离 Vite 4173、内存 EventSource 和受控历史 HTTP 路由；不连接真实 Codex、用户工作区、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-realtime-reply.spec.ts` | 修改 | 在已有流式片段→权威历史同步夹具中重复发送 `turn.completed` 与空闲 `codex_state`，断言完整回复只保留一条，store 最终只含同一 turn 的一条用户消息和一条助手消息。 |
+| `canvas-agent/src/agent/codex-history.test.ts` | 既有实现（复核） | 覆盖终态 turn 选择、标准历史与补充事件去重/排序/字段补全，以及补充事件在 Agent 重启后的 JSON 恢复。 |
+| `web/src/components/agent/local-agent-panel.tsx` | 既有实现（复核） | 对实时事件按 thread/turn 过滤并在终态触发权威历史回读、合并而非盲目追加。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 为第 88 项添加幂等性证据和清晰未覆盖边界，满足根 `AGENTS.md` 要求。 |
+
+验证记录：受控 turn 先显示“流式片段”，完成事件触发历史接口后替换为“这是一条完整同步回复。”；再次发送同一 turn 的完成/空闲事件后，完整回复仍只显示一条，store 精确为该 turn 的一条用户消息和一条助手消息。失败事件仍可收束为明确错误并清除 sending/waiting 状态。真实浏览器刷新、第二页面中途打开、发起页断线后画布工具归属与相同页面身份重连，仍未完成专项浏览器验收，因此第 88 项保持未验证。
+
+## 135. 工作台历史媒体引用安全回收（2026-08-28）
+
+本切片修正中文主清单第 89 项的本地文件回收路径，但不将该项标为完整通过。未读取或写入用户生成记录、用户素材、用户画布、3000/17371、Token、外部 Provider 或 Docker/容器；仅改动浏览器端存储服务与工作台删除回调。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/services/file-storage.ts` | 修改 | `cleanupUnusedMedia` 现在同时扫描图像与视频生成记录中的媒体 `storageKey`，避免画布/素材清理将历史视频、视频参考或音频参考误判为无引用。 |
+| `web/src/pages/image/index.tsx`、`web/src/pages/video/index.tsx` | 修改 | 删除生成记录时先移除记录，再调用既有全局引用清理；不再直接删除记录列出的结果键，因此只有未被素材、画布或其他记录使用的专属文件才会被回收。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 记录修复范围、验证证据和仍缺少的浏览器验收，满足根 `AGENTS.md` 要求。 |
+
+验证记录：Web TypeScript、生产构建和 `git diff --check` 通过。曾尝试以 Playwright 隔离 IndexedDB 验证“记录持有媒体时保留、记录删除后回收”，但测试夹具在页面 localforage 与独立 IndexedDB 连接间出现等待，未保留为不稳定用例，也不把该尝试当作通过证据。仍需以同一应用 localforage 驱动的隔离浏览器路径覆盖素材删除、节点/画布清空或删除后的历史缩略图、结果与参考图显示，以及删除记录后的专属媒体回收，因此第 89 项保持未验证。
+
+## 136. 画布多图图片组交互验收（2026-08-28）
+
+本切片关闭中文主清单第 90 项。测试使用 Playwright 自管的隔离 Vite 与预置 IndexedDB 画布；未读取或写入用户项目、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。端口检查仅确认已有监听进程，测试没有接管或停止它们。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/canvas/canvas-node.tsx` | 修改 | 为既有图片组根图、展开子槽位及折叠背板补充稳定的 `data-*` 标记，仅供浏览器回归定位；不改变图片组布局或交互逻辑。文件中已有的四角缩放标记保留为此前修改，未覆盖。 |
+| `web/e2e/canvas-batch-prompt-recall.spec.ts` | 修改 | 在既有提示词回显用例旁新增四图图片组场景：验证收起的三张背板与“4 张”计数、展开后的成功/生成中/失败槽位、展开时隐藏节点工具栏、设为主图以及点击画布空白处收起。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 90 项更新为自动化通过，并将浏览器回归基线更新为 96 项；仍不将该计数表述为一次完整无干扰全绿。 |
+| `docs/session-development-record.md` | 修改 | 记录本次实现关联、验证范围与边界，满足根 `AGENTS.md` 的对话级记录要求。 |
+
+验证记录：`npm exec playwright test e2e/canvas-batch-prompt-recall.spec.ts --reporter=line` 通过 2 项。新场景先选择根节点，确认常规“移除节点”工具栏可见；展开后该工具栏卸载，四图根节点的 3 层背板、成功子图、生成中槽位和包含“第 4 张生成失败”的失败槽位均按各自状态显示。将成功子图设为主图后，根图的 `data-batch-primary` 更新为目标 ID，原主图进入展开列表；随后点击画布空白处，按钮恢复“图片组已收起”。同一场景将 320×240 横向根图切换为自然尺寸 900×1600 的纵向子图，根节点按最大边等比得到 180×320，内联画布坐标从 `(120,80)` 变为 `(190,40)`，中心均为 `(280,200)`。页面初始化期间视口恢复会改变瞬时屏幕位置，因此测试固定画布坐标中心而非瞬时 `getBoundingClientRect()`。该证据不外推为第 92 项的失败重试与删除语义、第 93 项的收起后尺寸调整，或真实外部模型的并发生成。
+
+## 137. 画布多图主图切换几何回归（2026-08-28）
+
+本切片关闭中文主清单第 91 项。复用第 90 项的 Playwright 隔离 Vite 与预置 IndexedDB 画布；不连接用户项目、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-batch-prompt-recall.spec.ts` | 修改 | 将图片组中的主图换成自然尺寸不同的纵向子图，读取根节点内联画布位置与尺寸，固定“等比适配、中心不漂移”的行为。 |
+| `web/src/pages/canvas/project.tsx`、`web/src/lib/canvas/canvas-node-size.ts` | 既有实现（复核） | 前者按旧节点中心重算主图切换后的 `position`，后者以当前节点最大边为上限进行等比适配。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 将第 91 项更新为自动化通过，并记录为何断言画布坐标而非视口恢复期间的瞬时屏幕坐标。 |
+
+验证记录：定向 Playwright 2 项通过。初始根图为 320×240，横向主图自然尺寸为 1600×900；选择 900×1600 的纵向成功子图后，根节点为 180×320，内联位置从 `(120,80)` 调整为 `(190,40)`，前后中心均为 `(280,200)`。该项不涉及失败子图的重试/删除、自由缩放模式、动画完成后的视觉截图，或真实 Provider 返回的图片尺寸。
+
+## 138. 画布多图失败槽位回归（2026-08-28）
+
+本切片关闭中文主清单第 92 项。浏览器使用隔离 Vite、预置 IndexedDB 和受控 `127.0.0.1:4173/agent/**` 路由；页面内只写入测试 token，不连接真实 17371、用户项目、用户资产、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-batch-prompt-recall.spec.ts` | 修改 | 新增三图根节点与两张失败槽位：通过受控 Canvas ImageGen 成功响应，验证单槽位重试、未重试槽位保持失败以及删除失败槽位后的计数。 |
+| `web/src/pages/canvas/project.tsx` | 既有实现（复核） | `retryBatchImage` 将目标 `imageId` 传入重试流程；`deleteBatchImage` 仅过滤目标子图、更新 count，并在仅剩非组数量前保留展开状态。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 将第 92 项更新为自动化通过，并记录隔离服务边界。 |
+
+验证记录：`npm exec playwright test e2e/canvas-batch-prompt-recall.spec.ts --reporter=line` 共 3 项通过。点击第二张失败槽位的“重试”后，受控 `/agent/codex/canvas-images` 只收到 `count: 1`；本地图片响应完成后，该槽位出现“设为主图”，第三张仍显示“第三张失败”。随后删除第三张，目标槽位从 DOM 移除，图片组按钮仍为“图片组已展开 / 2 张”。该证据不外推为网络中止、重复点击重试、持久化后刷新、已删除文件的物理回收，或真实 Canvas Agent 的鉴权与模型返回。
+
+## 139. 画布多图收起后尺寸调整回归（2026-08-28）
+
+本切片关闭中文主清单第 93 项。复用第 90–92 项的隔离 Vite 和 IndexedDB 图片组场景，不读取或写入用户项目、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-batch-prompt-recall.spec.ts` | 修改 | 在横图切竖图、点击画布空白收起之后，选择根节点并拖拽右下角真实缩放控制柄，验证尺寸变化、当前主图比例和收起状态。 |
+| `web/src/components/canvas/canvas-node.tsx` | 既有实现（复核） | 图片节点默认缩放时按当前 `naturalWidth/naturalHeight` 保持比例；既有 `data-node-resize-handle` 为稳定的浏览器定位标记。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 将第 93 项更新为自动化通过，并记录隔离范围与未覆盖边界。 |
+
+验证记录：定向 Playwright 3 项通过。纵图主图自然尺寸为 900×1600，根节点收起后拖拽右下角控制柄 36px，节点内联尺寸发生变化，`height / width` 保持 `1600 / 900`，按钮仍为“图片组已收起”。该证据不外推为自由缩放模式、其余三个角的纵图图片组拖拽、刷新持久化后的尺寸、缩放动画的视觉连续性或触摸交互。
+
+## 140. 本地存储设置统计回归（2026-08-28）
+
+本切片关闭中文主清单第 94 项。浏览器使用 Playwright 的独立 profile 与本地 IndexedDB；不读取、覆盖或删除用户浏览器数据、用户项目、用户资产、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/config-local-storage.spec.ts` | 新增 | 打开真实设置 Modal 的“本地存储”标签，验证 IndexedDB 主数据库与应用状态仓库统计；刷新期间切换到偏好设置再返回，确认弹层保持可操作。 |
+| `web/src/components/layout/config-local-storage.tsx`、`web/src/services/local-storage-usage.ts` | 既有实现（复核） | 前者只在激活标签首次读取或点击刷新时请求统计，并单独维护 loading/error；后者并行读取浏览器配额及仓库游标统计，按字节数排序返回。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 94 项更新为自动化通过，将浏览器回归基线更新为 97 项，并记录本对话的文件关系。 |
+
+验证记录：`npm exec playwright test e2e/config-local-storage.spec.ts --reporter=line` 通过 1 项。打开本地存储标签后显示“IndexedDB 存储使用情况”“Infinite Canvas 主数据”“应用状态”，点击“刷新统计”后立即切到“偏好设置”并返回，统计仍显示且刷新按钮恢复可用。该证据不外推为浏览器配额耗尽、IndexedDB 被拒绝时的错误呈现、超大 Blob 统计性能、跨浏览器配额差异或存储清理操作。
+
+## 141. Agent 命令记录聚合与恢复回归（2026-08-28）
+
+本切片关闭中文主清单第 95 项。浏览器使用隔离 Vite、内存 EventSource 与受控 Agent 历史接口；不连接真实 Codex、用户工作区、用户画布、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-process-timeline-live.spec.ts` | 修改 | 将既有单命令实时过程夹具扩展为两条连续命令，验证聚合摘要、用户展开、第二条输出，以及 `turn.completed` 后由权威历史恢复该过程记录。 |
+| `web/src/components/agent/agent-chat-message.tsx`、`web/src/components/agent/agent-event-formatters.ts` | 既有实现（复核） | 前者按连续命令归并为折叠摘要并可展开，后者将命令、工作目录、退出状态和聚合输出投影为用户可见详情。 |
+| `canvas-agent/src/agent/codex-history.test.ts` | 既有实现（复核） | 覆盖标准历史遗漏命令时由补充事件恢复完整命令卡片，以及标准/补充事件重复时去重。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 将第 95 项更新为自动化通过，并记录隔离范围与证据边界。 |
+
+验证记录：`npm exec playwright test e2e/agent-process-timeline-live.spec.ts --reporter=line` 通过 1 项。实时事件先后完成 `pnpm test` 与 `git status --short`，页面显示“已执行 2 条命令”；点击摘要后两条命令均可见，第二条可展开显示 ` M src/demo.ts`。完成事件读取受控权威历史后，仍显示同一聚合摘要与第二条命令。该证据不外推为跨刷新本地持久化、超长命令输出分页、命令中止、权限审批或真实 Codex 进程执行。
+
+## 142. 工作台历史媒体回收服务验证（2026-08-28）
+
+本切片关闭中文主清单第 89 项的核心回收语义。此前浏览器夹具将页面 localforage 与独立 Vite 依赖入口混用，后者请求 IndexedDB 版本 4 而应用数据库已为版本 5，因而抛出 `VersionError`；该临时浏览器文件已删除，未保留不稳定测试。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/services/file-storage.test.ts` | 新增 | 模拟同一 localforage 数据库中的 `media_files`、`image_generation_logs` 和 `video_generation_logs`，验证两类生成记录均能保留引用媒体，孤立媒体被回收，移除记录后才可回收。 |
+| `web/src/services/file-storage.ts` | 既有实现（复核） | `cleanupUnusedMedia` 先递归收集调用方数据、图片记录和视频记录中的 `storageKey`，再仅删除未被任一来源引用的媒体。 |
+| `web/src/pages/image/index.tsx`、`web/src/pages/video/index.tsx` | 既有实现（复核） | 删除记录后调用全局 `cleanupImages`，该入口同时调用媒体回收，不再直接删除记录列出的媒体键。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 将第 89 项更新为自动化通过，并说明浏览器版本冲突没有被误报为成功。 |
+
+验证记录：`npm exec vitest run src/services/file-storage.test.ts` 通过 1 项。图片历史记录引用 `video:from-image-history`、视频历史记录引用 `video:from-video-history` 时，两者均在清理后保留；没有引用的 `video:orphan` 被回收；清空两类记录后两条原先保留的媒体均被回收。该证据使用服务层 localforage mock，不外推为真实 IndexedDB 版本迁移、工作台可见卡片的点击流程、浏览器对象 URL 生命周期或多标签并发删除。
+
+## 143. 验收矩阵状态汇总同步（2026-08-28）
+
+第 89 至 95 项的定向回归完成后，矩阵表格状态已先于“当前结论”汇总更新。为避免旧的 64 项自动化、6 项人工通过、21 项未验证结论误导后续开发，本次仅按表格的 95 行状态同步汇总，不改变任何业务实现或验收状态。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 将当前结论同步为 75 项自动化通过、8 项人工通过、10 项未验证、2 项 Docker/容器范围阻塞，并列出十项未验证编号。 |
+| `docs/post-development-roadmap.md` | 修改 | 将阶段 B 的剩余验收债务从过时的 21 项更新为当前 10 项，保留“不把局部证据外推为完整验收”的边界。 |
+| `docs/session-development-record.md` | 修改 | 记录本次会话中的状态汇总来源和文档关联，满足根 `AGENTS.md` 的可追溯要求。 |
+
+验证记录：以矩阵 95 行状态逐项聚合，得到自动化通过 75 项、人工通过 8 项、未验证 10 项、阻塞 2 项；未验证项为 11、22、31、33、62、84、85、86、87、88。该同步不代表十项未验证已通过，也不改变 Docker/容器部署不在当前范围的结论。
+
+## 144. Agent Markdown 样式隔离浏览器回归（2026-08-28）
+
+本切片关闭中文主清单第 33 项。测试运行于 Playwright 自管的隔离 Vite 4173、内存 Agent 会话及受控本地文件定位接口；不连接真实 Canvas Agent、Codex、用户工作区、用户文件、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-markdown-style.spec.ts` | 新增 | 驱动真实 Agent 消息渲染，覆盖长 Markdown 的代码块尺寸/正文、内联代码、复制控件焦点显示、外链确认、本地路径定位和深浅主题无横向溢出。 |
+| `web/src/components/agent/agent-chat-message.tsx`、`web/src/styles/globals.css` | 既有实现（复核） | 前者将 Streamdown 链接交由中文确认 Modal 处理，并把本地绝对路径转换为文件管理器定位请求；后者提供紧凑代码块、隐藏语言标题与弱化操作控件样式。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 33 项更新为自动化通过，汇总同步为 76 项自动化通过、8 项人工通过、9 项未验证、2 项阻塞，浏览器回归计数更新为 98。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关联、隔离边界和验证证据，满足根 `AGENTS.md` 的可追溯要求。 |
+
+验证记录：`npm exec playwright test e2e/agent-markdown-style.spec.ts --reporter=line` 通过 1 项。真实消息中的代码块全宽、代码正文紧凑且无语言标题；复制按钮初始弱化、键盘聚焦后显示。安全链接以按钮触发中文确认弹窗；外部 URL 显示确认提示，`/Users/...` 路径显示“在文件管理器中显示”并只向受控 `/agent/local-file/reveal` 发出该路径。切换深浅主题后页面仍无横向溢出。本项不外推为所有 Markdown 扩展语法、真实系统文件管理器响应、复制剪贴板权限失败或外部浏览器实际打开。
+
+## 145. 图片编辑器连续缩放与遮罩同步回归（2026-08-28）
+
+本切片关闭中文主清单第 62 项。测试运行于 Playwright 自管的隔离 Vite 4173 和测试页即时生成的 PNG，仅写入隔离浏览器 IndexedDB；不读取用户图片、用户画布或本机媒体，不连接 3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-image-editors.spec.ts` | 新增 | 预置真实图片节点并从其工具栏进入遮罩、裁剪和切图；连续滚轮缩放后检查三类覆盖层与同一 stage/图片同步，并验证 Alt 调整笔刷直径时圆心跟随鼠标。 |
+| `web/src/components/canvas/canvas-node-mask-edit-dialog.tsx`、`canvas-node-crop-dialog.tsx`、`canvas-node-split-dialog.tsx`、`use-image-editor-viewport.ts` | 既有实现（复核） | 三个编辑器分别负责遮罩、裁剪和网格覆盖层，并共享以指针为锚点的滚轮缩放与平移视口逻辑。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 将第 62 项更新为自动化通过，汇总同步为 77 项自动化通过、8 项人工通过、8 项未验证、2 项阻塞，浏览器回归计数更新为 99。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关联、隔离边界和验证证据，满足根 `AGENTS.md` 的可追溯要求。 |
+
+验证记录：`npm exec playwright test e2e/canvas-image-editors.spec.ts --reporter=line` 通过 1 项。局部遮罩、裁剪和切图三个真实弹窗均从 100% 连续滚轮缩放到 144%；遮罩 canvas 与图片边界重合，裁剪框仍在图片内，切图竖线仍以 stage 中心定位并覆盖其高度。Alt+拖动把笔刷直径调大时，笔刷预览圆心精确到最终鼠标位置。本项不外推为真实 AI 局部编辑请求、最终子节点生成、触摸手势、所有超大图片性能或跨浏览器渲染差异。
+
+## 146. Agent Skill 失效选择回归（2026-08-28）
+
+本切片补强中文主清单第 85 项，但不改变其“未验证”状态。测试使用 Playwright 自管的隔离 Vite 4173、受控 Skill 列表和内存 Agent 会话；不连接真实 Canvas Agent、Codex、用户工作区、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-first-send.spec.ts` | 修改 | 在真实 Agent 输入框中选择 Skill 后，模拟服务端重新读取时该 Skill 被停用；验证正文 token 与 `selectedSkill` 同时清理，同时验证新对话清空选择。 |
+| `web/src/stores/use-agent-skill-store.ts`、`web/src/components/agent/local-agent-panel.tsx` | 既有实现（复核） | 前者在重新读取结果不再包含启用的同一 Skill 时清理选择与其 marker；后者创建新对话前主动清理 Skill 选择。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 记录第 85 项的新增局部证据，浏览器回归计数更新为 100，状态仍为未验证。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关联、隔离边界和验证证据，满足根 `AGENTS.md` 的可追溯要求。 |
+
+验证记录：`npm exec -- playwright test e2e/agent-first-send.spec.ts --grep "新对话" --reporter=line` 通过 1 项。先选择 `product-grid` Skill，服务端重读将其标为停用后，输入框中的原子 token 和状态层 `selectedSkill` 均被清除，普通正文“请执行”保留；重新启用并再次选择后，点击“新对话”也清空 `selectedSkill` 和已卸载的 token。本项仍未覆盖断连、托管 Skill 删除、历史恢复后的 token 位置，因此第 85 项不提升状态。
+
+## 147. Agent 多媒体画布引用与键盘删除回归（2026-08-28）
+
+本切片补强中文主清单第 86 项，但不改变其“未验证”状态。测试使用 Playwright 自管的隔离 Vite 4173、内存 Agent 会话和隔离画布快照；不连接真实 Canvas Agent、用户画布、用户媒体、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-first-send.spec.ts` | 修改 | 从图片、视频、音频节点连续选择 `@` 引用，验证三类 token 与悬浮预览；在 token 相邻光标位置用 Backspace/Delete 删除并检查引用状态层同步。 |
+| `web/src/components/agent/agent-chat-prompt-input.tsx`、`agent-canvas-reference-preview.tsx` | 既有实现（复核） | 前者按光标插入资源 token、对相邻 token 执行原子删除并同步引用元数据；后者按资源类型显示图片、视频或音频预览。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md` | 修改 | 记录第 86 项的新增局部证据，浏览器回归计数更新为 101，状态仍为未验证。 |
+| `docs/session-development-record.md` | 修改 | 记录本次文件关联、隔离边界和验证证据，满足根 `AGENTS.md` 的可追溯要求。 |
+
+验证记录：`npm exec -- playwright test e2e/agent-first-send.spec.ts --grep "多媒体" --reporter=line` 通过 1 项。输入框按当前光标连续插入图片、视频、音频三个资源 token；分别悬浮后显示对应预览。把光标置于视频 token 后按 Backspace、置于音频 token 前按 Delete，两个 token 均整块删除，`canvasReferences` 依次精确收敛为图片/音频和仅图片。本项仍未覆盖浏览器刷新后的编辑器 token 恢复，因此第 86 项不提升状态。
+
+## 148. Agent 画布生图工作区与工具契约回归（2026-08-28）
+
+本切片补强中文主清单第 31 项，但不改变其“未验证”状态。测试只创建系统临时目录与内存 SSE 连接；不连接真实 Canvas Agent、Codex、用户工作区、用户画布、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/config.test.ts` | 修改 | 覆盖旧版自动生成的 `AGENTS.md` 更新为当前独立指令源，同时严格保留不以 `# Infinite Canvas Agent` 开头的用户自写指令。 |
+| `canvas-agent/src/canvas/session.test.ts` | 修改 | 通过真实 `CanvasSession` 发起 `canvas_generate_image`，验证当前激活画布收到提示词节点、图片配置节点、引用连线、选中配置和立即执行的 `run_generation` 批量操作。 |
+| `canvas-agent/src/config.ts`、`canvas-agent/src/canvas/operations.ts` | 既有实现（复核） | 前者仅更新自身生成的默认工作区指令，后者将 `canvas_generate_image` 归一为图片生成流程并启用自动运行。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/session-development-record.md` | 修改 | 记录第 31 项新增的 Agent 端证据及其尚未覆盖的端到端边界，满足根 `AGENTS.md` 的可追溯要求。 |
+
+验证记录：`npm exec -- tsx --test src/config.test.ts src/canvas/session.test.ts` 通过 33 项，`npm run build` 通过。尝试对两份既有测试文件执行全文件 Prettier 检查时发现仓库原有排版不符合当前默认规则，因此已恢复原有排版且不把该格式基线记为通过。旧版默认指令会被刷新为 `AGENT_PROMPT`，而“用户自己的工作约定”字节内容保持不变；`canvas_generate_image` 只向当前激活客户端发出 `canvas_apply_ops`，其中包含两个节点、参考连线和以图片模式执行的 `run_generation`。该证据不外推为真实 Codex ImageGen 图片落盘、网页上传与等比节点写回、真实 Agent 回复文本，或无生成结果时的 UI 防误报，因此第 31 项保持未验证。
+
+## 149. Agent 画布引用刷新恢复回归（2026-08-28）
+
+本切片关闭中文主清单第 86 项。测试使用 Playwright 自管的隔离 Vite 4173、内存 EventSource 与受控 Agent 历史接口；只写入 Playwright profile 的连接信息，不连接真实 Canvas Agent、Codex、用户工作区、用户画布、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-reference-history-refresh.spec.ts` | 新增 | 模拟已连接 Agent 的权威线程历史，验证首次连接与完整 `page.reload()` 后都自动重连、读取同一线程，并把图片画布引用恢复为用户消息中的紧凑标签和可悬浮预览。 |
+| `web/src/components/agent/local-agent-panel.tsx`、`agent-chat-message.tsx` | 既有实现（复核） | 前者在连接后读取当前线程的权威历史，后者把 `canvasReferences` 解析为紧凑标签并使用历史保留的 `previewUrl` 展示预览。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 86 项提升为自动化通过，汇总同步为 78 项自动化通过、8 项人工通过、7 项未验证、2 项范围阻塞，并记录浏览器回归基线为 102。 |
+
+验证记录：`npm exec -- playwright test e2e/agent-reference-history-refresh.spec.ts --reporter=line` 通过 1 项。隔离页面先由本地连接信息自动连接并读取 `thread-reference-refresh`，用户消息“请继续参考 @图片1 调整构图”显示“历史参考图片”标签，悬浮出现图片预览；完整刷新后，新的 Zustand 状态再次自动连接并从相同权威历史恢复同一标签和预览，线程历史端点至少读取两次。与既有 `agent-first-send.spec.ts` 的 `@` 候选、Tab 选择、多媒体预览和 Backspace/Delete 原子删除用例共同覆盖第 86 项。本项不外推为真实 Agent 进程、断线期间编辑器草稿恢复、损坏媒体 URL、触摸键盘或跨浏览器差异。
+
+## 150. Agent Skill 删除、断连与历史 token 回归（2026-08-28）
+
+本切片关闭中文主清单第 85 项。测试使用 Playwright 自管的隔离 Vite 4173、内存 EventSource、受控 Skill 管理和权威历史接口；不连接真实 Canvas Agent、Codex、用户工作区、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-skill-selection-lifecycle.spec.ts` | 新增 | 从真实 Skill 管理页“使用”已启用托管 Skill，验证删除该 Skill 或点击“断开”后，输入框原子 token 与 `selectedSkill` 同时清空。 |
+| `web/e2e/agent-reference-history-refresh.spec.ts` | 修改 | 让同一权威历史用户消息同时带 Skill 和画布图片引用，验证完整刷新前后正文顺序保持为“先执行 /产品九宫格，再参考 @图片1 调整构图”。 |
+| `web/src/components/agent/agent-skills-view.tsx`、`local-agent-panel.tsx`、`agent-chat-message.tsx` | 既有实现（复核） | 删除已选托管 Skill 时调用 `clearSelection`，断连的连接 effect 清空 Skill store；历史消息按结构化 `skill` 和 `canvasReferences` 渲染正文 token。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 85 项提升为自动化通过，汇总同步为 79 项自动化通过、8 项人工通过、6 项未验证、2 项范围阻塞，并将浏览器回归基线更新为 105。 |
+
+验证记录：`npm exec -- playwright test e2e/agent-skill-selection-lifecycle.spec.ts --reporter=line` 通过 2 项；`npm exec -- playwright test e2e/agent-reference-history-refresh.spec.ts --reporter=line` 通过 1 项。删除已选的“产品九宫格”后，列表、正文 token 和 `selectedSkill` 均消失；实际点击“断开”后也发生同样收束。权威历史消息在刷新前后均恢复 Skill 标签与图片标签，且标签与普通正文顺序一致。既有 `agent-first-send.spec.ts` 同时覆盖 `/` 候选、发送成功/失败、停用 Skill 和新对话。本项不外推为真实 Agent 进程离线、外部/只读 Skill 删除、未知历史协议版本或跨浏览器差异。
+
+## 151. 浏览器回归稳定性修正与完整门禁复核（2026-08-28）
+
+本切片只修正隔离 Playwright 断言的精度假设，并复核本轮完整门禁；不读取、覆盖、移动或删除用户项目、资产、运行记录、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/prompt-detail-dialog.spec.ts` | 修改 | 保留详情弹窗滚动前后媒体与操作栏位置稳定的验收意图，但以 0.1px 容差比较浏览器布局浮点值，避免 CSS 亚像素取整造成无意义的失败。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将当前实测的 Web 25 文件/71 项、Canvas Agent 206 项和浏览器 105 项基线同步，并记录完整运行中的时序与断言结果。 |
+
+验证记录：Web `npm test` 通过 25 个文件、71 项；`npm run typecheck` 与 `npm run build` 通过。Canvas Agent `npm test` 通过 206 项，`npm run build` 通过。Docs 内容检查、类型检查和生产构建通过。并行完整浏览器运行得到 103/105 通过，图片组收起和节点缩放两项在隔离复跑时分别 3/3、2/2 通过。随后单 worker 完整运行将提示词详情断言暴露为 224 与 223.9488px 之类的亚像素取整差异；定向修正后 `npm exec -- playwright test e2e/prompt-detail-dialog.spec.ts --reporter=line` 通过 1 项。最终执行 `npm run test:e2e -- --workers=1 --reporter=dot` 完成，105 项全部通过且未留下 `test-results` 失败产物。
+
+## 152. Agent Skill 草稿双页面运行锁回归（2026-08-28）
+
+本切片关闭中文主清单第 84 项。测试使用 Playwright 自管的隔离 Vite 4173、内存 EventSource 和受控 Agent HTTP 路由；不连接真实 Codex、用户工作区、用户 Skill、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/agent-skills-view.tsx` | 修改 | 以同一个 `draftActionsDisabled` 条件控制创建下拉入口及按钮；Skill 的使用、编辑、删除在草稿生成或共享 Codex 运行态时同样禁用，避免表面可操作但服务端互斥拒绝。 |
+| `web/e2e/agent-skill-management.spec.ts` | 修改 | 延迟草稿接口响应，验证当前页生成期间的操作锁；再向第二个已打开的真实 Agent 面板发送 `codex_state busy`，验证其同步禁用并在完成后恢复。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 84 项提升为自动化通过，汇总同步为 80 项自动化通过、8 项人工通过、5 项未验证、2 项范围阻塞，浏览器用例总数更新为 106。 |
+
+验证记录：`npm exec -- playwright test e2e/agent-skill-management.spec.ts --reporter=line` 通过 6 项；`npm run typecheck` 通过。草稿 POST 被延迟期间，发起页的创建入口和托管 Skill 编辑均禁用；第二页收到同一线程的 `codex_state busy` 后，创建与编辑同样禁用，且不会新增第二个草稿请求。发送 `busy: false` 并释放第一个请求后，发起页打开可编辑草稿表单，第二页入口恢复。本项不外推为真实 Codex 草稿内容质量、服务端进程崩溃、跨设备网络延迟或真实外部 MCP 的业务结果。
+
+## 153. 当前工作树可恢复检查点只读分类（2026-08-28）
+
+本切片仅读取 Git 工作树和文件元数据；不提交、推送、清理、重置、覆盖、移动或删除任何文件。
+
+| 分类 | 精确范围 | 关联与用途 | 检查点建议 |
+| --- | --- | --- | --- |
+| 运行源码 | `web/src/components/agent/agent-skills-view.tsx`、`web/src/components/canvas/canvas-node.tsx`、`web/src/components/layout/user-status-actions.tsx`、`web/src/lib/app-theme.ts`、`web/src/pages/image/index.tsx`、`web/src/pages/video/index.tsx`、`web/src/services/file-storage.ts` | 画布节点、Agent Skill 草稿运行锁、主题/布局和工作台媒体回收实现。 | 候选纳入；须连同对应测试一起保存。 |
+| Agent 合约测试 | `canvas-agent/src/canvas/session.test.ts`、`canvas-agent/src/config.test.ts` | 工作区指令迁移和 `canvas_generate_image` 的画布写入/运行请求契约。 | 候选纳入。 |
+| 浏览器与服务测试 | `web/e2e/` 下当前 20 个已修改或未跟踪的 `agent-*`、`canvas-*`、`config-local-storage.spec.ts` 文件，以及 `web/src/services/file-storage.test.ts` | 106 项浏览器回归与媒体回收单测所需夹具/覆盖；其中 `agent-skill-management.spec.ts`、`canvas-attachment-reload-generation.spec.ts`、`canvas-tool-interactions.spec.ts` 在本次开始前已未跟踪，需用户确认是否一并作为工程基础设施保存。 | 其余新增/修改测试可纳入；三项既有未跟踪测试单列待确认。 |
+| 开发与验收文档 | `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 95 项状态矩阵、后续路线和本会话文件/证据关系。 | 候选纳入。 |
+| 用户验收资产与历史报告 | `99_PERCENT_ACCEPTANCE.md`、`design-qa.md`、`artifacts/` 下 15 个 PNG/HTML/MD 文件 | 设计对比、截图、负反馈样本和历史验收记录；共约 19.3 MiB。 | 明确排除，保持未跟踪和原路径。 |
+
+验证记录：`git diff --name-status` 显示 23 个已跟踪修改；`git ls-files --others --exclude-standard` 显示 26 个未跟踪路径。`git diff --check` 没有空白错误，仅报告 7 个既有/当前文本文件的 CRLF 将转换为 LF 提示。上述分类不代表已提交，也不授予提交或推送权限。
+
+## 154. 上游 v0.15.1 可见行为兼容回归（2026-08-28）
+
+本切片关闭中文主清单第 22 项。测试使用 Playwright 自管的隔离 Vite、受控远程来源响应和隔离浏览器数据；不访问真实 Prompt 来源、用户画布、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/prompt-source-data.spec.ts` | 修改 | 将 v0.15.1 默认来源迁移为自定义来源的 Freestylefly 记录写入隔离持久化状态，验证仍向历史 URL 拉取、在提示词页显示并可按来源筛选，配置页保持启用状态。 |
+| `web/e2e/canvas-batch-prompt-recall.spec.ts` | 修改 | 将空白画布点击从不稳定的页面固定坐标改为真实画布容器内的空白位置，保留多图主图切换/收起/缩放交互的验收含义。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 22 项提升为自动化通过，汇总同步为 81 项自动化通过、8 项人工通过、4 项未验证、2 项范围阻塞，浏览器用例总数更新为 107。 |
+
+验证记录：`npm exec -- playwright test e2e/prompt-source-data.spec.ts e2e/canvas-batch-prompt-recall.spec.ts e2e/canvas-node-prompt-scroll.spec.ts e2e/agent-skill-management.spec.ts e2e/i18n-basic.spec.ts e2e/config-local-storage.spec.ts --reporter=line` 首次得到 16/17 通过，失败仅为图片组测试使用页面固定坐标点击未落到画布空白。定位修正后 `npm exec -- playwright test e2e/canvas-batch-prompt-recall.spec.ts --reporter=line` 通过 3 项；`npm run typecheck` 通过。最终执行 `npm run test:e2e -- --workers=1 --reporter=dot`，107 项全部通过且未留下 `test-results` 失败产物。既有 `canvas-image-generation.test.ts` 覆盖单图初始主图与配置归并，Agent 图片预览、引用、语言和本地存储由对应已通过专项覆盖。本项不外推为第三方源在线可用性、历史源码逐字节一致或真实 Agent/ImageGen 调用。
+
+## 155. Agent 长任务刷新与首发页断线回归（2026-08-28）
+
+本切片关闭中文主清单第 88 项。测试使用 Playwright 自管的隔离 Vite、内存 EventSource 与受控 Agent 历史接口；不连接真实 Canvas Agent、Codex、用户工作区、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/agent-running-reconnect.spec.ts` | 新增 | 首发页接收流式片段，第二页接入同一长任务并在真实 `page.reload()` 后重新打开 Agent；首发页关闭后，第二页以终态事件触发权威历史读取，验证最终内容唯一、流式残片被替换且输入恢复。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 88 项提升为自动化通过，汇总同步为 82 项自动化通过、8 项人工通过、3 项未验证、2 项范围阻塞，浏览器用例总数更新为 108。 |
+
+验证记录：`npm exec -- prettier --check e2e/agent-running-reconnect.spec.ts` 通过；`npm exec -- playwright test e2e/agent-running-reconnect.spec.ts --reporter=line` 通过 1 项；`npm run typecheck` 通过。该路径验证的是网页端协议恢复与去重，不外推为真实 App Server 的进程崩溃恢复、网络分区、跨设备事件投递或真实模型输出。
+
+## 156. Agent 消息元数据重启、预览与删除闭环复核（2026-08-28）
+
+本切片关闭中文主清单第 87 项。复核只使用 Canvas Agent 的临时目录测试、Playwright 自管的隔离 Vite 4173、内存 EventSource 与受控 Agent HTTP 路由；不连接真实 Canvas Agent、Codex、用户工作区、用户附件、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/agent/message-metadata.test.ts` | 既有测试（执行） | 验证持久化元数据经重新打开后仍按 thread/turn 精确匹配，删除某线程只移除该线程元数据和预览资产，且未知/缺失版本不被覆盖。 |
+| `web/e2e/agent-image-message.spec.ts` | 既有测试（执行） | 验证权威历史中的图片附件显示紧凑缩略图，并能打开“图片附件预览”弹窗。 |
+| `web/e2e/agent-history-records.spec.ts` | 既有测试（执行） | 验证切换历史会话后结构化用户元数据仍渲染，并通过真实历史页全选、确认删除当前工作空间的对话记录。 |
+| `web/e2e/agent-running-reconnect.spec.ts` | 既有测试（执行） | 验证跨页长任务在刷新、首发页断线和终态事件后由第二页读取权威历史收束，补足重启恢复的网页协议路径。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md`、`docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 将第 87 项提升为自动化通过，汇总同步为 83 项自动化通过、8 项人工通过、2 项未验证、2 项范围阻塞。 |
+
+验证记录：`canvas-agent` 中的 `npm exec -- tsx --test src/agent/message-metadata.test.ts` 通过 7 项；`web` 中的 `npm exec -- playwright test e2e/agent-image-message.spec.ts e2e/agent-history-records.spec.ts e2e/agent-running-reconnect.spec.ts --reporter=line` 通过 3 项。四组证据分别覆盖存储重启与精确身份、预览资产删除、网页附件预览和全量删除，以及跨页面刷新/断线后的权威历史恢复。本项不外推为真实 App Server 崩溃、真实磁盘损坏恢复、跨设备同步、浏览器缓存损坏或外部模型输出。
+
+## 157. 浏览器回归稳定性收束与 108 项完整门禁（2026-08-28）
+
+本切片只修正隔离 Playwright 的定位和布局断言，不改业务实现；不读取、覆盖、移动或删除用户项目、资产、运行记录、3000/17371、Token、外部 Provider 或 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/canvas-batch-prompt-recall.spec.ts` | 修改 | 不再按固定比例猜测空白位置；在画布容器内排除节点、连线和控件后动态选取真实背景点，验证点击背景会收起图片组。 |
+| `web/e2e/prompt-detail-dialog.spec.ts` | 修改 | 保留媒体和操作栏滚动前后固定的验收意图，把浮点边界比较明确为不超过 1 CSS 像素，避免渲染取整的伪失败。 |
+| `web/e2e/frameflow-preview.spec.ts` | 修改 | 预览关闭统一按可访问名称精确定位 Ant Image 的 `close` 控件，避免动画期间“第一个按钮”匹配到非关闭操作。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 记录两次失败定位、三处最小修正、定向验证和最终 108 项完整浏览器门禁。 |
+
+验证记录：首次串行完整回归为 106/108，图片组空白点击未触发背景收起、详情弹窗出现 0.104px 浮点边界差；修正后两文件定向回归 4/4 和 TypeScript 通过。第二次串行完整回归为 106/108，FrameFlow 预览关闭的按钮选择在动画中不稳定、详情弹窗最大浮点差约 0.438px；修正后两文件定向回归 3/3 和 TypeScript 通过。第三次执行 `npm run test:e2e -- --workers=1 --reporter=dot`，108/108 通过，`test-results/.last-run.json` 为 `passed` 且没有失败目录。该记录不外推为跨浏览器、真实外部服务、真机触摸或生产网络环境验收。
+
+## 158. 真实 Codex ImageGen 的隔离人工闭环（2026-08-29）
+
+用户明确批准使用当前 Codex 账户进行一次真实 ImageGen 验收。为不接触用户日常 Agent 配置、用户资产和正在运行的 3000/17371 服务，Canvas Agent 新增可选的 `CANVAS_AGENT_CONFIG_DIR` 配置目录覆盖，并在系统临时目录启动独立 Agent 与独立 Web（127.0.0.1:4174）。本次仅使用一枚无文字、无标识、无水印的青绿色陶瓷球测试提示词；没有读取、上传、覆盖、移动或删除用户图片、画布、运行记录或端口服务。
+
+| 文件 / 证据 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/config.ts` | 修改 | 导出 `resolveConfigDir`，支持可选 `CANVAS_AGENT_CONFIG_DIR`；默认路径保持用户目录，临时 Agent 可将自己的配置与 Codex 工作区完全落到临时目录。 |
+| `canvas-agent/src/config.test.ts` | 修改 | 验证显式临时配置目录与空值回退默认用户目录；定向测试 3/3 和 Agent 生产构建通过。 |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 将第 11 项 FrameFlow 创建页和第 31 项 Agent 画布生图由“未验证”提升为“人工通过”；后续第 159 节按用户决定将 Docker 项改为已失效。 |
+| `docs/post-development-roadmap.md` | 修改 | 同步真实临时 Agent/浏览器闭环边界与最新矩阵汇总。 |
+| `docs/session-development-record.md` | 修改 | 记录本次授权范围、隔离方式、文件关联、可复核结果与仍不外推的边界，满足根 `AGENTS.md` 的对话记录要求。 |
+| `web/.playwright-cli/` | 新增运行证据（未跟踪） | Playwright CLI 的本次快照、控制台与截图；其中快照可能含一次性连接 token，不纳入任何检查点，不移动或删除。 |
+| 系统临时目录中的 Agent 配置、响应 JSON 与 PNG | 新增运行证据（仓库外） | 保存真实 FrameFlow Run、图片元数据与浏览器隔离环境的原始证据；包含一次性 token，不纳入仓库或提交范围。 |
+
+验证记录：真实 Agent 的 `/agent/codex/canvas-images` 在低质量、1:1、count=1 下返回有效 PNG 候选；FrameFlow 依次完成 `brief.create → round.plan → prompt.approve → run.start`，最终 Run 为 succeeded，只有 1 个 slot、1 次尝试和 1 个图片 ID。图片文件为 1254×1254 PNG，SHA-256 已随隔离 Agent 元数据保存；可见 FrameFlow“运行与血缘”页显示“成功”“1/1 张已生成”、结果图片和 Prompt/Brief 血缘。随后在隔离 Web 空画布通过“生成配置”选择“低 · 1:1 · 1 张”发起同一类真实请求；页面先插入生成中节点，网络中 `canvas-images` 与 `local-image` 均为 200，最终只回写 1 个可预览的方形图片节点。原生端在 count=1 时给出两个候选文件路径，但两条产品流程均按请求数量稳定落地一张，不把额外候选误写为多个节点。
+
+边界：这是当前账户、本机网络、临时 Agent 和 Chromium 可见页面上的一次人工验收，不能证明所有 Codex 账户、模型版本、浏览器、网络错误、断网重试、并发生成或生产部署的行为。隔离临时进程和证据保持原处；没有提交、推送、清理或删除任何用户文件。
+
+## 159. Docker/容器部署需求移除（2026-08-29）
+
+用户明确确认本项目不需要 Docker/容器部署。因此不再把原中文主清单第 01 项“Docker 当前源码部署”和第 18 项中的 Docker/容器启动验收视为阻塞或后续工作。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `docs/frameflow-acceptance-matrix-2026-08-28.md` | 修改 | 将 01、18 改为“已失效”，保留其历史来源及干净 Web 安装证据，但移除容器验收义务。 |
+| `docs/post-development-roadmap.md` | 修改 | 将容器部署从“当前阶段外、可恢复”改为已从项目需求移除；总览不再显示 Docker 阻塞。 |
+| `docs/session-development-record.md` | 修改 | 记录用户决定与文件关联，满足根 `AGENTS.md` 的对话追溯要求。 |
+
+验证记录：本次只更新需求边界和验收状态，不运行 Docker、Compose、容器镜像构建或部署命令，也不修改任何 Docker/容器配置。矩阵总数仍为 95 项：83 项自动化通过、10 项人工通过、0 项未验证、2 项已失效。
+
+路线图同步：阶段 B 已改为“已完成”；原先仍写作 P0 风险或“6 项未验证”的历史状态已改为当前可复核结论。阶段 C（核心模块进一步解耦）与阶段 D（CSP 强制策略等）仍按各自 P1 退出条件保留为后续工作，不能因 Docker 需求移除而被误标为完成。
+
+## 160. FrameFlow Run 收尾结果计划解耦与跨日门禁稳定性（2026-08-29）
+
+本切片继续阶段 C 的单一职责拆分：将生成图片后的槽位成功/失败事件、Run 完成状态以及 Auto Run 审图转交判断从 `FrameFlowCore` 迁为纯领域函数。Core 保留异步生成、资产导入与隔离、事件日志写入、投影持久化和实际审图调度。本次不修改 Docker/容器部署，也不读取或改写用户运行中的 3000/17371 服务、资产或 Agent 配置。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/run-finalization.ts` | 新增 | 纯函数统一计算新图片登记、缺失 slot 失败、Run 的成功/部分成功/失败状态，以及自动跑继续审图与状态事件的边界。 |
+| `canvas-agent/src/frameflow/run-finalization.test.ts` | 新增 | 覆盖已有成功加缺失结果、完整补齐及已暂停自动跑仍需审图但不得重写其状态三种领域语义。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 委托结果计划函数；保持 journal、投影、quarantine 与 `launchMachineReview` 的原有职责和调用时序。 |
+| `canvas-agent/package.json` | 修改 | 将新的纯领域回归纳入正式 `npm test` 门禁。 |
+| `canvas-agent/src/utils/logger.test.ts` | 修改 | 将 Debug 文件日志的行时间断言改为合法日期时间格式；按日文件名仍固定验证，避免真实写入时钟跨日时错误期待测试夹具日期。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步当前 210 项 Agent 测试基线、阶段 C 拆分进度及本次文件关联。 |
+
+验证记录：新模块缺失时先运行定向测试，得到预期 `ERR_MODULE_NOT_FOUND`。首次接入后，既有“ImageGen 期间停止”特征测试暴露暂停状态仍应启动机器审图的原有时序；补充暂停态用例并恢复该行为后，`run-finalization.test.ts` 与 `core.test.ts` 共 48 项通过、TypeScript 构建通过。完整 Agent 测试初次运行仅失败于既有日志测试把 2026-08-28 的文件夹日期错误地当作写入行时间；修正后 `logger.test.ts` 3/3、完整 `npm test` 210/210 与 `npm run build` 均通过。没有提交、推送、清理、移动或删除用户文件。
+
+## 161. FrameFlow 提交后异步动作决策解耦（2026-08-29）
+
+本切片继续阶段 C：把已提交事务后应取消 Run、启动图片生成、启动机器审图或继续 Auto Run 规划的判定从 `FrameFlowCore` 迁为纯函数。Core 仍负责从当前投影取 Prompt/Run/Brief、组装受控参考文件、执行 AbortController 和发起异步服务，事件格式、HTTP 契约与存储格式不变。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/post-commit-effect.ts` | 新增 | 根据命令、事务事件及当前 Auto Run 状态返回唯一的后提交动作：取消、生成、重试生成、机器审图或继续规划。 |
+| `canvas-agent/src/frameflow/post-commit-effect.test.ts` | 新增 | 验证审图事件优先级、排队 Run 的生成动作、无 Run 的继续规划、取消及失败 slot 重试的稳定映射。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 委托纯动作判定后继续执行原有副作用；重试路径仍从既有 Run 读取 Prompt Version，避免把普通 `run.queued` 的数据假设错误套用于重试。 |
+| `canvas-agent/package.json` | 修改 | 将新纯函数测试纳入完整 Agent 门禁。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 212 项 Agent 测试基线、阶段 C 当前边界和本次关联文件。 |
+
+验证记录：新模块缺失时先运行定向测试，得到预期 `ERR_MODULE_NOT_FOUND`。首次接入后，`core.test.ts` 的两条 `run.retry` 特征测试超时，准确指出重试没有像普通新 Run 一样在事件中携带 Prompt ID；Core 恢复从持久化 Run 读取该 ID 后，定向 `post-commit-effect.test.ts`、`run-finalization.test.ts` 与 `core.test.ts` 共 50 项通过，构建通过。完整 `npm test` 最终为 212/212 通过。未运行 Docker/Compose，未提交、推送、清理、移动或删除用户文件。
+
+## 162. FrameFlow 提示词参考图路径解析解耦（2026-08-29）
+
+本切片继续阶段 C：把 Prompt 内参考图 ID 到受控本地文件路径的解析从 `FrameFlowCore` 提取为独立的纯函数。解析保持既有语义：按 Prompt 原有顺序输出，导入的 Reference Asset 优先于同 ID 的已生成图片；两种资产均不存在时，仍由 Core 返回原有 409 领域错误。没有改变 HTTP/API、存储、图片生成调度或用户资产，也没有运行 Docker/容器。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/reference-files.ts` | 新增 | 纯函数统一解析提示词参考图到本地路径，接收由调用方提供的资源索引、路径解析器与缺失错误工厂，避免耦合资产存储或领域异常实现。 |
+| `canvas-agent/src/frameflow/reference-files.test.ts` | 新增 | 覆盖 Prompt 顺序、Reference Asset 优先级和缺失引用由调用方拒绝的公开语义。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 委托路径解析函数；继续拥有资产存储调用与 409 `FrameFlowDomainError` 的产品语义。 |
+| `canvas-agent/package.json` | 修改 | 将新纯函数的两项回归纳入正式 `npm test` 门禁。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 214 项测试基线、阶段 C 的当前拆分边界和本次文件关联。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/reference-files.test.ts`，模块尚不存在时得到预期 `ERR_MODULE_NOT_FOUND`。补齐最小实现并接入 Core 后，`reference-files.test.ts` 与 `core.test.ts` 共 47/47 通过，`npm run build` 通过。后续全量 Agent 测试、文档内容检查、类型检查与生产构建将在本切片末尾复核。未提交、推送、清理、覆盖、移动或删除任何用户文件；3000 与 17371 的现有服务不受影响。
+
+## 163. FrameFlow 生成 Run 排队事件统一构造（2026-08-29）
+
+本切片继续阶段 C：普通 Prompt 生成与 Auto Run 迭代此前分别构造相同的 `run.queued`、`run.started` 事实事件。现在将这一可重放事件对收束为单一纯函数；生成数量、slot ID、事件 ID、发生时间和事件顺序保持原有合约。没有改变生成调度、HTTP/API、投影、资产、用户服务或 Docker/容器范围。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/generation-run-events.ts` | 新增 | 以显式输入构造一对 `run.queued` 和 `run.started` 领域事件，供手动 Run 与 Auto Run 复用。 |
+| `canvas-agent/src/frameflow/generation-run-events.test.ts` | 新增 | 以固定事件 ID、slot 和时间验证事件字段与先后顺序，形成不依赖 Core 内部实现的纯领域契约。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 普通 `run.start` 与 `autoRunIterationEvents` 委托同一构造函数；仍由 Core 生成 ID、校验状态并启动实际 ImageGen。 |
+| `canvas-agent/package.json` | 修改 | 将新增事件契约测试纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 215 项测试基线、阶段 C 拆分进度和本次文件用途。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/generation-run-events.test.ts`，模块尚不存在时得到预期 `ERR_MODULE_NOT_FOUND`。补齐最小模块并迁移两处调用后，`generation-run-events.test.ts` 与 `core.test.ts` 共 46/46 通过，`npm run build` 通过。完整 Agent 与文档门禁将在该文档更新后复核。未提交、推送、清理、覆盖、移动或删除用户文件；未运行 Docker/Compose，也未影响 3000/17371 服务。
+
+## 164. Vercel 静态安全响应头门禁（2026-08-29）
+
+本切片继续阶段 D。只读审计确认根目录 `vercel.json` 已有 CSP 报告模式，GitHub fork 没有可用部署记录，因而无法把本地配置推断为生产响应头观察，也不把 CSP 切换为强制模式。应用源码未使用摄像头、麦克风或定位 API；因此在不改变 CSP 来源白名单、Provider/Agent/WebDAV 连通性、插件 Blob 模块或用户模型脚本的前提下，补充静态安全响应头及其本地防回退门禁。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `vercel.json` | 修改 | 继续使用 `Content-Security-Policy-Report-Only`，并为所有 Vercel 路径添加 `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、受限 Referrer 与禁用摄像头/麦克风/定位的 Permissions Policy。 |
+| `web/scripts/check-csp-report-only.mjs` | 修改 | 除既有 CSP 指令外，强制检查四个静态安全响应头的精确值，防止未来配置无意退回。 |
+| `docs/content/docs/support/browser-credential-threat-model.mdx`、`browser-credential-threat-model.zh-CN.mdx` | 修改 | 更新中英文威胁模型的实际响应头边界；明确 CSP 仍为观察模式，不能等同于生产强制保护。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步阶段 D 当前进展、部署观测缺口及本次文件关联。双语 TODO 未修改：其“补充 CSP”仍涵盖尚未完成的真实部署观察与强制策略决策。 |
+
+验证记录：先扩展本地检查并运行 `npm run check:csp`，在配置仍缺少 `X-Content-Type-Options` 时按预期失败。补齐配置后，扩展检查通过；Web `npm test` 为 25 个文件、71 项通过，`npm run typecheck` 与 `npm run build` 通过。`gh api repos/899ms/infinite-canvas-1/deployments` 返回空列表，故没有生产 URL 或响应头可核验。本项不运行 Docker/Compose、不部署、不提交、不推送、不读写用户凭据、资产或 3000/17371 服务。
+
+## 165. FrameFlow Planner 结果事件组装解耦（2026-08-29）
+
+本切片继续阶段 C：`FrameFlowCore` 在 Planner 返回有效计划并完成 Preference DNA 决策校验后，原本同时负责创建 Prompt Version、字段 Diff 和 Agent Decision 两条事实事件。现在将该确定性组装迁为纯领域函数；Core 保留 Planner 调用、Zod 校验、Preference 证据完整性校验、领域错误与后续事务写入。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/prompt-version-events.ts` | 新增 | 根据已验证的 Planner 计划、前一版本、Brief、Decision 与 Preference 上下文构造 `prompt.version_created` 和 `agent.decision_recorded` 事件，保持父版本、修订号、参考图、Diff、锁和发生时间的原有血缘。 |
+| `canvas-agent/src/frameflow/prompt-version-events.test.ts` | 新增 | 以固定计划、上一 Prompt 和事件 ID 验证 Prompt Revision、字段 Diff、参考图血缘与 Agent Decision 事件顺序。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 委托纯事件组装；仍生成随机 ID 并对外部 Planner 结果执行现有业务校验。 |
+| `canvas-agent/package.json` | 修改 | 将新增纯领域测试纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 216 项测试基线、阶段 C 进展与文件关联。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/prompt-version-events.test.ts`，缺少模块时得到预期 `ERR_MODULE_NOT_FOUND`。补齐最小实现并接入 Core 后，`prompt-version-events.test.ts` 与 `core.test.ts` 共 46/46 通过，`npm run build` 通过。完整 Agent 与文档门禁将在该文档更新后复核。未运行 Docker/Compose、未部署、未提交或推送，未读写用户资产、凭据和 3000/17371 服务。
+
+## 166. FrameFlow Planner 服务层解耦（2026-08-29）
+
+本切片在第 165 节的事件组装基础上完成完整规划服务边界：调用 `FrameFlowPromptPlanner`、校验返回计划、要求有人工 Preference DNA 时提供 Decision 处置、构建受验证的 Agent Decision，并调用既有 Prompt/Decision 事件组装器。Core 只保留 Planner 是否配置、从当前投影取得 Preference/历史审图/上一 Prompt，以及将服务领域错误映射为原有 HTTP 可识别错误的职责。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/prompt-planning.ts` | 新增 | 异步规划服务；保持 Planner 的 `brief`、strategy、Preference 和机器审图输入合约，并把缺失 Decision 或无效证据收束为明确的 500 领域错误。 |
+| `canvas-agent/src/frameflow/prompt-planning.test.ts` | 新增 | 验证正常规划产生 Prompt/Decision 事实事件且 Planner 输入不变；验证人工偏好存在时没有 Decision 的计划被拒绝。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 委托规划服务并保留对 `PromptPlanningError` 的 `FrameFlowDomainError` 映射；不改变 HTTP、事件存储或 Auto Run 调度。 |
+| `canvas-agent/package.json` | 修改 | 将两项规划服务测试纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 218 项测试基线、阶段 C 的服务层边界和本次文件关系。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/prompt-planning.test.ts`，缺少模块时得到预期 `ERR_MODULE_NOT_FOUND`。补齐服务并接入 Core 后，`prompt-planning.test.ts`、`prompt-version-events.test.ts` 与 `core.test.ts` 共 48/48 通过，`npm run build` 通过。完整 Agent 与文档门禁将在该文档更新后复核。没有 Docker/Compose、部署、提交、推送、用户资产/凭据读写或 3000/17371 服务操作。
+
+## 167. 双 Vercel 配置安全头一致性门禁（2026-08-29）
+
+第 164 节后续审计发现仓库还包含可独立作为 Vercel 部署根目录的 `web/vercel.json`，而此前安全头仅在根目录配置。为避免同一 Web 应用因部署根目录不同而降级安全基线，检查脚本现在同时校验两份配置；子目录配置同步采用相同的报告模式 CSP 与静态安全响应头。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/vercel.json` | 修改 | 为 `web/` 作为 Vercel 部署根目录的路径添加与根配置一致的 `Content-Security-Policy-Report-Only`、`nosniff`、反嵌入、Referrer 与 Permissions Policy 响应头。 |
+| `web/scripts/check-csp-report-only.mjs` | 修改 | 对根目录 `vercel.json` 和 `web/vercel.json` 分别校验 CSP 必需指令与四项静态安全响应头，任意一份遗漏即失败。 |
+| `docs/content/docs/support/browser-credential-threat-model.mdx`、`browser-credential-threat-model.zh-CN.mdx` | 修改 | 准确写明两种 Vercel 部署根目录都拥有相同的观察型安全头基线。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步阶段 D 范围和本次文件关联。 |
+
+验证记录：先扩展检查后运行 `npm run check:csp`，按预期报出 `web/vercel.json` 缺少报告模式 CSP。补齐配置后检查通过；Web `npm test` 为 25 个文件、71 项通过，`npm run typecheck` 与 `npm run build` 通过。此项仍不证明任一真实 Vercel 项目已部署或正在发送这些头；CSP 强制策略与生产观测仍未执行。未运行 Docker/Compose、未部署、未提交/推送，也未触碰 3000/17371、用户资产或凭据。
+
+## 168. FrameFlow Auto Run 状态事件服务解耦（2026-08-29）
+
+本切片继续阶段 C：将 Auto Run 的开始、停止、继续探索与机器审图推进的状态判定和事实事件从 `FrameFlowCore` 提取为纯领域服务。Core 保留 Creative Requirement 是否活动、当前 Run/并发 Auto Run/机器审图投影的查询，并把服务错误映射为原有 `FrameFlowDomainError`；事件类型、错误信息、HTTP/API、journal 和投影格式保持兼容。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/auto-run-command-events.ts` | 新增 | 集中处理 `auto_run.start`、`stop`、`extend` 与 `advance` 的状态机规则，构造暂停、恢复生成、启动审图、完成、延长或继续规划事件，并明确 409 拒绝语义。 |
+| `canvas-agent/src/frameflow/auto-run-command-events.test.ts` | 新增 | 覆盖未完成 Run 恢复、缺失审图、进入规划、停止、继续探索、推进、非法状态与并发 Auto Run；同时断言进入规划时删去的可选字段不会以 `undefined` 写进可回放事件。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 只收集当前投影依赖并委托状态服务；保留活动 Requirement 校验、调用时序和领域错误映射。 |
+| `canvas-agent/package.json` | 修改 | 将三项 Auto Run 状态服务测试纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 221 项测试基线、阶段 C 服务边界与本次文件关联。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/auto-run-command-events.test.ts`，缺少模块时得到预期 `ERR_MODULE_NOT_FOUND`。接入后首次定向运行中，原有 Core 测试与构建均通过；新测试的两处失败揭示期望值把被删除的 `currentRunId`/`lastError` 写成了 `undefined`，而实际回放事件正确地省略字段。收紧断言后，状态服务与 Core 共 48/48 通过，`npm run build` 通过。完整 Agent 与文档门禁将在本记录更新后复核。未运行 Docker/Compose、未部署、未提交/推送，也未读取或改写用户资产、凭据和 3000/17371 服务。
+
+## 169. FrameFlow Generation Run 命令状态事件服务解耦（2026-08-29）
+
+本切片继续阶段 C：将手动 Generation Run 的开始、失败 slot 重试与取消状态判定和事实事件从 `FrameFlowCore` 提取为纯领域服务。Core 继续查询 Prompt/Run 与活动 Creative Requirement，持有真实 ImageGen 调度、事务写入、投影和领域错误对外映射；事件类型、错误顺序、HTTP/API、journal 和投影格式保持兼容。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/generation-command-events.ts` | 新增 | 集中处理 `run.start`、`run.retry` 与 `run.cancel` 的前置状态规则，构造排队/开始、失败 slot 重试或用户取消的可重放事实事件。 |
+| `canvas-agent/src/frameflow/generation-command-events.test.ts` | 新增 | 以确定性 ID 验证新 Run 的事件顺序、失败 slot 重试、活动 Run 取消，以及 draft Prompt、重复 slot 和结束 Run 的拒绝语义。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 在保持 Prompt/Run 存在与 Requirement 活动检查后，委托命令服务并将其 404/409 错误映射回既有 `FrameFlowDomainError`；真实 ImageGen 副作用仍留在 Core。 |
+| `canvas-agent/package.json` | 修改 | 将三项 Generation Run 命令状态服务回归纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 224 项测试基线、阶段 C 新的职责边界与本次文件关联。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/generation-command-events.test.ts`，模块缺失时得到预期 `ERR_MODULE_NOT_FOUND`。补齐服务并接入 Core 后，命令服务与 Core 共 48/48 通过，TypeScript 检查通过；完整 Canvas Agent `npm test` 为 224/224 通过，`npm run build` 通过。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 170. FrameFlow Prompt 批准状态事件服务解耦（2026-08-29）
+
+本切片继续阶段 C：将 Prompt 的 draft 状态判断、锁定项归属校验与 `prompt.approved` 事实事件从 `FrameFlowCore` 迁为纯领域服务。Core 继续负责 Prompt 查找、活动 Creative Requirement 校验、命令编排、事务写入和投影；HTTP/API、journal 和既有 409 领域错误保持兼容。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/prompt-approval-events.ts` | 新增 | 对 draft Prompt 校验锁定项必须属于对应字段，并复制锁定快照后构造 `prompt.approved` 事实事件。 |
+| `canvas-agent/src/frameflow/prompt-approval-events.test.ts` | 新增 | 验证批准事件不会持有可变锁定数组引用，并覆盖已批准 Prompt 与未知锁定项的拒绝语义。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留 Prompt 与 Requirement 查询，委托批准服务并映射其既有 409 领域错误。 |
+| `canvas-agent/package.json` | 修改 | 将两项批准状态服务回归纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 226 项测试基线、阶段 C 责任边界与本次文件关联。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/prompt-approval-events.test.ts`，模块缺失时得到预期 `ERR_MODULE_NOT_FOUND`。实现后，批准服务与 Core 共 47/47 通过，TypeScript 检查通过；完整 Canvas Agent `npm test` 为 226/226 通过、`npm run build` 通过，文档内容检查、类型检查、生产构建与差异检查也通过。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 171. FrameFlow 图片删除与反馈状态事件服务解耦（2026-08-29）
+
+本切片继续阶段 C：将中性图片删除、评分、评论、审美删除、恢复和 Preference Feature Review 的确定性事件构造，从 `FrameFlowCore` 迁为纯领域服务。Core 仍负责图片存在性、Creative Requirement 活动性与血缘校验、命令编排、事务写入和投影；中性删除不参与学习、审美删除参与学习，以及永久删除后禁止继续操作的既有语义不变。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/feedback-command-events.ts` | 新增 | 集中构造 `image.delete` 与 `feedback.append` 的可重放事实事件，并保留永久删除图片的两种 409 提示。 |
+| `canvas-agent/src/frameflow/feedback-command-events.test.ts` | 新增 | 覆盖中性删除、审美删除、特征复核事件，以及已永久删除图片的删除/反馈拒绝语义。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留图片和 Requirement 查询后委托反馈状态服务，并映射既有 409 领域错误。 |
+| `canvas-agent/package.json` | 修改 | 将两项反馈状态服务回归纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 228 项测试基线、阶段 C 责任边界和本次文件关联。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/feedback-command-events.test.ts`，模块缺失时得到预期 `ERR_MODULE_NOT_FOUND`。补齐服务并接入 Core 后，服务与 Core 共 47/47 通过，TypeScript 检查通过；完整 Canvas Agent `npm test` 为 228/228 通过，`npm run build` 通过。中英文 `todo` 与 `pending-test` 已复核：此项是内部解耦、不改变用户可感知功能或待测事项，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 172. FrameFlow Brief 生命周期事件构造解耦（2026-08-29）
+
+本切片继续阶段 C：将 Creative Brief 的创建、修订、归档、恢复及修订后可选暂停 Auto Run 的确定性事实事件构造，迁出 `FrameFlowCore`。Core 继续验证参考图、当前 Requirement/Brief 活动性、运行中阻断与被延续 Auto Run 的归属；因此原有错误顺序、HTTP/API、journal、投影和血缘语义保持不变。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/brief-lifecycle-events.ts` | 新增 | 根据已验证输入构造 `brief.created`、`brief.revised`、`brief.archived`、`brief.restored`，并在修订来源 Auto Run 存在时创建同一 Requirement 的暂停继任 Auto Run。 |
+| `canvas-agent/src/frameflow/brief-lifecycle-events.test.ts` | 新增 | 以固定 ID 和时间验证默认用途、Requirement/Revision 血缘、继任 Auto Run 与归档/恢复事件字段。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留所有查询与领域前置校验，仅委托确定性事件构造。 |
+| `canvas-agent/package.json` | 修改 | 将三项 Brief 生命周期事件构造回归纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 231 项测试基线、阶段 C 边界与本次文件关联。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/brief-lifecycle-events.test.ts`，模块缺失时得到预期 `ERR_MODULE_NOT_FOUND`。补齐构造器并接入 Core 后，构造器与 Core 共 48/48 通过，TypeScript 检查通过；完整 Canvas Agent `npm test` 为 231/231 通过，`npm run build` 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 173. FrameFlow Prompt 翻译服务解耦（2026-08-29）
+
+本切片完成 Core 命令处理的最后一个独立服务边界：将 Prompt 的已有中文翻译回放、翻译 Provider 调用、Zod 结果校验与 `prompt.translation_created` 事件构造迁出 `FrameFlowCore`。Core 继续负责 Prompt 查找和当前 Creative Requirement 校验；未配置翻译 Provider 时的原有 409 领域错误保持不变。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/prompt-translation-events.ts` | 新增 | 优先返回深拷贝的已缓存翻译；无缓存时调用受控翻译接口、校验结果并创建翻译事实事件。 |
+| `canvas-agent/src/frameflow/prompt-translation-events.test.ts` | 新增 | 覆盖缓存不调用 Provider、Provider 接收 Prompt 快照并返回有效事件，以及未配置 Provider 的 409 语义。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留 Prompt/Requirement 查询，委托翻译服务并映射既有领域错误。 |
+| `canvas-agent/package.json` | 修改 | 将三项翻译服务回归纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 236 项测试基线、阶段 C 命令分层边界与本次文件关联。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/frameflow/prompt-translation-events.test.ts`，模块缺失时得到预期 `ERR_MODULE_NOT_FOUND`。首次实现前发现测试期望与缓存对象共享了可变数组，随即改为独立字面期望后继续验证，确保覆盖真实的深拷贝语义。服务与 Core 共 48/48 通过，TypeScript 检查通过；完整 Canvas Agent `npm test` 为 236/236 通过，`npm run build` 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 174. Codex ImageGen 结果路径规范化解耦（2026-08-29）
+
+本切片开始路线图中的 Codex 集成层拆分：将 app-server ImageGen 通知中嵌套值的递归扫描、Windows/POSIX 绝对路径识别、图片扩展名约束和首次出现顺序去重，从传输状态机 `CodexAppClient` 迁为纯结果规范化函数。客户端继续拥有通知接收、按 Turn 缓存和跨通知去重职责。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/agent/codex-image-result.ts` | 新增 | 从任意 ImageGen 结果对象中提取受限图片扩展名的绝对路径，并保留首次出现顺序。 |
+| `canvas-agent/src/agent/codex-image-result.test.ts` | 新增 | 覆盖嵌套 Windows/POSIX 路径、去重以及相对路径、非图片文件和普通文本的排除。 |
+| `canvas-agent/src/agent/codex-client.ts` | 修改 | 传输客户端改为调用纯规范化函数；Turn 级缓存与现有协议处理不变。 |
+| `canvas-agent/package.json` | 修改 | 将两项结果规范化回归纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 238 项测试基线、Codex 结果规范化边界和本次文件关联。 |
+
+验证记录：先仅新增测试并运行 `npx tsx --test src/agent/codex-image-result.test.ts`，模块缺失时得到预期 `ERR_MODULE_NOT_FOUND`。一次补丁因测试脚本条目顺序不符而原子拒绝，未写入任何文件；读取当前脚本后按实际顺序重新应用。定向 `codex-image-result.test.ts` 与 `codex-client.test.ts` 共 45/45 通过，TypeScript 检查通过；完整 Canvas Agent `npm test` 为 238/238 通过，`npm run build` 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 175. 本地 Agent ImageGen 来源解析解耦（2026-08-29）
+
+本切片开始拆分本地 Agent 面板中的图片导入职责：把 ImageGen 事件的递归来源扫描、`data:image/*` 与单行 Windows/POSIX 绝对图片路径筛选、首次出现顺序去重，迁为独立纯函数。面板仍负责来源下载、图片上传、附件元数据、画布节点写入和 SSE 事件时序，因此不改变用户可见的图片导入流程。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/agent-generated-image-sources.ts` | 新增 | 从任意 Agent ImageGen 项目中提取受限图片来源并维持去重顺序。 |
+| `web/src/components/agent/agent-generated-image-sources.test.ts` | 新增 | 覆盖嵌套 data URL/绝对图片路径、顺序去重，以及多行、相对路径、非图片路径和非图片 data URL 的拒绝。 |
+| `web/src/components/agent/local-agent-panel.tsx` | 修改 | 使用纯来源解析器，继续保留下载、上传和画布写入副作用。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Web 26 文件/73 项测试基线与阶段 C 当前边界。 |
+
+验证记录：先新增测试并运行 `npx vitest run src/components/agent/agent-generated-image-sources.test.ts`，模块缺失时按预期失败。补齐最小模块并接入面板后，定向测试 2/2 与 Web TypeScript 检查通过；完整 Web `npm test` 为 26 个文件/73 项通过，`npm run build` 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 176. 画布生成请求生命周期控制器解耦（2026-08-29）
+
+本切片将画布项目页中跨图片、视频、音频、文本与室内工作流共用的生成请求登记、同目标替换、当前控制器完成和按运行节点取消逻辑迁为无 UI 副作用的控制器。页面继续负责弹窗确认、`runningNodeId`、节点加载/取消状态以及国际化错误信息，因此不改变画布节点格式、生成流程或本地存储格式。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/lib/canvas/canvas-generation-requests.ts` | 新增 | 管理目标节点到 AbortController 的登记、替换、精确完成和按运行节点批量取消。 |
+| `web/src/lib/canvas/canvas-generation-requests.test.ts` | 新增 | 覆盖同目标替换中止、过期完成不误删新请求，以及批量取消不影响无关请求。 |
+| `web/src/pages/canvas/project.tsx` | 修改 | 保留页面状态收束和 UI 副作用，改为委托生成请求控制器。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Web 27 文件/76 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx vitest run src/lib/canvas/canvas-generation-requests.test.ts`，模块缺失时按预期失败。补齐最小控制器并接入页面后，定向测试 3/3、Web TypeScript 检查、完整 Web `npm test`（27 个文件/76 项）与 `npm run build` 均通过；文档 `check:content`、`types:check`、生产构建与 `git diff --check` 亦通过，后者仅提示既有/当前文本的 CRLF 转换，不含空白错误。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 177. 本地 Agent 会话启动状态投影解耦（2026-08-29）
+
+本切片将本地 Agent 面板内的会话状态到 MCP 启动状态卡片映射迁为独立纯函数。面板继续负责连接、事件收取、状态写入和国际化入口；新函数只将会话/MCP 输入转为可渲染的启动、就绪、警告、失败或空状态，因此不改变 Agent 协议、会话存储或用户可见文案。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/agent-bootstrap-view.ts` | 新增 | 将会话状态和 MCP 服务状态投影为面板可直接消费的启动状态模型。 |
+| `web/src/components/agent/agent-bootstrap-view.test.ts` | 新增 | 覆盖启动服务汇总、警告/失败/就绪终态与运行中清理。 |
+| `web/src/components/agent/local-agent-panel.tsx` | 修改 | 继续注入既有国际化函数并写入 Store，改由纯投影函数提供显示状态。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Web 28 文件/79 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx vitest run src/components/agent/agent-bootstrap-view.test.ts`，模块缺失时按预期失败。补齐最小投影函数并接入面板后，定向测试 3/3、Web TypeScript 检查、完整 Web `npm test`（28 个文件/79 项）与 `npm run build` 均通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 178. 画布取消生成状态收束解耦（2026-08-29）
+
+本切片将画布页面中“按运行节点取消”后的节点状态收束迁为纯状态函数：受影响且仍在加载中的根节点回到空闲，仍在加载中的图片槽位标为取消错误，已成功槽位与无关或非加载节点保持原值。页面继续负责请求取消、运行标识和国际化文案，不改变节点数据格式或生成 API。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/lib/canvas/canvas-generation-state.ts` | 新增 | 将已取消生成的节点及图片槽位收束到与原页面一致的状态。 |
+| `web/src/lib/canvas/canvas-generation-state.test.ts` | 新增 | 覆盖取消的加载节点、成功槽位保留和无关/非加载节点不变。 |
+| `web/src/pages/canvas/project.tsx` | 修改 | 取消控制器返回目标集合后，委托纯状态函数更新页面节点。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Web 29 文件/81 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx vitest run src/lib/canvas/canvas-generation-state.test.ts`，模块缺失时按预期失败。补齐最小状态函数并接入页面后，定向测试 2/2、Web TypeScript 检查、完整 Web `npm test`（29 个文件/81 项）与 `npm run build` 均通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 179. FrameFlow 机器审图事件构造解耦（2026-08-29）
+
+本切片将 `FrameFlowCore` 机器审图流程中的逐张覆盖校验、已记录图片去重、`machine_review.recorded` 事件组装和最终轮 `auto_run.completed` 事件迁为纯领域函数。Core 继续负责调用审图 Provider、生命周期校验、事务写入和后续迭代调度，因此不改变 FrameFlow HTTP/API、事件存储格式或审图执行顺序。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/machine-review-events.ts` | 新增 | 在受控输入下校验审图覆盖范围，并构造可回放的机器审图与最终完成事件。 |
+| `canvas-agent/src/frameflow/machine-review-events.test.ts` | 新增 | 覆盖完整逐张记录、缺失/重复/越界图片拒绝、已有审图去重和未到最终轮不完成。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留 Provider、写队列和领域错误边界，改由事件函数处理审图状态转换。 |
+| `canvas-agent/package.json` | 修改 | 将新增机器审图事件契约纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 241 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx tsx --test src/frameflow/machine-review-events.test.ts`，模块缺失时按预期失败。补齐最小事件函数并接入 Core 后，事件测试与 `core.test.ts` 共 48/48 通过，生产构建通过；完整 Canvas Agent `npm test` 为 241/241 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 180. FrameFlow 跨轮总结事件构造解耦（2026-08-29）
+
+本切片将 `FrameFlowCore` 跨轮总结中的总结草稿校验、已审轮次引用校验、`AutoRunTrajectorySummary` 组装和 `auto_run.trajectory_summarized` 事件构造迁为纯领域函数。Core 仍负责调用总结 Provider、Requirement 生命周期校验、事务写入和异步调度，因此不改变总结 API、存储格式或归档 ABA 保护。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/trajectory-summary-events.ts` | 新增 | 解析总结草稿、拒绝不存在的证据轮次并构造可回放总结事件。 |
+| `canvas-agent/src/frameflow/trajectory-summary-events.test.ts` | 新增 | 覆盖合法总结事件，以及最佳轮次或证据轮次越界时的明确拒绝。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留 Provider、写队列与生命周期边界，改为委托总结事件函数。 |
+| `canvas-agent/package.json` | 修改 | 将新增跨轮总结事件契约纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 243 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx tsx --test src/frameflow/trajectory-summary-events.test.ts`，模块缺失时按预期失败。补齐最小事件函数并接入 Core 后，事件测试与 `core.test.ts` 共 47/47 通过，生产构建通过；完整 Canvas Agent `npm test` 为 243/243 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 181. FrameFlow Auto Run 单轮启动事件解耦（2026-08-29）
+
+本切片将 `FrameFlowCore` 中“规划完成后启动下一轮”的 Prompt 发现、批准、固定槽位 Generation Run 创建和 `auto_run.iteration_started` 事件构造迁为纯领域函数。Core 仍负责 Planner/ImageGen 可用性、活动 Brief 校验和异步事务调度，因此不改变自动跑的 Provider 调用、运行状态或持久化格式。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/auto-run-iteration-events.ts` | 新增 | 从规划事件中取得 Prompt，并构造批准、排队、开始和迭代开始的完整事件序列。 |
+| `canvas-agent/src/frameflow/auto-run-iteration-events.test.ts` | 新增 | 覆盖固定槽位启动序列与规划缺少 Prompt 时的明确拒绝。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留 Planner/ImageGen 与活动 Brief 检查，改为委托单轮启动事件函数。 |
+| `canvas-agent/package.json` | 修改 | 将新增单轮启动事件契约纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 245 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx tsx --test src/frameflow/auto-run-iteration-events.test.ts`，模块缺失时按预期失败。补齐最小事件函数并接入 Core 后，事件测试与 `core.test.ts` 共 47/47 通过，生产构建通过；完整 Canvas Agent `npm test` 为 245/245 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 182. FrameFlow Auto Run 失败事务构造解耦（2026-08-29）
+
+本切片将 `FrameFlowCore` 自动跑规划或机器审图失败后的系统事务构造迁为纯函数。事务仍由 Core 在原写队列中写入、重放投影并保持原有异步重试条件；纯函数仅固定连续序列、系统 Actor、幂等键、失败事件与错误文本上限，因此不改变失败恢复时序或存储格式。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/auto-run-failure-transaction.ts` | 新增 | 将 Auto Run 失败上下文转换为可回放的系统事务，并限制错误文本长度。 |
+| `canvas-agent/src/frameflow/auto-run-failure-transaction.test.ts` | 新增 | 覆盖事务序列、系统身份、事件字段、幂等键及长/短错误文本行为。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留写队列、持久化与失败恢复条件，改由纯事务函数构造写入内容。 |
+| `canvas-agent/package.json` | 修改 | 将新增失败事务契约纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 247 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx tsx --test src/frameflow/auto-run-failure-transaction.test.ts`，模块缺失时按预期失败。补齐最小事务函数并接入 Core 后，事件测试与 `core.test.ts` 共 47/47 通过，生产构建通过；完整 Canvas Agent `npm test` 为 247/247 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 183. 本地 Agent 历史快照合并解耦（2026-08-29）
+
+本切片将本地 Agent 面板的历史快照归一化、已结算 Turn 权威性、活跃实时 Turn 保留、确认范围与 `historyReady` 接受条件迁为独立纯函数。面板仍负责网络重试、顺序/活动线程保护、Ref 写入、SSE、历史确认请求和 Store 更新，因此不改变通信协议、会话存储或用户可见文案。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/agent-thread-snapshot.ts` | 新增 | 将历史快照与实时消息合并为权威显示状态、实时 Turn 集合和确认范围。 |
+| `web/src/components/agent/agent-thread-snapshot.test.ts` | 新增 | 覆盖历史覆盖已结算 Turn、保留活跃实时 Turn，以及预期 Turn 与 `historyReady` 的确认规则。 |
+| `web/src/components/agent/local-agent-panel.tsx` | 修改 | 保留请求、重试与副作用，改为委托纯快照状态函数。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Web 30 文件/83 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx vitest run src/components/agent/agent-thread-snapshot.test.ts`，模块缺失时按预期失败。补齐最小状态函数并接入面板后，定向测试 2/2、Web TypeScript 检查、完整 Web `npm test`（30 个文件/83 项）与 `npm run build` 均通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 184. 阶段 C 浏览器回归复核（2026-08-29）
+
+在本轮 FrameFlow Core 领域事件拆分、画布生成状态拆分和本地 Agent 历史快照合并拆分后，使用仓库既有 Playwright 配置执行完整 Chromium 单线程回归。该配置临时使用独立的 `127.0.0.1:4173` 测试服务；本次未接管、重启或关闭既有的 3000、17371 服务。此项证明现有浏览器回归覆盖范围未因上述内部重构退化，但不替代真实生产部署目标上的 CSP 观察。
+
+| 文件/范围 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/e2e/` | 既有测试范围 | 覆盖 Agent、画布、FrameFlow、提示词、路由和视频参考图的跨层浏览器回归；本次未修改。 |
+| `web/playwright.config.ts` | 既有测试配置 | 提供 4173 临时 Web Server、Chromium 和失败追踪策略；本次未修改。 |
+| `docs/session-development-record.md` | 修改 | 记录完整浏览器验收、配置边界及其与仍待生产 CSP 观察的关系。 |
+
+验证记录：已确认 `npx` 可用，随后在 `web/` 执行 `npm run test:e2e -- --workers=1`；Chromium 108/108 通过，耗时 4.6 分钟。通过范围包含本地 Agent 的实时回复、权威历史恢复、断线重连与跨标签状态，画布生成与附件持久化，以及 FrameFlow 自动跑、审图、血缘、Prompt 语言和参考图限制。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 185. ImageGen 返回文件处置计划解耦（2026-08-29）
+
+本切片将 `FrameFlowCore.generateAndFinalize` 在 ImageGen 成功返回后的文件处置规则迁为纯计划函数：已取消的运行将全部迟到文件交给取消隔离，未取消的运行只把固定槽位数量交给资产导入，并把超量结果标记为孤儿恢复隔离。Core 仍负责实际文件导入、隔离写入、PNG 校验失败恢复与最终 Run 事务，因此不改变 Provider 调用、事件格式、持久化或取消时序。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/generated-output-plan.ts` | 新增 | 从 Provider 返回文件、槽位数量和取消状态构造导入/隔离计划。 |
+| `canvas-agent/src/frameflow/generated-output-plan.test.ts` | 新增 | 覆盖取消时全量隔离、超量结果孤儿隔离和刚好命中槽位时不隔离。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留资产 I/O 与失败恢复，改为执行纯文件处置计划。 |
+| `canvas-agent/package.json` | 修改 | 将新增计划函数契约纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 250 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx tsx --test src/frameflow/generated-output-plan.test.ts`，模块缺失时按预期报 `ERR_MODULE_NOT_FOUND`。补齐最小函数并接入 Core 后，定向契约测试 3/3、与 `core.test.ts` 合计 48/48 以及 TypeScript 检查通过；完整 Canvas Agent `npm test` 为 250/250 通过，`npm run build` 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 186. FrameFlow 事务持久化边界解耦（2026-08-29）
+
+本切片将 `FrameFlowCore` 中重复的“事实日志追加 → 内存投影应用 → 投影写出”顺序提为可注入持久化服务。Core 保留写队列、事务构造、领域错误、追加失败时的资产隔离和初始化恢复时序；服务只保证普通事务在 journal 成功后才应用并写出最新投影，若 journal 失败则先执行调用方清理且绝不改变投影。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/transaction-persistence.ts` | 新增 | 统一执行事实日志、投影应用和投影写出的受控顺序。 |
+| `canvas-agent/src/frameflow/transaction-persistence.test.ts` | 新增 | 用可注入 Store 覆盖正常顺序及追加失败后只清理、不更新投影。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 将命令、参考图、自动跑、生成收尾、审图和总结事务委托给持久化服务；保留初始化恢复原顺序。 |
+| `canvas-agent/package.json` | 修改 | 将新增持久化服务契约纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 252 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx tsx --test src/frameflow/transaction-persistence.test.ts`，模块缺失时按预期报 `ERR_MODULE_NOT_FOUND`。补齐服务并接入 Core 后，持久化服务与 `core.test.ts` 合计 47/47 通过，TypeScript 检查通过；完整 Canvas Agent `npm test` 为 252/252 通过，`npm run build` 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 187. ImageGen 执行服务解耦（2026-08-29）
+
+本切片将 `FrameFlowCore.generateAndFinalize` 的 ImageGen 调用、迟到结果取消隔离、固定槽位资产导入、超量结果隔离与 PNG 校验失败恢复迁为可注入执行服务。Core 仅保留运行控制器、写队列和 Run 收尾事务；执行服务以“需要收尾”或“已丢弃”返回结果，不创建事务、不写投影，因此不改变 Provider 输入、事件格式、持久化或取消时序。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/generation-execution.ts` | 新增 | 封装 ImageGen 与资产端口，返回成功、可重试失败或已取消的受控执行结果。 |
+| `canvas-agent/src/frameflow/generation-execution.test.ts` | 新增 | 覆盖 Provider 失败、取消迟到结果、超量结果隔离和导入失败隔离。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留 Run 收尾和生命周期控制，委托执行服务处理 Provider 与资产 I/O。 |
+| `canvas-agent/package.json` | 修改 | 将新增执行服务契约纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 256 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx tsx --test src/frameflow/generation-execution.test.ts`，模块缺失时按预期报 `ERR_MODULE_NOT_FOUND`。补齐服务并接入 Core 后，执行服务与 `core.test.ts` 合计 49/49 通过，TypeScript 检查通过；完整 Canvas Agent `npm test` 为 256/256 通过，`npm run build` 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 188. 机器审图执行服务解耦（2026-08-29）
+
+本切片将 `FrameFlowCore.reviewAndRecord` 中未审图片选择、资产路径映射、Reviewer 调用和返回值 schema 校验迁为可注入执行服务。Core 继续负责 Requirement 活动性、归档恢复 ABA 防护、机器审图事件构造、自动跑推进判断和事务写入，因此不改变 Reviewer 输入、事件格式、持久化或异步恢复时序。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `canvas-agent/src/frameflow/machine-review-execution.ts` | 新增 | 从当前 Run 构造待审图片输入，执行 Reviewer 并返回经过 schema 校验的审图结果。 |
+| `canvas-agent/src/frameflow/machine-review-execution.test.ts` | 新增 | 覆盖已审图片排除、全量已审时不调用 Provider，以及缺失图片时拒绝审图。 |
+| `canvas-agent/src/frameflow/core.ts` | 修改 | 保留生命周期与事务边界，改为委托机器审图执行服务。 |
+| `canvas-agent/package.json` | 修改 | 将新增机器审图执行服务契约纳入正式 `npm test`。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 修改 | 同步 Canvas Agent 259 项测试基线、阶段 C 当前边界和本次文件关联。 |
+
+验证记录：先新增测试并运行 `npx tsx --test src/frameflow/machine-review-execution.test.ts`，模块缺失时按预期报 `ERR_MODULE_NOT_FOUND`。补齐服务并接入 Core 后，执行服务与 `core.test.ts` 合计 48/48 通过，TypeScript 检查通过；完整 Canvas Agent `npm test` 为 259/259 通过，`npm run build` 通过。中英文 `todo` 与 `pending-test` 已复核：此项为内部兼容性重构，不改变用户可感知功能或待测项目，故无需修改。未运行 Docker/Compose、未部署、未提交/推送、未清理/移动/删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 189. 跨轮总结计划解耦（2026-08-29）
+
+将完整机器审图轮次筛选、总结缓存复用和 Provider 输入构造迁为纯计划函数；Core 保留生命周期、总结事件校验和事务写入。
+
+| 文件 | 关联与用途 |
+| --- | --- |
+| `canvas-agent/src/frameflow/trajectory-summary-plan.ts` | 构造跨轮总结的缓存或执行计划。 |
+| `canvas-agent/src/frameflow/trajectory-summary-plan.test.ts` | 覆盖完整审图轮次筛选和缓存复用。 |
+| `canvas-agent/src/frameflow/core.ts`、`canvas-agent/package.json` | 接入计划并纳入正式测试。 |
+| `docs/post-development-roadmap.md`、`docs/session-development-record.md` | 同步 261 项测试基线与文件关联。 |
+
+验证记录：模块缺失时契约测试按预期报 `ERR_MODULE_NOT_FOUND`；补齐后计划与 `core.test.ts` 合计 47/47、完整 Canvas Agent `npm test` 261/261、`npm run build` 均通过。此为内部解耦，不修改 TODO/pending-test；未运行 Docker/Compose、未部署、提交、推送或清理用户文件，也未影响 3000/17371 服务。
+
+## 190. 阶段 C 退出审计（2026-08-29）
+
+核对 `FrameFlowCore` 后确认其剩余自动跑规划逻辑只承担并发去重、陈旧状态拒绝、写队列和后续动作发起；Prompt/事件构造、持久化、ImageGen、机器审图和跨轮总结数据准备均已由独立模块覆盖。该协调职责不再重复抽象。阶段 C 的清晰边界、独立状态测试和既有门禁退出条件已满足；后续唯一未完成的路线图门槛是已授权真实生产目标上的 CSP 观察。
+
+## 191. 生产 CSP 目标只读核查（2026-08-29）
+
+通过 GitHub CLI 只读查询 `basketikun/infinite-canvas` 的部署记录：存在多个 `Production` 记录，但 `environment_url` 均为空，最新记录提交为 `ed013e8e5ce8ccab47cf2fc779f8e94555eb4c23`，早于当前工作区改动。因此不能从 GitHub 部署元数据取得可访问、且对应当前代码的生产 URL，也不能将旧部署外推为 CSP 已观测。
+
+未创建部署、未修改远端、未提交/推送，也未运行 Docker/Compose。阶段 D 的真实 CSP 响应头观察需要用户提供已授权的部署 URL，或明确授权部署到指定环境。
+
+## 192. 本地运行边界修正（2026-08-30）
+
+用户明确本项目只在本地运行，并确认不需要部署 URL。第 191 节保留为当时只读核查的历史证据，但其中“真实生产 CSP 响应头观察”为当前阶段前置条件的结论已不再适用。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `docs/post-development-roadmap.md` | 修改 | 将阶段 D 的 CSP 验收范围明确为本地运行：保留报告模式和静态安全响应头门禁，不要求部署观察或强制收紧；据此标记阶段 D 完成。 |
+| `docs/session-development-record.md` | 修改 | 记录范围修正、第 191 节的历史性质，以及本地验收依据。 |
+| `web/scripts/check-csp-report-only.mjs`、`vercel.json`、`web/vercel.json` | 已有文件，仅核验 | 静态校验 CSP 报告策略和安全响应头，作为本地开发时的配置回归门禁；本次不修改且不部署。 |
+| `docs/content/docs/progress/todo.mdx`、`docs/content/docs/progress/todo.zh-CN.mdx` | 已复核，不修改 | 两份 TODO 仅描述安全与可观测性工作，不含部署 URL 前置条件，故无需改变。 |
+
+本地验收依据为 `npm run check:csp` 的静态配置检查，以及既有 Web、Canvas Agent、Docs 和浏览器质量门禁；它不声称任何外部环境已经发布或返回响应头。未部署、未运行 Docker/Compose、未提交/推送、未清理、移动或删除用户文件，也未影响 3000/17371 服务、用户资产或凭据。
+
+## 193. 阶段 A 至 D 当前工作树复验（2026-08-30）
+
+在用户确认仅本地运行后，对阶段 A 至 D 的当前工作树重新执行质量门禁。阶段 E 在路线图中明确为独立需求，未在本轮启动。
+
+| 范围 | 命令/方式 | 结果 |
+| --- | --- | --- |
+| Canvas Agent | `npm test`、`npm run build`、官方 npm registry 的 `npm audit --omit=dev --audit-level=high` | 261/261 测试通过，TypeScript 生产构建通过，0 个漏洞。默认镜像的 audit 接口返回 404，未将该基础设施错误误记为安全结果。 |
+| Web | `npm test`、`npm run typecheck`、`npm run build`、`npm run check:csp` | 30 个测试文件/83 项通过，类型与生产构建通过，CSP 报告策略和静态安全响应头检查通过。 |
+| 浏览器 | `npm run test:e2e -- --workers=1` | 独立 4173 测试服务上的 Chromium 108/108 通过；未接管、重启或关闭 3000、17371 服务。 |
+| Docs | `npm run check:content`、`npm run types:check`、`npm run build`、设置 `NPM_CONFIG_REGISTRY=https://registry.npmjs.org` 后的 `bun audit` | 英文摘要 25 项、中文主清单和状态矩阵各 95 项一致；类型与生产构建通过；0 个漏洞。默认镜像下 `bun audit` 返回 404，官方 registry 复核通过。 |
+| 工作树格式 | `npm run format:check`（Web） | 未通过：报告 55 个不在格式基线中的文件，其中包含 `.playwright-cli/` 浏览器记录及用户现有源码/测试。它们均不在本轮权限范围，未格式化、未改基线、未删除或纳入版本控制。 |
+
+`git diff --check` 未发现空白错误，仅输出 Windows CRLF/LF 转换提示；3000 和 17371 仍由既有进程监听。该复验证明当前本地工作树的功能、类型、构建、浏览器与依赖门禁，但不能把未提交的工作树外推为新的干净检出可复现提交。要形成可恢复检查点，仍需用户明确授权按已分类的源码与工程文件提交，并继续排除用户资产、日志和浏览器记录。
+
+## 194. 可恢复检查点候选范围只读分类（2026-08-30）
+
+为准备后续授权而只读核对 `git status --porcelain=v1`：当前有 38 个已修改跟踪文件与 70 个未跟踪项。候选范围仅限 Canvas Agent、Web、Docs、测试、静态检查脚本与配置；本节不暂存、格式化、提交、移动或删除任何文件。
+
+| 分类 | 路径/数量 | 处置边界 |
+| --- | --- | --- |
+| 跟踪的源码与工程变更 | 38 个 | 只在获得明确授权后再逐文件复核提交范围；其中 `web/src/lib/localforage-storage.ts` 为用户指定不触碰文件，始终排除。 |
+| 未跟踪的源码与测试候选 | `canvas-agent/` 与 `web/` 下共 66 个状态项 | 仅可能作为后续源码检查点候选；每项仍需与业务改动和格式规则逐一核对。 |
+| 用户资产与运行证据 | `99_PERCENT_ACCEPTANCE.md`、`artifacts/`、`canvas-agent/test-results/`、`design-qa.md` | 永久排除本次检查点；不读写、不移动、不删除、不自动纳入版本控制。 |
+| 浏览器记录 | `.playwright-cli/` 下 38 个格式基线报项 | 用户浏览器记录，排除格式化、基线调整与 Git 检查点。 |
+
+该分类使后续授权可明确区分可恢复源码与用户资产；它不等同于用户已授权提交，也不解决 Web 格式基线中的范围外文件。
+
+## 195. Web 格式门禁范围收束（2026-08-30）
+
+用户授权仅格式化本次源码与测试，并继续排除 Docker/容器部署、资产、运行记录和 `.playwright-cli/` 浏览器记录。因此对格式检查先前列出的 16 个 Web 源码/测试/脚本文件执行 Prettier；余下 39 项均为 `.playwright-cli/` 下的用户浏览器记录。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/.prettierignore` | 修改 | 明确排除 `.playwright-cli/`，避免格式门禁把用户浏览器记录当作产品源码格式问题。 |
+| 16 个已列出的 `web/e2e/`、`web/src/` 与 `web/scripts/` 文件 | 格式化 | 只调整排版，不改变业务行为或测试断言。 |
+| `docs/session-development-record.md` | 修改 | 记录授权边界、格式化范围和浏览器记录排除原因。 |
+
+未格式化、移动、删除或纳入 `.playwright-cli/`、`artifacts/`、`canvas-agent/test-results/`、`99_PERCENT_ACCEPTANCE.md`、`design-qa.md` 或 `web/src/lib/localforage-storage.ts`。Docker/容器部署继续不在当前范围。
+
+## 196. 本地开发可恢复检查点（2026-08-30）
+
+用户明确授权格式化并提交已分类的源码、测试、文档和配置，继续忽略 Docker/容器部署；推送不在本次授权范围。按功能边界创建以下本地 Git 检查点：
+
+| 提交 | 内容与用途 |
+| --- | --- |
+| `076410e` `refactor(frameflow): isolate local orchestration boundaries` | 固化 Canvas Agent 的 FrameFlow 事件、计划、执行和持久化职责拆分及其契约测试。 |
+| `8ea1d9b` `feat(web): complete local Canvas Agent workflows` | 固化 Web 本地 Agent、画布生成/状态、浏览器回归、CSP 静态门禁与格式范围收束。 |
+| 后续文档提交 | 固化路线图、状态矩阵、威胁模型和本会话的复验/检查点记录。 |
+
+每个提交前均核对暂存差异、空白错误和受保护路径；`canvas-agent/test-results/`、`artifacts/`、`.playwright-cli/`、`99_PERCENT_ACCEPTANCE.md`、`design-qa.md` 与 `web/src/lib/localforage-storage.ts` 没有被暂存。Web 格式门禁现通过；它提示 6 个历史基线条目已被用户既有变更修复，但为遵守不触碰 `localforage-storage.ts` 的约束，本轮不改动基线清单。未推送、未创建发布、版本号或 tag，未运行 Docker/Compose。
