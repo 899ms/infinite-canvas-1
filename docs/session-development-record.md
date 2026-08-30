@@ -2582,3 +2582,9 @@
 | Chromium | 在包含 `a990fa2` Skill 草稿取消回归修复的干净克隆中，`npm run test:e2e -- --workers=1` 为 108/108 通过。 |
 
 这证明本地开发检查点可在隔离干净环境安装、构建和验收；不代表外部部署已经发生。Docker/容器部署继续明确排除，未推送、未创建发布、版本号或 tag。原工作区仅保留用户明确不纳入本轮检查点的 `web/src/lib/localforage-storage.ts`、`99_PERCENT_ACCEPTANCE.md`、`artifacts/`、`canvas-agent/test-results/` 和 `design-qa.md`。
+
+## 199. Fork 推送审计（2026-08-30）
+
+用户明确授权将已验证的本地检查点推送到其 GitHub fork。推送目标限定为 `899ms/infinite-canvas-1` 的 `codex/frameflow-roadmap` 分支，远端名为 `fork`；不向上游 `basketikun/infinite-canvas`（远端名 `origin`）推送，不创建 Pull Request、发布、tag 或部署。
+
+本次推送包含第 196 至 198 节对应的 6 个本地提交，以及本节的文档审计提交。提交前复核工作树：`web/src/lib/localforage-storage.ts`、`99_PERCENT_ACCEPTANCE.md`、`artifacts/`、`canvas-agent/test-results/` 和 `design-qa.md` 均为用户资产或受保护改动，保持未暂存、未提交、未推送；Docker/容器部署继续明确排除。
