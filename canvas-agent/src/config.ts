@@ -4,11 +4,17 @@ import os from "node:os";
 import path from "node:path";
 
 export const DEFAULT_PORT = 17371;
-export const CONFIG_DIR = path.join(os.homedir(), ".infinite-canvas");
+export const CONFIG_DIR = resolveConfigDir();
 export const CONFIG_FILE = path.join(CONFIG_DIR, "canvas-agent.json");
 export const VERSION = readPackageVersion();
 export const AGENT_PROMPT = fs.readFileSync(new URL("../agent-instructions.md", import.meta.url), "utf8");
 const initializedWorkspaces = new Set<string>();
+
+/** 允许独立实例把本地配置与用户日常 Canvas Agent 隔离开。 */
+export function resolveConfigDir(override = process.env.CANVAS_AGENT_CONFIG_DIR) {
+    const configured = override?.trim();
+    return configured ? path.resolve(configured) : path.join(os.homedir(), ".infinite-canvas");
+}
 
 export type SiteWorkspaceConfig = { workspacePath: string; activeThreadId?: string; pinnedThreadIds?: string[] };
 export type CanvasAgentConfig = { url: string; token: string; origins?: string[]; workspace?: SiteWorkspaceConfig };

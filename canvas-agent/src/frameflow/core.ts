@@ -1,20 +1,38 @@
 import crypto from "node:crypto";
 
-import { AgentDecisionValidationError, buildAgentDecision, type AgentDecisionInput } from "./agent-decision.js";
 import { FrameFlowAssetStore, FrameFlowAssetValidationError } from "./asset-store.js";
+import { AutoRunCommandError, autoRunCommandEvents, type AutoRunTransitionCommand } from "./auto-run-command-events.js";
+import { AutoRunConfigurationError, autoRunConfigurationEvents, type AutoRunConfigurationCommand } from "./auto-run-configuration-events.js";
+import { autoRunFailureTransaction } from "./auto-run-failure-transaction.js";
+import { AutoRunIterationEventError, autoRunIterationEvents } from "./auto-run-iteration-events.js";
 import { autoRunTrajectory } from "./auto-run-trajectory.js";
+import { archiveBriefEvent, createBriefEvent, restoreBriefEvent, reviseBriefEvents } from "./brief-lifecycle-events.js";
 import { FrameFlowEventStore } from "./event-store.js";
-import { failedSlotEvents, generationCropPosition } from "./generation-plan.js";
+import { FeedbackCommandError, feedbackCommandEvents, type FeedbackCommand } from "./feedback-command-events.js";
+import { GenerationCommandError, generationCommandEvents, type GenerationCommand } from "./generation-command-events.js";
+import { generationCropPosition } from "./generation-plan.js";
+import { queueGenerationRun } from "./generation-run-events.js";
+import { executeImageGeneration } from "./generation-execution.js";
 import { eventHistory } from "./history.js";
+import { MachineReviewEventError, machineReviewEvents } from "./machine-review-events.js";
+import { executeMachineReview, MachineReviewExecutionError } from "./machine-review-execution.js";
 import { plannerPreferenceContext } from "./preference-context.js";
-import { buildPromptDiff } from "./prompt-diff.js";
+import { PromptApprovalError, promptApprovalEvents } from "./prompt-approval-events.js";
 import { promptLineage } from "./prompt-lineage.js";
+import { planPromptEvents, PromptPlanningError } from "./prompt-planning.js";
+import { PromptTranslationError, promptTranslationEvents } from "./prompt-translation-events.js";
+import { promptVersionEvents } from "./prompt-version-events.js";
+import { postCommitEffect } from "./post-commit-effect.js";
 import { canContinueExploration, currentBriefForRequirement, isBriefActive, requirementState } from "./query-projection.js";
+import { resolvePromptReferenceFiles } from "./reference-files.js";
 import { applyTransaction, emptyProjection, preferenceDna, type FrameFlowProjection } from "./reducer.js";
 import { staleRunRecoveryTransaction } from "./recovery.js";
+import { runFinalizationPlan } from "./run-finalization.js";
+import { persistFrameFlowTransaction } from "./transaction-persistence.js";
 import { transactionResult } from "./transaction-result.js";
-import { autoRunTrajectorySummaryDraftSchema, frameFlowCommandSchema, frameFlowQuerySchema, machineReviewResultSchema, promptPlanSchema, promptTranslationSchema, referenceImportInputSchema } from "./schemas.js";
-import { DEFAULT_CREATIVE_BRIEF_PURPOSE } from "./types.js";
+import { frameFlowCommandSchema, frameFlowQuerySchema, promptPlanSchema, referenceImportInputSchema } from "./schemas.js";
+import { TrajectorySummaryEventError, trajectorySummaryEvent } from "./trajectory-summary-events.js";
+import { TrajectorySummaryPlanError, trajectorySummaryPlan } from "./trajectory-summary-plan.js";
 import type {
     AutoRun,
     AutoRunListResult,
@@ -112,14 +130,7 @@ export class FrameFlowCore {
                 actor: { type: parsed.type === "round.plan" || parsed.type === "prompt.translate" || parsed.type === "run.start" || parsed.type === "run.retry" || parsed.type === "auto_run.advance" ? "agent" : "user" },
                 events,
             };
-            try {
-                await this.store.append(transaction);
-            } catch (error) {
-                await this.assets.quarantineImported(events.flatMap((event) => event.type === "image.registered" ? [event.image] : []), "journal_append_failed");
-                throw error;
-            }
-            this.remember(transaction);
-            await this.store.writeProjection(this.projection);
+            await this.persist(transaction, () => this.assets.quarantineImported(events.flatMap((event) => event.type === "image.registered" ? [event.image] : []), "journal_append_failed"));
             this.afterCommit(parsed, transaction);
             return transactionResult(transaction);
         });
@@ -154,14 +165,7 @@ export class FrameFlowCore {
                 actor: { type: "user" },
                 events: [{ type: "reference.imported", eventId: crypto.randomUUID(), reference }],
             };
-            try {
-                await this.store.append(transaction);
-            } catch (error) {
-                await this.assets.quarantineReferences([reference], "journal_append_failed");
-                throw error;
-            }
-            this.remember(transaction);
-            await this.store.writeProjection(this.projection);
+            await this.persist(transaction, () => this.assets.quarantineReferences([reference], "journal_append_failed"));
             return structuredClone(reference);
         });
         this.writeQueue = result.catch(() => undefined);
@@ -305,8 +309,7 @@ export class FrameFlowCore {
             for (const referenceId of command.input.referenceImageIds) {
                 if (!this.projection.references[referenceId] && !this.projection.images[referenceId]) throw new FrameFlowDomainError(`参考图尚未登记到 FrameFlow：${referenceId}`, 409);
             }
-            const briefId = crypto.randomUUID();
-            return [{ type: "brief.created", eventId, brief: { id: briefId, requirementId: briefId, revision: 1, ...command.input, purpose: command.input.purpose?.trim() || DEFAULT_CREATIVE_BRIEF_PURPOSE, profileId: briefId, createdAt: occurredAt } }];
+            return createBriefEvent({ input: command.input, briefId: crypto.randomUUID(), eventId, occurredAt });
         }
         if (command.type === "brief.revise") {
             const source = this.requireActiveBrief(command.briefId);
@@ -318,41 +321,7 @@ export class FrameFlowCore {
                 if (!this.projection.references[referenceId] && !this.projection.images[referenceId]) throw new FrameFlowDomainError(`参考图尚未登记到 FrameFlow：${referenceId}`, 409);
             }
             const briefId = crypto.randomUUID();
-            const revision = (source.revision ?? 1) + 1;
-            const events: FrameFlowEvent[] = [{
-                type: "brief.revised",
-                eventId,
-                sourceBriefId: source.id,
-                supersededAt: occurredAt,
-                brief: {
-                    id: briefId,
-                    requirementId: source.requirementId ?? source.id,
-                    revision,
-                    supersedesBriefId: source.id,
-                    ...command.input,
-                    purpose: command.input.purpose?.trim() || DEFAULT_CREATIVE_BRIEF_PURPOSE,
-                    profileId: briefId,
-                    createdAt: occurredAt,
-                },
-            }];
-            if (sourceAutoRun) {
-                events.push({
-                    type: "auto_run.created",
-                    eventId: crypto.randomUUID(),
-                    autoRun: {
-                        id: crypto.randomUUID(),
-                        name: `${sourceAutoRun.name} · 修订 ${revision}`.slice(0, 500),
-                        briefId,
-                        count: sourceAutoRun.count,
-                        maxIterations: sourceAutoRun.maxIterations,
-                        state: "paused",
-                        iteration: 0,
-                        createdAt: occurredAt,
-                        updatedAt: occurredAt,
-                    },
-                });
-            }
-            return events;
+            return reviseBriefEvents({ source, input: command.input, ...(sourceAutoRun ? { sourceAutoRun, autoRunId: crypto.randomUUID(), autoRunEventId: crypto.randomUUID() } : {}), briefId, eventId, occurredAt });
         }
         if (command.type === "brief.archive") {
             const requested = this.projection.briefs[command.briefId];
@@ -360,79 +329,47 @@ export class FrameFlowCore {
             const brief = currentBriefForRequirement(this.projection, requested);
             if (brief.archivedAt) throw new FrameFlowDomainError("该 Requirement 已归档", 409);
             this.assertRequirementIsNotRunning(brief);
-            return [{ type: "brief.archived", eventId, briefId: brief.id, requirementId: brief.requirementId ?? brief.id, archivedAt: occurredAt }];
+            return archiveBriefEvent({ brief, eventId, occurredAt });
         }
         if (command.type === "brief.restore") {
             const requested = this.projection.briefs[command.briefId];
             if (!requested) throw new FrameFlowDomainError("找不到 Creative Brief", 404);
             const brief = currentBriefForRequirement(this.projection, requested);
             if (!brief.archivedAt) throw new FrameFlowDomainError("该 Requirement 未归档", 409);
-            return [{ type: "brief.restored", eventId, briefId: brief.id, requirementId: brief.requirementId ?? brief.id, restoredAt: occurredAt }];
+            return restoreBriefEvent({ brief, eventId, occurredAt });
         }
         if (command.type === "auto_run.create") {
             this.requireActiveBrief(command.input.briefId, "找不到自动跑对应的方向");
-            const autoRun: AutoRun = { id: crypto.randomUUID(), ...command.input, state: "paused", iteration: 0, createdAt: occurredAt, updatedAt: occurredAt };
-            return [{ type: "auto_run.created", eventId, autoRun }];
+            return this.autoRunConfigurationEvents(command, undefined, occurredAt, eventId);
         }
         if (command.type === "auto_run.update") {
             const autoRun = this.projection.autoRuns[command.autoRunId];
             if (!autoRun) throw new FrameFlowDomainError("找不到自动跑", 404);
             this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
-            if (autoRun.state === "generating" || autoRun.state === "reviewing") throw new FrameFlowDomainError("请先停止自动跑，再修改名称、每轮数量或最大轮数", 409);
-            return [{ type: "auto_run.updated", eventId, autoRun: { ...structuredClone(autoRun), ...command.input, updatedAt: occurredAt } }];
+            return this.autoRunConfigurationEvents(command, autoRun, occurredAt, eventId);
         }
         if (command.type === "auto_run.stop") {
             const autoRun = this.projection.autoRuns[command.autoRunId];
             if (!autoRun) throw new FrameFlowDomainError("找不到自动跑", 404);
-            if (autoRun.state !== "generating" && autoRun.state !== "reviewing") throw new FrameFlowDomainError("只有正在生成或机器审图的自动跑可以停止", 409);
-            return [{ type: "auto_run.paused", eventId, autoRunId: autoRun.id, pausedAt: occurredAt, reason: "user_requested" }];
+            return this.autoRunTransitionEvents(command, autoRun, occurredAt, eventId);
         }
         if (command.type === "auto_run.start") {
             const autoRun = this.projection.autoRuns[command.autoRunId];
             if (!autoRun) throw new FrameFlowDomainError("找不到自动跑", 404);
             this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
-            if (!this.imageReviewer) throw new FrameFlowDomainError("FrameFlow Codex 机器审图尚未配置", 409);
-            if (autoRun.state === "generating" || autoRun.state === "reviewing") throw new FrameFlowDomainError("自动跑已经启动", 409);
-            const otherActive = Object.values(this.projection.autoRuns).find((item) => item.id !== autoRun.id && (item.state === "generating" || item.state === "reviewing"));
-            if (otherActive) throw new FrameFlowDomainError(`请先停止正在运行的“${otherActive.name}”`, 409);
-            const currentRun = autoRun.currentRunId ? this.projection.runs[autoRun.currentRunId] : undefined;
-            if (currentRun && (currentRun.status === "queued" || currentRun.status === "running" || currentRun.status === "retrying")) {
-                return [{ type: "auto_run.updated", eventId, autoRun: { ...structuredClone(autoRun), state: "generating", updatedAt: occurredAt } }];
-            }
-            if (currentRun?.imageIds.length) {
-                const missingReview = currentRun.imageIds.some((imageId) => !this.projection.machineReviewsByImage[imageId]);
-                if (missingReview) return [{ type: "auto_run.review_started", eventId, autoRunId: autoRun.id, runId: currentRun.id, startedAt: occurredAt }];
-                if (autoRun.iteration >= autoRun.maxIterations) return [{ type: "auto_run.completed", eventId, autoRunId: autoRun.id, runId: currentRun.id, completedAt: occurredAt }];
-            }
-            return [{ type: "auto_run.updated", eventId, autoRun: planningAutoRun(autoRun, occurredAt) }];
+            return this.autoRunTransitionEvents(command, autoRun, occurredAt, eventId);
         }
         if (command.type === "auto_run.extend") {
             const autoRun = this.projection.autoRuns[command.autoRunId];
             if (!autoRun) throw new FrameFlowDomainError("找不到自动跑", 404);
             this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
-            if (autoRun.state !== "completed") throw new FrameFlowDomainError("只有已完成的自动跑可以继续探索", 409);
-            if (!canContinueExploration(this.projection, autoRun)) throw new FrameFlowDomainError("最后一轮没有可继续探索的 vary 机器审图，或已达到 20 轮上限", 409);
-            const maxIterations = autoRun.maxIterations + command.additionalIterations;
-            if (maxIterations > 20) throw new FrameFlowDomainError("自动跑最多可累计 20 轮", 409);
-            const otherActive = Object.values(this.projection.autoRuns).find((item) => item.id !== autoRun.id && (item.state === "generating" || item.state === "reviewing"));
-            if (otherActive) throw new FrameFlowDomainError(`请先停止正在运行的“${otherActive.name}”`, 409);
-            return [{
-                type: "auto_run.extended", eventId, autoRunId: autoRun.id,
-                previousMaxIterations: autoRun.maxIterations,
-                maxIterations,
-                additionalIterations: command.additionalIterations,
-                extendedAt: occurredAt,
-            }];
+            return this.autoRunTransitionEvents(command, autoRun, occurredAt, eventId);
         }
         if (command.type === "auto_run.advance") {
             const autoRun = this.projection.autoRuns[command.autoRunId];
             if (!autoRun) throw new FrameFlowDomainError("找不到自动跑", 404);
             this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
-            if (autoRun.state !== "reviewing" || !autoRun.currentRunId) throw new FrameFlowDomainError("当前没有正在自动审图的轮次", 409);
-            const run = this.projection.runs[autoRun.currentRunId];
-            if (!run?.imageIds.length || run.imageIds.some((imageId) => !this.projection.machineReviewsByImage[imageId])) throw new FrameFlowDomainError("Codex 尚未完成本轮机器审图", 409);
-            if (autoRun.iteration >= autoRun.maxIterations) return [{ type: "auto_run.completed", eventId, autoRunId: autoRun.id, runId: run.id, completedAt: occurredAt }];
-            return [{ type: "auto_run.updated", eventId, autoRun: planningAutoRun(autoRun, occurredAt) }];
+            return this.autoRunTransitionEvents(command, autoRun, occurredAt, eventId);
         }
         if (command.type === "round.plan") {
             const brief = this.requireActiveBrief(command.briefId);
@@ -442,87 +379,52 @@ export class FrameFlowCore {
             const prompt = this.projection.prompts[command.promptVersionId];
             if (!prompt) throw new FrameFlowDomainError("找不到 Prompt Version", 404);
             this.requireActiveBrief(prompt.briefId);
-            const existing = prompt.translations?.[command.language];
-            if (existing) return [{ type: "prompt.translation_created", eventId, promptVersionId: prompt.id, language: command.language, translation: structuredClone(existing) }];
-            if (!this.planner?.translate) throw new FrameFlowDomainError("FrameFlow Codex 中文翻译尚未配置", 409);
-            const translation = promptTranslationSchema.parse(await this.planner.translate({ prompt: structuredClone(prompt), language: command.language }));
-            return [{ type: "prompt.translation_created", eventId, promptVersionId: prompt.id, language: command.language, translation }];
+            return await this.promptTranslationEvents(prompt, command.language, eventId);
         }
         if (command.type === "prompt.approve") {
             const prompt = this.projection.prompts[command.promptVersionId];
             if (!prompt) throw new FrameFlowDomainError("找不到 Prompt Version", 404);
             this.requireActiveBrief(prompt.briefId);
-            if (prompt.status !== "draft") throw new FrameFlowDomainError("只有 draft Prompt 可以批准", 409);
-            for (const [field, values] of Object.entries(command.locks)) {
-                if (values?.some((value) => !prompt.fields[field as keyof typeof prompt.fields].includes(value))) throw new FrameFlowDomainError(`锁定项不属于 Prompt 字段：${field}`, 409);
-            }
-            return [{ type: "prompt.approved", eventId, promptVersionId: prompt.id, locks: structuredClone(command.locks) }];
+            return this.promptApprovalEvents(prompt, command.locks, eventId);
         }
         if (command.type === "run.start") {
             const prompt = this.projection.prompts[command.promptVersionId];
             if (!prompt) throw new FrameFlowDomainError("找不到 Prompt Version", 404);
             this.requireActiveBrief(prompt.briefId);
-            if (prompt.status !== "approved" && prompt.status !== "used") throw new FrameFlowDomainError("只有已批准 Prompt 才能开始生成", 409);
-            if (!this.imageGenerator) throw new FrameFlowDomainError("FrameFlow Codex ImageGen 尚未配置", 409);
-            const runId = crypto.randomUUID();
-            const slotIds = Array.from({ length: command.count }, () => crypto.randomUUID());
-            return [
-                { type: "run.queued", eventId, run: { id: runId, briefId: prompt.briefId, promptVersionId: prompt.id, status: "queued", requestedCount: command.count, slotIds, imageIds: [], createdAt: occurredAt } },
-                { type: "run.started", eventId: crypto.randomUUID(), runId, startedAt: occurredAt },
-            ];
+            return this.generationCommandEvents(command, occurredAt, eventId, { prompt });
         }
         if (command.type === "run.retry") {
             const run = this.projection.runs[command.runId];
             if (!run) throw new FrameFlowDomainError("找不到 Generation Run", 404);
             this.requireActiveBrief(run.briefId);
-            if (!this.imageGenerator) throw new FrameFlowDomainError("FrameFlow Codex ImageGen 尚未配置", 409);
-            if (new Set(command.failedSlotIds).size !== command.failedSlotIds.length) throw new FrameFlowDomainError("失败 slot 不可重复", 409);
-            for (const slotId of command.failedSlotIds) {
-                const slot = this.projection.slots[slotId];
-                if (!slot || slot.runId !== run.id) throw new FrameFlowDomainError(`slot 不属于该 Run：${slotId}`, 409);
-                if (slot.status !== "failed") throw new FrameFlowDomainError(`只有失败 slot 可以重试：${slotId}`, 409);
-            }
-            if (!this.projection.prompts[run.promptVersionId]) throw new FrameFlowDomainError("找不到 Run 对应的 Prompt Version", 404);
-            return [{ type: "run.retry_started", eventId, runId: run.id, slotIds: [...command.failedSlotIds], startedAt: occurredAt }];
+            return this.generationCommandEvents(command, occurredAt, eventId, { run, prompt: this.projection.prompts[run.promptVersionId] });
         }
         if (command.type === "run.cancel") {
             const run = this.projection.runs[command.runId];
             if (!run) throw new FrameFlowDomainError("找不到 Generation Run", 404);
-            if (run.status !== "queued" && run.status !== "running" && run.status !== "retrying") throw new FrameFlowDomainError("只有生成中的 Run 可以取消", 409);
-            return [{ type: "run.cancelled", eventId, runId: run.id, cancelledAt: occurredAt, reason: "user_requested" }];
+            return this.generationCommandEvents(command, occurredAt, eventId, { run });
         }
         if (command.type === "image.delete") {
             const image = this.projection.images[command.imageId];
             if (!image) throw new FrameFlowDomainError("找不到 Image Asset", 404);
             this.requireImageRequirementActive(image.id);
-            if (image.status === "permanently_deleted") throw new FrameFlowDomainError("图片已经删除", 409);
-            return [{ type: "image.permanently_deleted", eventId, imageId: image.id }];
+            return this.feedbackCommandEvents(command, image, eventId);
         }
-        const { imageId, feedback } = command;
+        const { imageId } = command;
         this.requireImageRequirementActive(imageId);
-        if (this.projection.images[imageId]?.status === "permanently_deleted") throw new FrameFlowDomainError("已删除图片不能继续反馈", 409);
-        if (feedback.kind === "rating") return [{ type: "feedback.rating_set", eventId, imageId, rating: feedback.rating }];
-        if (feedback.kind === "comment") return [{ type: "feedback.comment_set", eventId, imageId, comment: feedback.comment }];
-        if (feedback.kind === "soft_delete") return [{ type: "image.soft_deleted", eventId, imageId, reason: feedback.reason, ...(feedback.note ? { note: feedback.note } : {}) }];
-        if (feedback.kind === "restore") return [{ type: "image.restored", eventId, imageId }];
-        return [{ type: "preference.feature_reviewed", eventId, imageId, featureId: feedback.featureId, decision: feedback.decision, ...(feedback.value ? { value: feedback.value } : {}) }];
+        return this.feedbackCommandEvents(command, this.projection.images[imageId], eventId);
     }
 
     private async autoRunIterationEvents(autoRun: AutoRun, occurredAt: string, eventId: string): Promise<FrameFlowEvent[]> {
         if (!this.imageGenerator) throw new FrameFlowDomainError("FrameFlow Codex ImageGen 尚未配置", 409);
         const brief = this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
         const planned = await this.planRoundEvents(brief, brief.strategy, occurredAt, eventId, autoRun.id);
-        const promptEvent = planned.find((event) => event.type === "prompt.version_created");
-        if (!promptEvent || promptEvent.type !== "prompt.version_created") throw new FrameFlowDomainError("自动跑未生成 Prompt Version", 500);
-        const runId = crypto.randomUUID();
-        const slotIds = Array.from({ length: autoRun.count }, () => crypto.randomUUID());
-        return [
-            ...planned,
-            { type: "prompt.approved", eventId: crypto.randomUUID(), promptVersionId: promptEvent.promptVersion.id, locks: {} },
-            { type: "run.queued", eventId: crypto.randomUUID(), run: { id: runId, briefId: brief.id, promptVersionId: promptEvent.promptVersion.id, status: "queued", requestedCount: autoRun.count, slotIds, imageIds: [], createdAt: occurredAt } },
-            { type: "run.started", eventId: crypto.randomUUID(), runId, startedAt: occurredAt },
-            { type: "auto_run.iteration_started", eventId: crypto.randomUUID(), autoRunId: autoRun.id, iteration: autoRun.iteration + 1, runId, startedAt: occurredAt },
-        ];
+        try {
+            return autoRunIterationEvents({ planned, autoRun, occurredAt, createId: crypto.randomUUID });
+        } catch (error) {
+            if (error instanceof AutoRunIterationEventError) throw new FrameFlowDomainError(error.message, 500);
+            throw error;
+        }
     }
 
     private async planRoundEvents(brief: import("./types.js").CreativeBrief, strategy: import("./types.js").CreativeBrief["strategy"], occurredAt: string, eventId: string, autoRunId?: string): Promise<FrameFlowEvent[]> {
@@ -531,38 +433,13 @@ export class FrameFlowCore {
         const machineReviews = autoRunId
             ? Object.values(this.projection.machineReviewsByImage).filter((review) => review.autoRunId === autoRunId).slice(-40)
             : [];
-        const parsedPlan = promptPlanSchema.parse(await this.planner.plan({ brief: structuredClone(brief), strategy, preference, machineReviews: structuredClone(machineReviews) }));
-        const { decision: decisionPlan, ...plan } = parsedPlan;
-        if (preference.sampleSize > 0 && !decisionPlan) throw new FrameFlowDomainError("Codex Planner 未说明如何处置 Preference DNA 证据", 500);
         const previous = Object.values(this.projection.prompts).filter((prompt) => prompt.briefId === brief.id).at(-1);
-        const promptVersionId = crypto.randomUUID();
-        const decision = this.agentDecision({
-            id: crypto.randomUUID(),
-            briefId: brief.id,
-            promptVersionId,
-            profileId: brief.profileId,
-            summary: decisionPlan?.summary || plan.reason,
-            plannedEvidence: decisionPlan?.evidence || [],
-            preference,
-            createdAt: occurredAt,
-        });
-        const promptVersion: PromptVersion = {
-            id: promptVersionId,
-            ...(previous ? { parentId: previous.id } : {}),
-            briefId: brief.id,
-            revision: (previous?.revision || 0) + 1,
-            status: "draft",
-            ...plan,
-            diff: buildPromptDiff(previous?.fields, plan.fields, plan.reason, decision, preference),
-            decisionId: decision.id,
-            referenceImageIds: [...brief.referenceImageIds],
-            locks: {},
-            createdAt: occurredAt,
-        };
-        return [
-            { type: "prompt.version_created", eventId, promptVersion },
-            { type: "agent.decision_recorded", eventId: crypto.randomUUID(), decision },
-        ];
+        try {
+            return await planPromptEvents({ planner: this.planner, brief, strategy, preference, machineReviews, ...(previous ? { previous } : {}), occurredAt, promptEventId: eventId, createId: crypto.randomUUID });
+        } catch (error) {
+            if (error instanceof PromptPlanningError) throw new FrameFlowDomainError(error.message, error.statusCode);
+            throw error;
+        }
     }
 
     private recordAutoRunFailure(autoRunId: string, message: string): Promise<void> {
@@ -570,31 +447,78 @@ export class FrameFlowCore {
             await this.ready;
             if (!this.projection.autoRuns[autoRunId]) return;
             const failedAt = new Date().toISOString();
-            const transaction: FrameFlowTransaction = {
-                schemaVersion: 1,
-                sequence: this.projection.sequence + 1,
-                transactionId: crypto.randomUUID(),
-                idempotencyKey: `system:auto-run-failure:${autoRunId}:${crypto.randomUUID()}`,
-                occurredAt: failedAt,
-                actor: { type: "system" },
-                events: [{ type: "auto_run.failed", eventId: crypto.randomUUID(), autoRunId, error: message.slice(0, 500), failedAt }],
-            };
-            await this.store.append(transaction);
-            this.remember(transaction);
-            await this.store.writeProjection(this.projection);
+            const transaction = autoRunFailureTransaction({ autoRunId, message, sequence: this.projection.sequence, occurredAt: failedAt, createId: crypto.randomUUID });
+            await this.persist(transaction);
         });
         this.writeQueue = result.catch(() => undefined);
         return result;
     }
 
     private referenceFiles(prompt: PromptVersion) {
-        return prompt.referenceImageIds.map((imageId) => {
-            const reference = this.projection.references[imageId];
-            if (reference) return this.assets.absoluteReferencePath(reference);
-            const image = this.projection.images[imageId];
-            if (!image) throw new FrameFlowDomainError(`参考图尚未登记到 FrameFlow：${imageId}`, 409);
-            return this.assets.absolutePath(image);
+        return resolvePromptReferenceFiles({
+            referenceImageIds: prompt.referenceImageIds,
+            references: this.projection.references,
+            images: this.projection.images,
+            referencePath: (reference) => this.assets.absoluteReferencePath(reference),
+            imagePath: (image) => this.assets.absolutePath(image),
+            missing: (imageId) => new FrameFlowDomainError(`参考图尚未登记到 FrameFlow：${imageId}`, 409),
         });
+    }
+
+    private autoRunTransitionEvents(command: AutoRunTransitionCommand, autoRun: AutoRun, occurredAt: string, eventId: string) {
+        const currentRun = autoRun.currentRunId ? this.projection.runs[autoRun.currentRunId] : undefined;
+        const otherActiveAutoRun = Object.values(this.projection.autoRuns).find((item) => item.id !== autoRun.id && (item.state === "generating" || item.state === "reviewing"));
+        try {
+            return autoRunCommandEvents({ command, autoRun, ...(currentRun ? { currentRun } : {}), ...(otherActiveAutoRun ? { otherActiveAutoRun } : {}), imageReviewerConfigured: Boolean(this.imageReviewer), machineReviewsByImage: this.projection.machineReviewsByImage, canContinueExploration: canContinueExploration(this.projection, autoRun), occurredAt, eventId });
+        } catch (error) {
+            if (error instanceof AutoRunCommandError) throw new FrameFlowDomainError(error.message, error.statusCode);
+            throw error;
+        }
+    }
+
+    private autoRunConfigurationEvents(command: AutoRunConfigurationCommand, autoRun: AutoRun | undefined, occurredAt: string, eventId: string) {
+        try {
+            return autoRunConfigurationEvents({ command, ...(autoRun ? { autoRun } : {}), eventId, occurredAt, createId: crypto.randomUUID });
+        } catch (error) {
+            if (error instanceof AutoRunConfigurationError) throw new FrameFlowDomainError(error.message, error.statusCode);
+            throw error;
+        }
+    }
+
+    private generationCommandEvents(command: GenerationCommand, occurredAt: string, eventId: string, input: { prompt?: PromptVersion; run?: import("./types.js").GenerationRun }) {
+        try {
+            return generationCommandEvents({ command, ...input, imageGeneratorConfigured: Boolean(this.imageGenerator), slots: this.projection.slots, occurredAt, eventId, createId: crypto.randomUUID });
+        } catch (error) {
+            if (error instanceof GenerationCommandError) throw new FrameFlowDomainError(error.message, error.statusCode);
+            throw error;
+        }
+    }
+
+    private promptApprovalEvents(prompt: PromptVersion, locks: import("./types.js").PromptLocks, eventId: string) {
+        try {
+            return promptApprovalEvents({ prompt, locks, eventId });
+        } catch (error) {
+            if (error instanceof PromptApprovalError) throw new FrameFlowDomainError(error.message, error.statusCode);
+            throw error;
+        }
+    }
+
+    private feedbackCommandEvents(command: FeedbackCommand, image: FrameFlowImageAsset | undefined, eventId: string) {
+        try {
+            return feedbackCommandEvents({ command, ...(image ? { image } : {}), eventId });
+        } catch (error) {
+            if (error instanceof FeedbackCommandError) throw new FrameFlowDomainError(error.message, error.statusCode);
+            throw error;
+        }
+    }
+
+    private async promptTranslationEvents(prompt: PromptVersion, language: import("./types.js").PromptDisplayLanguage, eventId: string) {
+        try {
+            return await promptTranslationEvents({ prompt, language, eventId, ...(this.planner?.translate ? { translate: this.planner.translate } : {}) });
+        } catch (error) {
+            if (error instanceof PromptTranslationError) throw new FrameFlowDomainError(error.message, error.statusCode);
+            throw error;
+        }
     }
 
     private assertRequirementIsNotRunning(brief: CreativeBrief) {
@@ -650,47 +574,26 @@ export class FrameFlowCore {
         return plannerPreferenceContext(this.projection, briefId);
     }
 
-    private agentDecision(input: AgentDecisionInput) {
-        try {
-            return buildAgentDecision(input);
-        } catch (error) {
-            if (error instanceof AgentDecisionValidationError) throw new FrameFlowDomainError(error.message, 500);
-            throw error;
-        }
-    }
-
     private afterCommit(command: FrameFlowCommand, transaction: FrameFlowTransaction) {
-        if (command.type === "run.cancel") {
-            this.activeRuns.get(command.runId)?.abort();
+        const autoRun = command.type === "auto_run.start" || command.type === "auto_run.extend" || command.type === "auto_run.advance" ? this.projection.autoRuns[command.autoRunId] : undefined;
+        const effect = postCommitEffect({ command, events: transaction.events, ...(autoRun ? { autoRun } : {}) });
+        if (!effect) return;
+        if (effect.type === "run.abort") {
+            this.activeRuns.get(effect.runId)?.abort();
             return;
         }
-        if (command.type === "run.start" || command.type === "auto_run.start" || command.type === "auto_run.extend" || command.type === "auto_run.advance") {
-            const reviewStarted = transaction.events.find((event) => event.type === "auto_run.review_started");
-            if (reviewStarted?.type === "auto_run.review_started") {
-                this.launchMachineReview(reviewStarted.autoRunId, reviewStarted.runId);
-                return;
-            }
-            const queued = transaction.events.find((event) => event.type === "run.queued");
-            if (!queued || queued.type !== "run.queued") {
-                if (command.type === "auto_run.start" || command.type === "auto_run.extend" || command.type === "auto_run.advance") {
-                    const autoRun = this.projection.autoRuns[command.autoRunId];
-                    if (autoRun?.state === "generating" && !autoRun.currentRunId) this.launchAutoRunPlanning(autoRun.id);
-                }
-                return;
-            }
-            const prompt = this.projection.prompts[queued.run.promptVersionId];
-            const brief = prompt ? this.projection.briefs[prompt.briefId] : undefined;
-            if (prompt && brief) this.launchGeneration({ prompt, aspectRatio: brief.aspectRatio, cropPosition: generationCropPosition(prompt), runId: queued.run.id, slotIds: queued.run.slotIds, referenceFiles: this.referenceFiles(prompt) });
+        if (effect.type === "machine_review.launch") {
+            this.launchMachineReview(effect.autoRunId, effect.runId);
             return;
         }
-        if (command.type === "run.retry") {
-            const retry = transaction.events.find((event) => event.type === "run.retry_started");
-            if (!retry || retry.type !== "run.retry_started") return;
-            const run = this.projection.runs[retry.runId];
-            const prompt = run ? this.projection.prompts[run.promptVersionId] : undefined;
-            const brief = prompt ? this.projection.briefs[prompt.briefId] : undefined;
-            if (run && prompt && brief) this.launchGeneration({ prompt, aspectRatio: brief.aspectRatio, cropPosition: generationCropPosition(prompt), runId: run.id, slotIds: retry.slotIds, referenceFiles: this.referenceFiles(prompt) });
+        if (effect.type === "auto_run_planning.launch") {
+            this.launchAutoRunPlanning(effect.autoRunId);
+            return;
         }
+        const promptVersionId = effect.type === "generation.retry" ? this.projection.runs[effect.runId]?.promptVersionId : effect.promptVersionId;
+        const prompt = promptVersionId ? this.projection.prompts[promptVersionId] : undefined;
+        const brief = prompt ? this.projection.briefs[prompt.briefId] : undefined;
+        if (prompt && brief) this.launchGeneration({ prompt, aspectRatio: brief.aspectRatio, cropPosition: generationCropPosition(prompt), runId: effect.runId, slotIds: effect.slotIds, referenceFiles: this.referenceFiles(prompt) });
     }
 
     private launchAutoRunPlanning(autoRunId: string) {
@@ -727,9 +630,7 @@ export class FrameFlowCore {
                 actor: { type: "agent" },
                 events,
             };
-            await this.store.append(transaction);
-            this.remember(transaction);
-            await this.store.writeProjection(this.projection);
+            await this.persist(transaction);
             const queued = transaction.events.find((event) => event.type === "run.queued");
             if (!queued || queued.type !== "run.queued") return;
             const prompt = this.projection.prompts[queued.run.promptVersionId];
@@ -771,50 +672,20 @@ export class FrameFlowCore {
         referenceFiles: string[];
         controller: AbortController;
     }) {
-        let generatedFiles: string[];
-        try {
-            generatedFiles = await this.imageGenerator!.generate({
-                prompt: structuredClone(input.prompt),
-                count: input.slotIds.length,
-                aspectRatio: input.aspectRatio,
-                cropPosition: input.cropPosition,
-                referenceFiles: input.referenceFiles,
-                signal: input.controller.signal,
-            });
-        } catch {
-            if (input.controller.signal.aborted) return;
-            const error: GenerationError = { code: "IMAGEGEN_FAILED", message: "Codex ImageGen 生成失败，可重试该 slot", retryable: true };
-            await this.enqueueRunFinalization({ ...input, images: [], error });
-            return;
-        }
-
-        if (input.controller.signal.aborted) {
-            await this.assets.quarantineGenerated(generatedFiles, { reason: "generation_cancelled", runId: input.runId, promptVersionId: input.prompt.id });
-            return;
-        }
-
-        let images: FrameFlowImageAsset[];
-        try {
-            images = await this.assets.importGenerated(generatedFiles.slice(0, input.slotIds.length), {
-                runId: input.runId,
-                promptVersionId: input.prompt.id,
-                aspectRatio: input.aspectRatio,
-                cropPosition: input.cropPosition,
-                createdAt: new Date().toISOString(),
-            });
-        } catch {
-            await this.assets.quarantineGenerated(generatedFiles, { reason: input.controller.signal.aborted ? "generation_cancelled" : "asset_import_failed", runId: input.runId, promptVersionId: input.prompt.id });
-            if (input.controller.signal.aborted) return;
-            const error: GenerationError = { code: "IMAGE_VALIDATION_FAILED", message: "ImageGen 返回的图片未通过 PNG 校验，可重试该 slot", retryable: true };
-            await this.enqueueRunFinalization({ ...input, images: [], error });
-            return;
-        }
-
-        if (generatedFiles.length > input.slotIds.length) {
-            await this.assets.quarantineGenerated(generatedFiles.slice(input.slotIds.length), { reason: "orphan_recovery", runId: input.runId, promptVersionId: input.prompt.id });
-        }
-        images.forEach((image) => image.referenceImageIds = [...input.prompt.referenceImageIds]);
-        await this.enqueueRunFinalization({ ...input, images });
+        const execution = await executeImageGeneration({
+            generator: this.imageGenerator!,
+            assets: this.assets,
+            prompt: input.prompt,
+            aspectRatio: input.aspectRatio,
+            cropPosition: input.cropPosition,
+            runId: input.runId,
+            slotIds: input.slotIds,
+            referenceFiles: input.referenceFiles,
+            signal: input.controller.signal,
+            now: () => new Date().toISOString(),
+        });
+        if (execution.type === "discarded") return;
+        await this.enqueueRunFinalization({ ...input, images: execution.images, ...(execution.error ? { error: execution.error } : {}) });
     }
 
     private enqueueRunFinalization(input: {
@@ -832,26 +703,9 @@ export class FrameFlowCore {
                 return;
             }
 
-            const events: FrameFlowEvent[] = input.images.flatMap((image, index): FrameFlowEvent[] => [
-                { type: "run.slot_succeeded", eventId: crypto.randomUUID(), runId: input.runId, slotId: input.slotIds[index]!, imageId: image.id },
-                { type: "image.registered", eventId: crypto.randomUUID(), image },
-            ]);
-            const failedIds = input.slotIds.slice(input.images.length);
-            if (failedIds.length) {
-                const error = input.error || { code: "IMAGEGEN_MISSING_RESULT" as const, message: "ImageGen 未返回该 slot 的图片，可单独重试", retryable: true };
-                events.push(...failedSlotEvents(input.runId, failedIds, error));
-            }
-            const previousSucceeded = run.slotIds.filter((slotId) => this.projection.slots[slotId]?.status === "succeeded").length;
-            const totalSucceeded = previousSucceeded + input.images.length;
-            const status = totalSucceeded === run.requestedCount ? "succeeded" : totalSucceeded > 0 ? "partially_succeeded" : "failed";
             const occurredAt = new Date().toISOString();
-            events.push({ type: "run.completed", eventId: crypto.randomUUID(), runId: input.runId, status, completedAt: occurredAt });
             const autoRun = Object.values(this.projection.autoRuns).find((item) => item.currentRunId === input.runId && (item.state === "generating" || item.state === "paused"));
-            if (autoRun?.state === "generating") {
-                events.push(totalSucceeded > 0
-                    ? { type: "auto_run.review_started", eventId: crypto.randomUUID(), autoRunId: autoRun.id, runId: input.runId, startedAt: occurredAt }
-                    : { type: "auto_run.failed", eventId: crypto.randomUUID(), autoRunId: autoRun.id, error: "本轮没有生成可审核图片，请检查失败项后重新启动", failedAt: occurredAt });
-            }
+            const finalization = runFinalizationPlan({ run, slots: this.projection.slots, slotIds: input.slotIds, images: input.images, ...(input.error ? { error: input.error } : {}), ...(autoRun ? { autoRun } : {}), occurredAt });
             const transaction: FrameFlowTransaction = {
                 schemaVersion: 1,
                 sequence: this.projection.sequence + 1,
@@ -859,17 +713,10 @@ export class FrameFlowCore {
                 idempotencyKey: `system:run-finalize:${input.runId}:${crypto.randomUUID()}`,
                 occurredAt,
                 actor: { type: "system" },
-                events,
+                events: finalization.events,
             };
-            try {
-                await this.store.append(transaction);
-            } catch (error) {
-                await this.assets.quarantineImported(input.images, "journal_append_failed");
-                throw error;
-            }
-            this.remember(transaction);
-            await this.store.writeProjection(this.projection);
-            if (autoRun && totalSucceeded > 0) this.launchMachineReview(autoRun.id, input.runId);
+            await this.persist(transaction, () => this.assets.quarantineImported(input.images, "journal_append_failed"));
+            if (finalization.reviewAutoRunId) this.launchMachineReview(finalization.reviewAutoRunId, input.runId);
         });
         this.writeQueue = result.catch(() => undefined);
         return result;
@@ -904,43 +751,45 @@ export class FrameFlowCore {
         const brief = prompt ? this.projection.briefs[prompt.briefId] : undefined;
         if (!autoRun || !run || !prompt || !brief || !run.imageIds.length) throw new FrameFlowDomainError("机器审图缺少本轮图片或血缘", 409);
         this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
-        const pendingImages = run.imageIds.filter((imageId) => !this.projection.machineReviewsByImage[imageId]).map((imageId) => {
-            const image = this.projection.images[imageId];
-            if (!image) throw new FrameFlowDomainError(`找不到机器审图图片：${imageId}`, 404);
-            return { imageId, filePath: this.assets.absolutePath(image) };
-        });
-        if (!pendingImages.length) return autoRun.state === "reviewing" && autoRun.iteration < autoRun.maxIterations;
-        const rawReviews = await this.imageReviewer!.review({
-            brief: structuredClone(brief),
-            prompt: structuredClone(prompt),
-            autoRunId,
-            runId,
-            iteration: autoRun.iteration,
-            images: pendingImages,
-        });
-        const reviews = rawReviews.map((review) => machineReviewResultSchema.parse(review));
-        const expectedIds = pendingImages.map((image) => image.imageId);
-        const actualIds = reviews.map((review) => review.imageId);
-        if (new Set(actualIds).size !== actualIds.length || expectedIds.some((imageId) => !actualIds.includes(imageId)) || actualIds.some((imageId) => !expectedIds.includes(imageId))) {
-            throw new FrameFlowDomainError("Codex 机器审图没有逐张覆盖本轮图片", 500);
+        let execution: Awaited<ReturnType<typeof executeMachineReview>>;
+        try {
+            execution = await executeMachineReview({
+                reviewer: this.imageReviewer!,
+                brief,
+                prompt,
+                autoRun,
+                run,
+                images: this.projection.images,
+                reviewedImageIds: new Set(Object.keys(this.projection.machineReviewsByImage)),
+                imagePath: (image) => this.assets.absolutePath(image),
+            });
+        } catch (error) {
+            if (error instanceof MachineReviewExecutionError) throw new FrameFlowDomainError(error.message, error.statusCode);
+            throw error;
         }
-
+        if (execution.type === "already_reviewed") return autoRun.state === "reviewing" && autoRun.iteration < autoRun.maxIterations;
         const result = this.writeQueue.catch(() => undefined).then(async () => {
             this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
             this.assertRequirementLifecycleUnchanged(brief.id, lifecycleToken);
             const occurredAt = new Date().toISOString();
             const current = this.projection.autoRuns[autoRunId];
-            const events: FrameFlowEvent[] = reviews
-                .filter((review) => !this.projection.machineReviewsByImage[review.imageId])
-                .map((review) => ({
-                    type: "machine_review.recorded",
-                    eventId: crypto.randomUUID(),
-                    review: { ...review, autoRunId, runId, iteration: autoRun.iteration, createdAt: occurredAt },
-                }));
-            if (!events.length) return current?.state === "reviewing" && current.iteration < current.maxIterations;
-            if (current?.currentRunId === runId && current.state === "reviewing" && current.iteration >= current.maxIterations) {
-                events.push({ type: "auto_run.completed", eventId: crypto.randomUUID(), autoRunId, runId, completedAt: occurredAt });
+            if (!current) return false;
+            let events: FrameFlowEvent[];
+            try {
+                events = machineReviewEvents({
+                    reviews: execution.reviews,
+                    pendingImageIds: execution.pendingImageIds,
+                    existingReviewImageIds: new Set(Object.keys(this.projection.machineReviewsByImage)),
+                    autoRun: current,
+                    runId,
+                    occurredAt,
+                    createId: crypto.randomUUID,
+                });
+            } catch (error) {
+                if (error instanceof MachineReviewEventError) throw new FrameFlowDomainError(error.message, 500);
+                throw error;
             }
+            if (!events.length) return current.state === "reviewing" && current.iteration < current.maxIterations;
             const transaction: FrameFlowTransaction = {
                 schemaVersion: 1,
                 sequence: this.projection.sequence + 1,
@@ -950,9 +799,7 @@ export class FrameFlowCore {
                 actor: { type: "agent" },
                 events,
             };
-            await this.store.append(transaction);
-            this.remember(transaction);
-            await this.store.writeProjection(this.projection);
+            await this.persist(transaction);
             const updated = this.projection.autoRuns[autoRunId];
             return updated?.state === "reviewing" && updated.iteration < updated.maxIterations;
         });
@@ -974,26 +821,25 @@ export class FrameFlowCore {
         this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
         const lifecycleToken = this.requirementLifecycleToken(autoRun.briefId);
         const trajectory = autoRunTrajectory(this.projection, this.transactions, autoRunId, (message, statusCode) => new FrameFlowDomainError(message, statusCode));
-        const reviewedRounds = trajectory.rounds.filter((round) => round.images.length > 0 && round.images.every((item) => item.machineReview));
-        if (reviewedRounds.length < 2) throw new FrameFlowDomainError("至少需要两轮完整 Machine Review 才能生成跨轮总结", 409);
-        const throughIteration = reviewedRounds.at(-1)!.iteration;
         const existing = this.projection.trajectorySummariesByAutoRun[autoRunId];
-        if (!force && existing?.throughIteration === throughIteration) return structuredClone(existing);
-        const draft = autoRunTrajectorySummaryDraftSchema.parse(await this.trajectorySummarizer.summarize({
-            brief: structuredClone(trajectory.brief),
-            rounds: reviewedRounds.map((round) => ({
-                iteration: round.iteration,
-                prompt: structuredClone(round.prompt),
-                machineReviews: round.images.flatMap((item) => item.machineReview ? [structuredClone(item.machineReview)] : []),
-            })),
-        }));
-        const iterationSet = new Set(reviewedRounds.map((round) => round.iteration));
-        const evidenceIterations = [...draft.improved, ...draft.recurring].flatMap((item) => item.evidenceIterations);
-        if (!iterationSet.has(draft.bestIteration) || evidenceIterations.some((iteration) => !iterationSet.has(iteration))) {
-            throw new FrameFlowDomainError("Codex 跨轮总结引用了不存在的轮次", 500);
+        let plan: ReturnType<typeof trajectorySummaryPlan>;
+        try {
+            plan = trajectorySummaryPlan({ trajectory, ...(existing ? { existing } : {}), force });
+        } catch (error) {
+            if (error instanceof TrajectorySummaryPlanError) throw new FrameFlowDomainError(error.message, error.statusCode);
+            throw error;
         }
+        if (plan.type === "cached") return plan.summary;
+        const draft = await this.trajectorySummarizer.summarize(plan.input);
         const createdAt = new Date().toISOString();
-        const summary: AutoRunTrajectorySummary = { ...draft, autoRunId, throughIteration, createdAt };
+        let summary: AutoRunTrajectorySummary;
+        let event: Extract<FrameFlowEvent, { type: "auto_run.trajectory_summarized" }>;
+        try {
+            ({ summary, event } = trajectorySummaryEvent({ autoRunId, throughIteration: plan.throughIteration, reviewedIterations: plan.reviewedIterations, createdAt, draft, eventId: crypto.randomUUID() }));
+        } catch (error) {
+            if (error instanceof TrajectorySummaryEventError) throw new FrameFlowDomainError(error.message, 500);
+            throw error;
+        }
         const result = this.writeQueue.catch(() => undefined).then(async () => {
             this.requireActiveBrief(autoRun.briefId, "找不到自动跑对应的方向");
             this.assertRequirementLifecycleUnchanged(autoRun.briefId, lifecycleToken);
@@ -1001,14 +847,12 @@ export class FrameFlowCore {
                 schemaVersion: 1,
                 sequence: this.projection.sequence + 1,
                 transactionId: crypto.randomUUID(),
-                idempotencyKey: `system:trajectory-summary:${autoRunId}:${throughIteration}:${crypto.randomUUID()}`,
+                idempotencyKey: `system:trajectory-summary:${autoRunId}:${plan.throughIteration}:${crypto.randomUUID()}`,
                 occurredAt: createdAt,
                 actor: { type: "agent" },
-                events: [{ type: "auto_run.trajectory_summarized", eventId: crypto.randomUUID(), summary }],
+                events: [event],
             };
-            await this.store.append(transaction);
-            this.remember(transaction);
-            await this.store.writeProjection(this.projection);
+            await this.persist(transaction);
             return structuredClone(summary);
         });
         this.writeQueue = result.catch(() => undefined);
@@ -1030,17 +874,21 @@ export class FrameFlowCore {
         await this.store.writeProjection(this.projection);
     }
 
+    private persist(transaction: FrameFlowTransaction, onAppendFailure?: () => Promise<unknown>) {
+        return persistFrameFlowTransaction({
+            transaction,
+            append: (item) => this.store.append(item),
+            remember: (item) => this.remember(item),
+            currentProjection: () => this.projection,
+            writeProjection: (projection) => this.store.writeProjection(projection),
+            ...(onAppendFailure ? { onAppendFailure } : {}),
+        });
+    }
+
     private remember(transaction: FrameFlowTransaction) {
         this.transactions.push(structuredClone(transaction));
         this.transactionsByKey.set(transaction.idempotencyKey, structuredClone(transaction));
         this.projection = applyTransaction(this.projection, transaction);
     }
 
-}
-
-function planningAutoRun(autoRun: AutoRun, updatedAt: string): AutoRun {
-    const next = { ...structuredClone(autoRun), state: "generating" as const, lastStartedAt: updatedAt, updatedAt };
-    delete next.currentRunId;
-    delete next.lastError;
-    return next;
 }

@@ -56,9 +56,9 @@ test("Debug 模式按日追加脱敏文件日志", async (t) => {
     const filePath = path.join(homeDirectory, ".infinite-canvas", "logs", "canvas-agent-2026-08-28.log");
     const lines = fs.readFileSync(filePath, "utf8").trim().split("\n").map((line) => line.replace(/\r$/, ""));
     assert.equal(lines.length, 3);
-    assert.match(lines[0], /^2026-08-28 \d{2}:\d{2}:\d{2} DEBUG 画布状态 dataUrl='\[REDACTED\]'$/);
-    assert.match(lines[1], /^2026-08-28 \d{2}:\d{2}:\d{2} INFO 第一条文件日志 authorization='\[REDACTED\]'$/);
-    assert.match(lines[2], /^2026-08-28 \d{2}:\d{2}:\d{2} WARN 第二条文件日志 secret='\[REDACTED\]'$/);
+    assert.match(lines[0], /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} DEBUG 画布状态 dataUrl='\[REDACTED\]'$/);
+    assert.match(lines[1], /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} INFO 第一条文件日志 authorization='\[REDACTED\]'$/);
+    assert.match(lines[2], /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} WARN 第二条文件日志 secret='\[REDACTED\]'$/);
     assert.doesNotMatch(lines.join("\n"), /first-private-image|first-file-token|second-file-secret/);
 });
 

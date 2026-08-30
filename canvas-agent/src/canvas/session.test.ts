@@ -62,6 +62,32 @@ test("画布写操作只发送给当前激活网页", async (t) => {
     assert.deepEqual(await result, { ok: true });
 });
 
+test("canvas_generate_image 创建图片流程并立即触发当前画布生成", async (t) => {
+    const session = new CanvasSession();
+    const client = connect(session, "first");
+    t.after(() => client.close());
+    session.updateState(snapshot("canvas-first"), "first");
+    session.activateClient("first");
+
+    const result = session.callTool("canvas_generate_image", { prompt: "柔和自然光下的产品静物", referenceNodeIds: ["reference-1"] });
+    const call = client.event("tool_call");
+    const input = field(call, "input") as Record<string, unknown>;
+    const ops = input.ops as Array<Record<string, unknown>>;
+
+    assert.equal(field(call, "name"), "canvas_apply_ops");
+    assert.equal(ops.filter((op) => op.type === "add_node").length, 2);
+    assert.equal(ops.some((op) => op.type === "connect_nodes" && op.fromNodeId === "reference-1"), true);
+    assert.deepEqual(ops.find((op) => op.type === "run_generation"), {
+        type: "run_generation",
+        nodeId: ops.find((op) => op.type === "select_nodes")?.ids?.[0],
+        mode: "image",
+        prompt: `@[node:${ops.find((op) => op.type === "add_node" && op.nodeType === "text")?.id}]\n@[node:reference-1]`,
+    });
+
+    session.resolveResult("first", { requestId: String(field(call, "requestId")), result: { ok: true } });
+    assert.deepEqual(await result, { ok: true });
+});
+
 test("当前 turn 的图片附件可在发起标签页画布创建图片节点", async (t) => {
     const session = new CanvasSession();
     const first = connect(session, "first");

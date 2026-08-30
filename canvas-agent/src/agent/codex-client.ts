@@ -8,6 +8,7 @@ import { VERSION } from "../config.js";
 import { logger } from "../utils/logger.js";
 import { field, type JsonRecord } from "../utils/value.js";
 import { codexEventHistory, type CodexEventHistory } from "./codex-event-history.js";
+import { generatedImagePaths } from "./codex-image-result.js";
 import type { CodexNotificationParams, CodexPlanUpdate, CodexReasoningEffort, CodexRequestMethod, CodexRequestParams, CodexRequestResult, CodexSkillSelector, CodexTurnInput } from "./codex-protocol.js";
 import type { AgentEmit, AgentPermissionMode } from "./types.js";
 
@@ -809,18 +810,6 @@ function itemCacheKey(scope: { threadId: string; turnId: string; itemId: string 
 
 function turnCacheKey(threadId: string, turnId: string) {
     return `${threadId}\0${turnId}`;
-}
-
-/** 从 ImageGen 事件中提取 Windows 或 POSIX 绝对图片路径。 */
-function generatedImagePaths(value: unknown, result = new Set<string>()) {
-    if (typeof value === "string") {
-        const candidate = value.trim();
-        if ((path.isAbsolute(candidate) || /^[A-Za-z]:[\\/]/.test(candidate)) && /\.(?:avif|gif|jpe?g|png|webp)$/i.test(candidate)) result.add(candidate);
-        return [...result];
-    }
-    if (Array.isArray(value)) value.forEach((item) => generatedImagePaths(item, result));
-    else if (value && typeof value === "object") Object.values(value).forEach((item) => generatedImagePaths(item, result));
-    return [...result];
 }
 
 /** 生成 Codex 调用 Canvas Agent MCP 的启动命令。 */
