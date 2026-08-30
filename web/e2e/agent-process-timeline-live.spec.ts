@@ -23,6 +23,23 @@ const history = [
             output: "全部通过",
         },
     },
+    {
+        id: "command-2",
+        itemId: "command-2",
+        ...scope,
+        role: "tool" as const,
+        title: "执行命令",
+        text: "git status --short",
+        detail: {
+            kind: "command",
+            status: "completed",
+            rows: [
+                { label: "工作目录", value: "F:/isolated/workspace" },
+                { label: "退出状态", value: "0" },
+            ],
+            output: " M src/demo.ts",
+        },
+    },
     { id: "file-1", itemId: "file-1", ...scope, role: "tool" as const, title: "修改文件", text: "已修改 1 个文件：src/demo.ts", detail: { kind: "file", status: "completed", files: [{ path: "src/demo.ts", action: "修改" }] } },
     { id: "search-1", itemId: "search-1", ...scope, role: "tool" as const, title: "搜索资料", text: "搜索：FrameFlow", detail: { kind: "search", status: "completed", rows: [{ label: "关键词", value: "FrameFlow" }] } },
     { id: "canvas-1", itemId: "canvas-1", ...scope, role: "tool" as const, title: "画布操作", text: "已完成", detail: { kind: "tool", status: "completed", rows: [{ label: "操作内容", value: "调整视口" }] } },
@@ -129,6 +146,7 @@ test("实时过程事件保持中文时间线，并在完成后从历史恢复",
             explanation: "按步骤完成",
         });
         source.emit("agent_event", { type: "item.completed", ...eventScope, item: { id: "command-1", type: "command_execution", command: "pnpm test", cwd: "F:/isolated/workspace", exitCode: 0, durationMs: 1200, aggregatedOutput: "全部通过" } });
+        source.emit("agent_event", { type: "item.completed", ...eventScope, item: { id: "command-2", type: "command_execution", command: "git status --short", cwd: "F:/isolated/workspace", exitCode: 0, aggregatedOutput: " M src/demo.ts" } });
         source.emit("agent_event", { type: "item.completed", ...eventScope, item: { id: "file-1", type: "file_change", changes: [{ path: "src/demo.ts", kind: "edit" }] } });
         source.emit("agent_event", { type: "item.completed", ...eventScope, item: { id: "search-1", type: "web_search", action: { type: "search", query: "FrameFlow" } } });
         source.emit("agent_event", { type: "item.completed", ...eventScope, item: { id: "canvas-1", type: "mcp_tool_call", tool: "canvas_apply_ops", arguments: { ops: [{ type: "set_viewport", viewport: { x: 0, y: 0, zoom: 1 } }] } } });
@@ -136,8 +154,12 @@ test("实时过程事件保持中文时间线，并在完成后从历史恢复",
     await expect(page.getByText("思考摘要", { exact: true })).toBeVisible();
     await expect(page.getByText("任务进度", { exact: true })).toBeVisible();
     await expect(page.getByText("1/2", { exact: true })).toBeVisible();
-    await expect(page.getByText("已执行 1 条命令", { exact: true })).toBeVisible();
+    const commandSummary = page.getByText("已执行 2 条命令", { exact: true });
+    await expect(commandSummary).toBeVisible();
+    await commandSummary.click();
     await expect(page.getByTitle("pnpm test")).toBeVisible();
+    const gitStatus = page.getByTitle("git status --short");
+    await expect(gitStatus).toBeVisible();
     await expect(page.getByText("修改文件", { exact: true })).toBeVisible();
     await expect(page.getByText("搜索资料", { exact: true })).toBeVisible();
     await expect(page.getByText("画布操作", { exact: true })).toBeVisible();
@@ -145,6 +167,8 @@ test("实时过程事件保持中文时间线，并在完成后从历史恢复",
     await page.getByText("思考摘要", { exact: true }).click();
     await expect(page.getByText("查找需求", { exact: true })).toBeVisible();
     await expect(page.getByText("已完成分析", { exact: true })).toHaveCount(0);
+    await gitStatus.click();
+    await expect(page.getByText(" M src/demo.ts", { exact: true })).toBeVisible();
 
     await page.evaluate((scope) => {
         const source = (window as typeof window & { __agentEventSources: Array<{ emit: (type: string, payload: unknown) => void }> }).__agentEventSources.at(-1)!;
@@ -171,4 +195,6 @@ test("实时过程事件保持中文时间线，并在完成后从历史恢复",
     await expect(page.getByText("2/2", { exact: true })).toBeVisible();
     await expect(page.getByText("已修改 1 个文件：src/demo.ts", { exact: true })).toBeVisible();
     await expect(page.getByText("搜索：FrameFlow", { exact: true })).toBeVisible();
+    await expect(commandSummary).toBeVisible();
+    await expect(page.getByTitle("git status --short")).toBeVisible();
 });

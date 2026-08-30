@@ -2,6 +2,21 @@ import { expect, test } from "@playwright/test";
 
 const firstThread = { id: "thread-history-first", name: "第一段对话", preview: "第一段摘要", status: "idle", createdAt: 1_788_001_000, updatedAt: 1_788_001_100 };
 const secondThread = { id: "thread-history-second", name: "第二段对话", preview: "第二段摘要", status: "idle", createdAt: 1_788_002_000, updatedAt: 1_788_002_100 };
+const secondThreadMessages = Array.from({ length: 60 }, (_, index) => ({
+    id: `message-second-${index + 1}`,
+    itemId: `message-second-${index + 1}`,
+    threadId: secondThread.id,
+    turnId: `turn-second-${index + 1}`,
+    role: index % 2 ? "assistant" : "user",
+    title: index % 2 ? "Codex" : undefined,
+    text: index === 58 ? "请改写 @文本1 $product-grid" : `第二段对话历史 ${String(index + 1).padStart(3, "0")}`,
+    ...(index === 58
+        ? {
+              canvasReferences: [{ nodeId: "history-text", label: "文本1", title: "历史产品说明", kind: "text", text: "历史中的原始产品说明" }],
+              skill: { name: "product-grid", path: "F:/isolated/workspace/.agents/skills/product-grid/SKILL.md", displayName: "产品九宫格" },
+          }
+        : {}),
+}));
 
 test("Agent 历史卡片可直接恢复，并支持全选删除当前对话", async ({ page }) => {
     let remainingThreads = [firstThread, secondThread];
@@ -35,14 +50,16 @@ test("Agent 历史卡片可直接恢复，并支持全选删除当前对话", as
         }
         if (path === `/agent/codex/threads/${firstThread.id}` || path === `/agent/codex/threads/${secondThread.id}`) {
             const thread = path.endsWith(secondThread.id) ? secondThread : firstThread;
+            const threadMessages =
+                thread.id === secondThread.id ? secondThreadMessages : [{ id: `message-${thread.id}`, itemId: `message-${thread.id}`, threadId: thread.id, turnId: `turn-${thread.id}`, role: "assistant", title: "Codex", text: `${thread.name}的历史消息` }];
             await route.fulfill({
                 json: {
                     ok: true,
                     workspace: { workspacePath: "F:/isolated/workspace", activeThreadId },
                     conversation,
                     thread,
-                    messages: [{ id: `message-${thread.id}`, itemId: `message-${thread.id}`, threadId: thread.id, turnId: `turn-${thread.id}`, role: "assistant", title: "Codex", text: `${thread.name}的历史消息` }],
-                    settledTurnIds: [`turn-${thread.id}`],
+                    messages: threadMessages,
+                    settledTurnIds: threadMessages.map((message) => message.turnId),
                     historyReady: true,
                 },
             });
@@ -93,7 +110,11 @@ test("Agent 历史卡片可直接恢复，并支持全选删除当前对话", as
     await expect(page.getByRole("button", { name: "进入" })).toHaveCount(0);
     await page.getByRole("button", { name: "第二段对话 第二段摘要" }).click();
     await expect(page.getByRole("tab", { name: "对话" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByText("第二段对话的历史消息", { exact: true })).toBeVisible();
+    await expect(page.getByText(/^请改写/)).toBeVisible();
+    await expect(page.getByLabel(/历史产品说明/)).toBeVisible();
+    await expect(page.getByTitle("F:/isolated/workspace/.agents/skills/product-grid/SKILL.md")).toBeVisible();
+    const restoredList = page.locator("div.thin-scrollbar.h-full.select-text.overflow-y-auto");
+    await expect.poll(() => restoredList.evaluate((element) => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeLessThanOrEqual(2);
 
     await page.getByRole("tab", { name: "历史" }).click();
     await page.getByRole("checkbox").first().check();

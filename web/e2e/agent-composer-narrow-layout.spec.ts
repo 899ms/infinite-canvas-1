@@ -39,31 +39,34 @@ async function openAgentPanel(page: Page, width: number) {
         await route.fulfill({ json: { ok: true, workspace: { activeThreadId: conversation.threadId }, conversation, data: [] } });
     });
     await page.goto("/");
-    await page.evaluate(async ({ initialWidth, initialConversation }) => {
-        const { useAgentStore } = await import("/src/stores/use-agent-store.ts");
-        useAgentStore.setState({
-            width: initialWidth,
-            url: "http://127.0.0.1:4173",
-            token: "agent-composer-layout-token",
-            connected: true,
-            enabled: false,
-            panelOpen: false,
-            panelMounted: false,
-            panelClosing: false,
-            activeTab: "chat",
-            activeThreadId: initialConversation.threadId,
-            conversation: initialConversation,
-            prompt: "",
-            messages: [],
-            threads: [],
-            eventLogs: [],
-            loadingThreads: false,
-            sending: false,
-            waiting: false,
-            confirmTools: false,
-            permissionMode: "request",
-        });
-    }, { initialWidth: width, initialConversation: conversation });
+    await page.evaluate(
+        async ({ initialWidth, initialConversation }) => {
+            const { useAgentStore } = await import("/src/stores/use-agent-store.ts");
+            useAgentStore.setState({
+                width: initialWidth,
+                url: "http://127.0.0.1:4173",
+                token: "agent-composer-layout-token",
+                connected: true,
+                enabled: false,
+                panelOpen: false,
+                panelMounted: false,
+                panelClosing: false,
+                activeTab: "chat",
+                activeThreadId: initialConversation.threadId,
+                conversation: initialConversation,
+                prompt: "",
+                messages: [],
+                threads: [],
+                eventLogs: [],
+                loadingThreads: false,
+                sending: false,
+                waiting: false,
+                confirmTools: false,
+                permissionMode: "request",
+            });
+        },
+        { initialWidth: width, initialConversation: conversation },
+    );
     await page.getByRole("button", { name: "打开 Agent" }).click();
     await expect(page.getByTestId("agent-panel-header")).toBeVisible();
 }

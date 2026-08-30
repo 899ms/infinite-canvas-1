@@ -92,16 +92,19 @@ test("Agent 用户、助手、附件与错误消息在双主题下保持可读�
     await page.getByRole("button", { name: "打开 Agent" }).click();
 
     const user = page.getByText("第 1 段用户长文本", { exact: false });
-    const assistant = page.getByText("商品建议", { exact: true });
+    const assistant = page.getByRole("heading", { name: "商品建议", exact: true });
+    const emphasis = page.getByText("柔和侧光", { exact: true });
     const error = page.getByText("模型暂时不可用，请稍后重试。", { exact: true });
     await expect(user).toBeVisible();
     await expect(assistant).toBeVisible();
+    await expect(emphasis).toBeVisible();
     await expect(error).toBeVisible();
     await expect(page.getByAltText("参考图一.png")).toBeVisible();
     await expect(page.getByAltText("参考图二.png")).toBeVisible();
     await expect(user.evaluate((element) => element.closest("div.flex")?.className || "")).resolves.toContain("justify-end");
     await expect(user.evaluate((element) => element.parentElement?.className || "")).resolves.not.toMatch(/(?:rounded|bg-)/);
     await expect(assistant.evaluate((element) => element.closest("div.flex")?.className || "")).resolves.toContain("justify-start");
+    await expect(emphasis.evaluate((element) => Number.parseInt(getComputedStyle(element).fontWeight, 10))).resolves.toBeGreaterThanOrEqual(600);
     await expect(error.evaluate((element) => getComputedStyle(element).color)).resolves.toBe("rgb(220, 38, 38)");
 
     for (const toggle of ["切换到浅色主题", "切换到深色主题"]) {
@@ -110,6 +113,7 @@ test("Agent 用户、助手、附件与错误消息在双主题下保持可读�
         await expect(page.locator("html").evaluate((element) => element.scrollWidth <= element.clientWidth)).resolves.toBe(true);
         await expect(user).toBeVisible();
         await expect(assistant).toBeVisible();
+        await expect(emphasis).toBeVisible();
         await expect(error).toBeVisible();
     }
 });

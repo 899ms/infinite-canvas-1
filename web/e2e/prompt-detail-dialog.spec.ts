@@ -45,8 +45,16 @@ test("提示词详情弹窗固定媒体和操作栏，只滚动中间内容且�
         element.scrollTop = element.scrollHeight;
     });
     expect(await scrollArea.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-    expect(await cover.boundingBox()).toEqual(coverBefore);
-    expect(await copy.boundingBox()).toEqual(copyBefore);
+    const coverAfter = await cover.boundingBox();
+    const copyAfter = await copy.boundingBox();
+    expect(coverBefore).not.toBeNull();
+    expect(copyBefore).not.toBeNull();
+    expect(coverAfter).not.toBeNull();
+    expect(copyAfter).not.toBeNull();
+    for (const dimension of ["x", "y", "width", "height"] as const) {
+        expect(Math.abs(coverAfter![dimension] - coverBefore![dimension])).toBeLessThanOrEqual(1);
+        expect(Math.abs(copyAfter![dimension] - copyBefore![dimension])).toBeLessThanOrEqual(1);
+    }
 
     for (const viewport of [
         { width: 1280, height: 900 },

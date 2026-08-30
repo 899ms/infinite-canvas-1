@@ -116,6 +116,24 @@ test("Agent 流式回复在完成事件后自动同步完整历史", async ({ pa
     });
     await expect(page.getByText("这是一条完整同步回复。", { exact: true })).toBeVisible();
     await expect(page.getByText("流式片段", { exact: true })).toHaveCount(0);
+    await page.evaluate(() => {
+        const source = (window as typeof window & { __agentEventSources: Array<{ emit: (type: string, payload: unknown) => void }> }).__agentEventSources.at(-1)!;
+        const scope = { thread_id: "thread-realtime", turn_id: "turn-realtime" };
+        source.emit("agent_event", { type: "turn.completed", ...scope, status: "completed" });
+        source.emit("codex_state", { busy: false, threadId: "thread-realtime", turnId: "turn-realtime" });
+    });
+    await expect(page.getByText("这是一条完整同步回复。", { exact: true })).toHaveCount(1);
+    await expect
+        .poll(() =>
+            page.evaluate(async () => {
+                const { useAgentStore } = await import("/src/stores/use-agent-store.ts");
+                return useAgentStore.getState().messages.map((item) => ({ role: item.role, text: item.text, turnId: item.turnId }));
+            }),
+        )
+        .toEqual([
+            { role: "user", text: "请完整同步回复", turnId: "turn-realtime" },
+            { role: "assistant", text: "这是一条完整同步回复。", turnId: "turn-realtime" },
+        ]);
 
     await page.evaluate(async () => {
         const { useAgentStore } = await import("/src/stores/use-agent-store.ts");

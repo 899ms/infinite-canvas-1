@@ -32,7 +32,17 @@ test("Agent 新对话立即清空旧消息，并将首次发送绑定到新会�
             return;
         }
         if (path === "/agent/codex/threads/thread-old") {
-            await route.fulfill({ json: { ok: true, workspace: { workspacePath: "F:/isolated/workspace", activeThreadId: "thread-old" }, conversation: oldConversation, thread: oldThread, messages: [{ id: "message-old", itemId: "message-old", threadId: "thread-old", turnId: "turn-old", role: "assistant", title: "Codex", text: "旧会话消息" }], settledTurnIds: ["turn-old"], historyReady: true } });
+            await route.fulfill({
+                json: {
+                    ok: true,
+                    workspace: { workspacePath: "F:/isolated/workspace", activeThreadId: "thread-old" },
+                    conversation: oldConversation,
+                    thread: oldThread,
+                    messages: [{ id: "message-old", itemId: "message-old", threadId: "thread-old", turnId: "turn-old", role: "assistant", title: "Codex", text: "旧会话消息" }],
+                    settledTurnIds: ["turn-old"],
+                    historyReady: true,
+                },
+            });
             return;
         }
         await route.fulfill({ json: { ok: true, data: [], errors: [] } });

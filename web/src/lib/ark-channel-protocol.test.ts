@@ -11,13 +11,27 @@ import { createVideoGenerationTask, pollVideoGenerationTask } from "@/services/a
 afterEach(() => vi.clearAllMocks());
 
 function arkConfig(imageModel = "任意生图模型", videoModel = "任意视频模型") {
-    const channel = createModelChannel({ id: "ark", apiFormat: "ark", apiKey: "ark-key", models: [{ name: imageModel, capability: "image" }, { name: videoModel, capability: "video" }] });
+    const channel = createModelChannel({
+        id: "ark",
+        apiFormat: "ark",
+        apiKey: "ark-key",
+        models: [
+            { name: imageModel, capability: "image" },
+            { name: videoModel, capability: "video" },
+        ],
+    });
     return { ...defaultConfig, channels: [channel], model: encodeChannelModel(channel.id, imageModel), imageModel: encodeChannelModel(channel.id, imageModel), videoModel: encodeChannelModel(channel.id, videoModel), apiKey: "", baseUrl: "" };
 }
 
 describe("火山方舟渠道协议", () => {
     it("选择方舟协议时使用方舟默认地址，且不依赖模型名称", () => {
-        const channel = createModelChannel({ apiFormat: "ark", models: [{ name: "任意生图模型", capability: "image" }, { name: "任意视频模型", capability: "video" }] });
+        const channel = createModelChannel({
+            apiFormat: "ark",
+            models: [
+                { name: "任意生图模型", capability: "image" },
+                { name: "任意视频模型", capability: "video" },
+            ],
+        });
         const config = { ...defaultConfig, channels: [channel], model: encodeChannelModel(channel.id, "任意视频模型"), videoModel: encodeChannelModel(channel.id, "任意视频模型") };
 
         expect(channel.baseUrl).toBe(defaultBaseUrlForApiFormat("ark"));
@@ -53,11 +67,7 @@ describe("火山方舟渠道协议", () => {
         const task = await createVideoGenerationTask(config, "测试视频");
         await expect(pollVideoGenerationTask(config, task)).resolves.toEqual({ status: "pending" });
 
-        expect(axiosMocks.post).toHaveBeenCalledWith(
-            "https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks",
-            expect.objectContaining({ model: "任意视频模型", resolution: "720p" }),
-            expect.anything(),
-        );
+        expect(axiosMocks.post).toHaveBeenCalledWith("https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks", expect.objectContaining({ model: "任意视频模型", resolution: "720p" }), expect.anything());
         expect(axiosMocks.get).toHaveBeenCalledWith("https://ark.cn-beijing.volces.com/api/v3/contents/generations/tasks/task-1", expect.anything());
     });
 });

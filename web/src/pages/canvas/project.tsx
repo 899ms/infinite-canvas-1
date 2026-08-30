@@ -14,6 +14,8 @@ import { uploadMediaFile } from "@/services/file-storage";
 import { nanoid } from "nanoid";
 import { getDataUrlByteSize, readImageMeta } from "@/lib/image-utils";
 import { shouldAllowNativeCopy } from "@/lib/canvas/canvas-copy-shortcut";
+import { CanvasGenerationRequestRegistry } from "@/lib/canvas/canvas-generation-requests";
+import { settleCancelledGenerationNodes } from "@/lib/canvas/canvas-generation-state";
 import { generateInteriorCanvasCandidates } from "@/lib/canvas/interior-canvas-generation";
 import { generateInteriorCanvasPrompt } from "@/lib/canvas/interior-canvas-prompt-generation";
 import { applyCodexCanvasImageSlotFailure, applyCodexCanvasImageSlotSuccess, finalizeCodexCanvasImageGeneration, initializeCodexCanvasImageGenerationNodes, prepareCodexCanvasImageReferences, requestCodexCanvasImages, runCodexCanvasImageSlots } from "@/lib/canvas/canvas-image-generation";
@@ -112,13 +114,6 @@ type CanvasHistoryEntry = Pick<CanvasClipboard, "nodes" | "connections"> & {
     activeChatId: string | null;
     backgroundMode: CanvasBackgroundMode;
     showImageInfo: boolean;
-};
-
-type CanvasGenerationRequest = {
-    targetNodeId: string;
-    originNodeId: string;
-    runningNodeId: string;
-    controller: AbortController;
 };
 
 const VIDEO_NODE_MAX_WIDTH = 420;
@@ -255,7 +250,7 @@ function InfiniteCanvasPage() {
     const connectionTargetNodeIdRef = useRef(connectionTargetNodeId);
     const selectionBoxRef = useRef(selectionBox);
     const pendingConnectionCreateRef = useRef(pendingConnectionCreate);
-    const generationRequestsRef = useRef(new Map<string, CanvasGenerationRequest>());
+    const generationRequestsRef = useRef(new CanvasGenerationRequestRegistry());
 
     const createHistoryEntry = useCallback(
         (): CanvasHistoryEntry => ({
@@ -277,35 +272,18 @@ function InfiniteCanvasPage() {
     );
 
     const startGenerationRequest = useCallback((targetNodeId: string, originNodeId: string, runningId = originNodeId, controller = new AbortController()) => {
-        const previous = generationRequestsRef.current.get(targetNodeId);
-        if (previous?.controller !== controller) previous?.controller.abort();
-        generationRequestsRef.current.set(targetNodeId, { targetNodeId, originNodeId, runningNodeId: runningId, controller });
-        return controller;
+        return generationRequestsRef.current.start(targetNodeId, originNodeId, runningId, controller);
     }, []);
 
     const finishGenerationRequest = useCallback((targetNodeId: string, controller: AbortController) => {
-        const request = generationRequestsRef.current.get(targetNodeId);
-        if (request?.controller === controller) generationRequestsRef.current.delete(targetNodeId);
+        generationRequestsRef.current.finish(targetNodeId, controller);
     }, []);
 
     const stopGenerationByRunningId = useCallback((runningId: string) => {
-        const affectedNodeIds = new Set<string>();
-        generationRequestsRef.current.forEach((request) => {
-            if (request.runningNodeId !== runningId) return;
-            request.controller.abort();
-            generationRequestsRef.current.delete(request.targetNodeId);
-            affectedNodeIds.add(request.targetNodeId);
-            affectedNodeIds.add(request.originNodeId);
-        });
+        const affectedNodeIds = new Set(generationRequestsRef.current.cancelByRunningId(runningId));
         setRunningNodeId((current) => (current === runningId ? null : current));
         if (!affectedNodeIds.size) return;
-        setNodes((prev) =>
-            prev.map((node) =>
-                affectedNodeIds.has(node.id) && node.metadata?.status === NODE_STATUS_LOADING
-                    ? { ...node, metadata: { ...node.metadata, status: NODE_STATUS_IDLE, errorDetails: undefined, images: node.metadata.images?.map((image) => (image.status === NODE_STATUS_LOADING ? { ...image, status: NODE_STATUS_ERROR, errorDetails: t("common.requestCanceled") } : image)) } }
-                    : node,
-            ),
-        );
+        setNodes((prev) => settleCancelledGenerationNodes(prev, affectedNodeIds, t("common.requestCanceled")));
     }, [t]);
 
     const confirmStopGeneration = useCallback(

@@ -221,7 +221,7 @@ test("FrameFlow 各预览入口可操作且不改写审核反馈", async ({ page
         await preview.getByRole("button", { name: action, exact: true }).click();
         await expect(preview).toBeVisible();
     }
-    await preview.locator("button").first().click();
+    await preview.getByRole("button", { name: "close", exact: true }).click();
     await expect(preview).toBeHidden();
     await expect(page.getByAltText("第 1 轮图片 1")).toBeVisible();
 
@@ -231,7 +231,7 @@ test("FrameFlow 各预览入口可操作且不改写审核反馈", async ({ page
     await expect(preview).toContainText("1 / 2");
     await preview.getByRole("button", { name: "right", exact: true }).click();
     await expect(preview.locator("img")).toHaveAttribute("src", /image-b/);
-    await preview.locator("button").first().click();
+    await preview.getByRole("button", { name: "close", exact: true }).click();
     await expect(preview).toBeHidden();
     await expect(page.getByAltText("生成结果 1")).toBeVisible();
 
@@ -242,7 +242,7 @@ test("FrameFlow 各预览入口可操作且不改写审核反馈", async ({ page
     await inspector.getByAltText("当前审核图片").click();
     preview = page.getByRole("dialog");
     await expect(preview.locator("img")).toHaveAttribute("src", /image-a/);
-    await preview.locator("button").first().click();
+    await preview.getByRole("button", { name: "close", exact: true }).click();
     await expect(preview).toBeHidden();
     await expect(inspector.getByText("5 星", { exact: true })).toBeVisible();
     await expect(inspector.getByText("保留这一版的光影层次", { exact: true })).toBeVisible();
@@ -257,17 +257,17 @@ test("FrameFlow 各预览入口可操作且不改写审核反馈", async ({ page
     await preview.getByRole("button", { name: "right", exact: true }).click();
     await expect(preview).toContainText("2 / 4");
     await expect(preview.locator("img")).toHaveAttribute("src", /image-b/);
-    await preview.locator("button").first().click();
+    await preview.getByRole("button", { name: "close", exact: true }).click();
     await expect(preview).toBeHidden();
     await page.getByAltText("规避方向图片 image-b").click();
     preview = page.getByRole("dialog");
     await expect(preview.locator("img")).toHaveAttribute("src", /image-b/);
-    await preview.locator("button").first().click();
+    await preview.getByRole("button", { name: "close", exact: true }).click();
     await expect(preview).toBeHidden();
     await page.getByAltText("Comment 证据 image-a").click();
     preview = page.getByRole("dialog");
     await expect(preview.locator("img")).toHaveAttribute("src", /image-a/);
-    await preview.locator("button").first().click();
+    await preview.getByRole("button", { name: "close", exact: true }).click();
     await expect(preview).toBeHidden();
     await expect(page.getByText("保留这一版的光影层次", { exact: true })).toHaveCount(2);
     expect(commands).toEqual([]);

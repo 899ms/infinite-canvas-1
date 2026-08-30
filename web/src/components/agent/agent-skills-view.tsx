@@ -223,6 +223,7 @@ export function AgentSkillsView({ clientId }: { clientId: string }) {
         }
     };
     const codexBusy = sending || waiting;
+    const draftActionsDisabled = !connected || !clientId || Boolean(generatingSource) || codexBusy;
     const createMenu: MenuProps = {
         items: [
             {
@@ -280,8 +281,8 @@ export function AgentSkillsView({ clientId }: { clientId: string }) {
                         <Tooltip title={t("agent.skillManager.reload")}>
                             <Button type="text" shape="circle" className="!h-8 !w-8 !min-w-8" aria-label={t("agent.skillManager.reloadSkill")} disabled={!connected || loading} icon={<RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />} onClick={() => void refresh()} />
                         </Tooltip>
-                        <Dropdown trigger={["click"]} placement="bottomRight" open={createMenuOpen} onOpenChange={setCreateMenuOpen} disabled={!connected || !clientId || Boolean(generatingSource)} menu={createMenu}>
-                            <Button type="text" className="!h-8 !px-2" aria-haspopup="menu" aria-expanded={createMenuOpen} disabled={!connected || !clientId} loading={Boolean(generatingSource)} icon={<Plus className="size-4" />}>
+                        <Dropdown trigger={["click"]} placement="bottomRight" open={createMenuOpen} onOpenChange={setCreateMenuOpen} disabled={draftActionsDisabled} menu={createMenu}>
+                            <Button type="text" className="!h-8 !px-2" aria-haspopup="menu" aria-expanded={createMenuOpen} disabled={draftActionsDisabled} loading={Boolean(generatingSource)} icon={<Plus className="size-4" />}>
                                 {t("agent.skillManager.createSkill")} <ChevronDown className="size-3.5 opacity-60" />
                             </Button>
                         </Dropdown>
@@ -333,11 +334,11 @@ export function AgentSkillsView({ clientId }: { clientId: string }) {
                                             {t(skill.enabled ? "agent.skillManager.enabled" : "agent.skillManager.disabled")}
                                         </label>
                                         <div className="flex items-center gap-0.5">
-                                            <Button type="text" size="small" disabled={!connected || !skill.enabled || Boolean(busySkill)} icon={selected ? <Check className="size-3.5" /> : <Sparkles className="size-3.5" />} onClick={() => useSkill(skill)}>{t(selected ? "agent.skillManager.selected" : "agent.skillManager.use")}</Button>
+                                            <Button type="text" size="small" disabled={!connected || !skill.enabled || Boolean(busySkill) || Boolean(generatingSource) || codexBusy} icon={selected ? <Check className="size-3.5" /> : <Sparkles className="size-3.5" />} onClick={() => useSkill(skill)}>{t(selected ? "agent.skillManager.selected" : "agent.skillManager.use")}</Button>
                                             {skill.managed ? (
                                                 <>
-                                                    <Tooltip title={t("common.edit")}><Button type="text" shape="circle" size="small" aria-label={t("agent.skillManager.editNamed", { name: skill.interface?.displayName || skill.name })} disabled={!connected || Boolean(busySkill) || Boolean(generatingSource)} icon={<FilePenLine className="size-3.5" />} onClick={() => void openEdit(skill)} /></Tooltip>
-                                                    <Tooltip title={t("common.delete")}><Button danger type="text" shape="circle" size="small" aria-label={t("agent.skillManager.deleteNamed", { name: skill.interface?.displayName || skill.name })} disabled={!connected || Boolean(busySkill) || Boolean(generatingSource)} icon={<Trash2 className="size-3.5" />} onClick={() => confirmDelete(skill)} /></Tooltip>
+                                                    <Tooltip title={t("common.edit")}><Button type="text" shape="circle" size="small" aria-label={t("agent.skillManager.editNamed", { name: skill.interface?.displayName || skill.name })} disabled={!connected || Boolean(busySkill) || Boolean(generatingSource) || codexBusy} icon={<FilePenLine className="size-3.5" />} onClick={() => void openEdit(skill)} /></Tooltip>
+                                                    <Tooltip title={t("common.delete")}><Button danger type="text" shape="circle" size="small" aria-label={t("agent.skillManager.deleteNamed", { name: skill.interface?.displayName || skill.name })} disabled={!connected || Boolean(busySkill) || Boolean(generatingSource) || codexBusy} icon={<Trash2 className="size-3.5" />} onClick={() => confirmDelete(skill)} /></Tooltip>
                                                 </>
                                             ) : null}
                                         </div>

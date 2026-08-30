@@ -17,7 +17,7 @@ import { uploadImage } from "@/services/image-storage";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { useAgentSkillStore } from "@/stores/use-agent-skill-store";
 import { useShallow } from "zustand/react/shallow";
-import { useAgentStore, type AgentAttachment, type AgentBootstrapStatus, type AgentCanvasContext, type AgentCanvasReference, type AgentChatItem, type AgentConversationState, type AgentModel, type AgentPendingApproval, type AgentPendingToolCall, type AgentPermissionMode, type AgentReasoningEffort, type AgentThreadSummary } from "@/stores/use-agent-store";
+import { useAgentStore, type AgentAttachment, type AgentCanvasContext, type AgentCanvasReference, type AgentChatItem, type AgentConversationState, type AgentModel, type AgentPendingApproval, type AgentPendingToolCall, type AgentPermissionMode, type AgentReasoningEffort, type AgentThreadSummary } from "@/stores/use-agent-store";
 import { type CanvasAgentOp, type CanvasAgentSnapshot } from "@/lib/canvas/canvas-agent-ops";
 import { isSiteTool, runSiteTool } from "@/lib/agent/agent-site-tools";
 import { acknowledgeCodexHistory, activateAgentClient, AgentApiError, discoverAgentConfig, fetchAgentJson, interruptCodexTurn, postCodexApproval, postState, postToolResult } from "@/services/api/canvas-agent";
@@ -44,9 +44,7 @@ import {
     isConnectionErrorMessage,
     isCurrentThreadEvent,
     isReasoningSummary,
-    mergeAgentMessages,
     mergeStreamText,
-    normalizeHistoryMessages,
     normalizeText,
     parseEventData,
     promptWithAttachments,
@@ -64,6 +62,9 @@ import {
 import { AgentHistoryView } from "./agent-history-view";
 import { AgentLogView } from "./agent-log-view";
 import { AgentPanelTabs } from "./agent-panel-tabs";
+import { generatedImageSources } from "./agent-generated-image-sources";
+import { buildAgentBootstrapView } from "./agent-bootstrap-view";
+import { applyAgentThreadSnapshot, type AgentThreadSnapshot } from "./agent-thread-snapshot";
 import { AgentSkillsView } from "./agent-skills-view";
 
 const MAX_ATTACHMENTS = 6;
@@ -78,7 +79,7 @@ const rt = (key: string, options?: Record<string, unknown>) => i18n.t(`agent.run
 
 type AgentWorkspace = { workspacePath: string; activeThreadId?: string };
 type AgentThreadsResponse = { ok?: boolean; workspace?: AgentWorkspace; conversation?: AgentConversationState; data?: AgentThreadSummary[] };
-type AgentThreadResponse = { ok?: boolean; workspace?: AgentWorkspace; conversation?: AgentConversationState; thread?: AgentThreadSummary; messages?: AgentChatItem[]; settledTurnIds?: string[]; historyReady?: boolean };
+type AgentThreadResponse = AgentThreadSnapshot & { ok?: boolean; workspace?: AgentWorkspace; conversation?: AgentConversationState; thread?: AgentThreadSummary };
 type AgentWorkspaceResponse = { ok?: boolean; workspace?: AgentWorkspace; conversation?: AgentConversationState };
 type AgentTurnResponse = { ok?: boolean; threadId?: string };
 type AgentModelsResponse = { ok?: boolean; data?: AgentModel[] };
@@ -89,37 +90,8 @@ type AgentChatEvent = { threadId?: string; turnId?: string; sourceClientId?: str
 type AgentBootstrapEvent = { type?: "codex.preparing" | "codex.prepare_failed" | "mcp.startup" | "mcp.complete"; phase?: "preheat" | "runtime"; threadId?: string; name?: string; status?: "starting" | "ready" | "failed" | "cancelled"; error?: string | null; failureReason?: string | null };
 type AgentClientGlobal = typeof globalThis & { __infiniteCanvasAgentClientIdPromise?: Promise<string> };
 
-function authoritativeHistoryTurnKeys(threadId: string, settledTurnIds: string[]) {
-    return new Set(settledTurnIds.map((turnId) => `${threadId}\0${turnId}`));
-}
-
 function agentErrorState(error: unknown) {
     return error instanceof AgentApiError ? (error.response as { state?: AgentConversationState }).state : undefined;
-}
-
-function conversationBootstrapView(conversation: AgentConversationState) {
-    const mcpStartupStatuses: Record<string, AgentBootstrapStatus> = Object.fromEntries(Object.entries(conversation.mcpStatuses).map(([name, item]) => {
-        const view: AgentBootstrapStatus = item.status === "starting"
-            ? { key: `mcp:${name}:starting`, text: rt("mcpStarting", { name }), detail: rt("mcpConnecting"), status: "running" }
-            : item.status === "ready"
-                ? { key: `mcp:${name}:ready`, text: rt("mcpReadyNamed", { name }), detail: rt("toolsReady"), status: "ready" }
-                : { key: `mcp:${name}:${item.status}`, text: rt(item.status === "failed" ? "mcpFailedNamed" : "mcpCanceledNamed", { name }), detail: item.error || rt("toolInitFailed"), status: "error" };
-        return [name, view];
-    }));
-    const services = Object.values(mcpStartupStatuses);
-    const pending = services.filter((item) => item.status === "running").length;
-    const bootstrapStatus: AgentBootstrapStatus | null = conversation.status === "idle" || conversation.status === "preparing"
-        ? services.length
-            ? { key: "mcp:starting", text: rt("mcpServicesStarting"), detail: pending ? rt("toolServicesPending", { count: pending }) : rt("checkingToolServices"), status: "running" }
-            : { key: "codex:preparing", text: rt("conversationInitializing"), detail: rt("conversationCreating"), status: "running" }
-        : conversation.status === "warning"
-            ? { key: "mcp:warning", text: rt("someMcpFailed"), detail: rt("remainingToolsReady"), status: "error" }
-            : conversation.status === "failed"
-                ? { key: "codex:prepare_failed", text: rt("conversationInitFailed"), detail: conversation.error || rt("conversationCreateFailed"), status: "error" }
-                : conversation.status === "ready"
-                    ? { key: "mcp:ready", text: rt("mcpServicesReady", { count: services.length }), detail: rt("toolsReady"), status: "ready" }
-                    : null;
-    return { bootstrapStatus, mcpStartupStatuses };
 }
 
 export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?: boolean; headless?: boolean; autoConnect?: boolean }) {
@@ -214,20 +186,15 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
                 thread = undefined;
                 continue;
             }
-            const history = normalizeHistoryMessages(thread.messages || []);
             const latest = useAgentStore.getState();
             if (sequence !== loadThreadsSequenceRef.current || latest.activeThreadId !== threadId) return false;
-            const historyTurns = authoritativeHistoryTurnKeys(threadId, thread.settledTurnIds || []);
-            const hasExpectedTurn = !expectedTurnId || historyTurns.has(`${threadId}\0${expectedTurnId}`);
-            historyTurns.forEach((key) => liveTurnKeysRef.current.delete(key));
-            if (latest.activeTurnId) liveTurnKeysRef.current.add(`${threadId}\0${latest.activeTurnId}`);
-            authoritativeHistoryTurnsRef.current = historyTurns;
-            const messages = mergeAgentMessages(history, latest.messages, threadId, liveTurnKeysRef.current);
-            threadMessagesRef.current.set(threadId, messages);
-            setAgentState({ messages, connectError: "" });
-            const coveredTurnIds = [...historyTurns].map((key) => key.slice(threadId.length + 1));
-            if (coveredTurnIds.length) void acknowledgeCodexHistory(endpoint, token, threadId, coveredTurnIds).catch(() => undefined);
-            if (hasExpectedTurn && (thread.historyReady !== false || Boolean(expectedTurnId))) return true;
+            const snapshot = applyAgentThreadSnapshot({ threadId, snapshot: thread, currentMessages: latest.messages, activeTurnId: latest.activeTurnId, liveTurnKeys: liveTurnKeysRef.current, expectedTurnId });
+            liveTurnKeysRef.current = snapshot.liveTurnKeys;
+            authoritativeHistoryTurnsRef.current = snapshot.historyTurns;
+            threadMessagesRef.current.set(threadId, snapshot.messages);
+            setAgentState({ messages: snapshot.messages, connectError: "" });
+            if (snapshot.coveredTurnIds.length) void acknowledgeCodexHistory(endpoint, token, threadId, snapshot.coveredTurnIds).catch(() => undefined);
+            if (snapshot.accepted) return true;
             thread = undefined;
         }
         if (lastError) throw lastError;
@@ -283,7 +250,7 @@ export function LocalAgentPanel({ embedded, headless, autoConnect }: { embedded?
                 sourceClientId: next.sourceClientId,
             });
         }
-        setAgentState({ conversation: next, ...conversationBootstrapView(next) });
+        setAgentState({ conversation: next, ...buildAgentBootstrapView(next, rt) });
         return true;
     }, [applyWorkspaceChange, setAgentState]);
     const loadThreads = useCallback(async (skipHistory = false, expectedTurnId = "") => {
@@ -1556,16 +1523,6 @@ async function importGeneratedImages(endpoint: string, token: string, item: Agen
             return { upload, name, attachment: { id: createId(), name, type: blob.type || upload.mimeType, size: blob.size, width: upload.width, height: upload.height, url: upload.url, dataUrl } };
         }),
     );
-}
-
-function generatedImageSources(value: unknown, result = new Set<string>()) {
-    if (typeof value === "string") {
-        if (value.startsWith("data:image/") || (/^(?:[A-Za-z]:[\\/]|\/).+\.(?:avif|gif|jpe?g|png|webp)$/i.test(value) && !value.includes("\n"))) result.add(value);
-        return result;
-    }
-    if (Array.isArray(value)) value.forEach((item) => generatedImageSources(item, result));
-    else if (value && typeof value === "object") Object.values(value).forEach((item) => generatedImageSources(item, result));
-    return result;
 }
 
 function readDataUrl(file: Blob) {

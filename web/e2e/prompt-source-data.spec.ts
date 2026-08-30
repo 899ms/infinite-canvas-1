@@ -49,6 +49,46 @@ test("默认来源可独立启用，并支持来源和标签筛选", async ({ pa
     await expect(page.getByText("当前共 5 条提示词", { exact: true })).toBeVisible();
 });
 
+test("迁移后的 Freestylefly 来源仍可拉取并按来源筛选", async ({ page }) => {
+    const legacyUrl = "https://raw.githubusercontent.com/yukkcat/image-prompts/main/dist/sources/freestylefly-gpt-image-2.json";
+    let requested = false;
+    await page.addInitScript(
+        ({ legacyUrl, defaults }) => {
+            localStorage.setItem(
+                "infinite-canvas:prompt_source_store_v2",
+                JSON.stringify({
+                    state: {
+                        sources: [
+                            ...defaults.map((source: { id: string; name: string }) => ({ ...source, url: `https://raw.githubusercontent.com/yukkcat/image-prompts/main/dist/sources/${source.id}.json`, homepage: "", enabled: false, builtIn: true })),
+                            { id: "freestylefly-gpt-image-2", name: "Freestylefly GPT Image 2", url: legacyUrl, homepage: "https://github.com/freestylefly/awesome-gpt-image-2", enabled: true, builtIn: true },
+                        ],
+                        schedule: { intervalMinutes: 0, lastFetchedAt: "" },
+                    },
+                    version: 0,
+                }),
+            );
+        },
+        { legacyUrl, defaults: defaultSources },
+    );
+    await page.route(legacyUrl, async (route) => {
+        requested = true;
+        await route.fulfill({
+            contentType: "application/json",
+            body: JSON.stringify([sourcePrompt("Freestylefly 隔离提示词")]),
+        });
+    });
+
+    await page.goto("/prompts");
+    await expect(page.getByText("当前共 1 条提示词", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Freestylefly GPT Image 2", exact: true }).click();
+    await expect(page.getByText("Freestylefly 隔离提示词", { exact: true })).toBeVisible();
+    expect(requested).toBe(true);
+
+    await page.goto("/config");
+    await page.getByRole("tab", { name: "提示词来源" }).click();
+    await expect(page.getByRole("switch", { name: "Freestylefly GPT Image 2 · 启用来源" })).toBeChecked();
+});
+
 test("自定义 JSON 来源的非数组或不可访问刷新会显示失败并保留旧缓存", async ({ page }) => {
     let failureMode: "invalid" | "offline" | null = null;
     await mountCustomSources(page);

@@ -62,6 +62,16 @@ test("Agent 对话可暂停跟随并返回最新消息", async ({ page }) => {
     await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBe(0);
     const latestButton = page.getByRole("button", { name: "查看最新消息" });
     await expect(latestButton).toBeVisible();
+    const scrollButtonLayout = await latestButton.evaluate((button) => {
+        const parent = button.parentElement?.getBoundingClientRect();
+        const rect = button.getBoundingClientRect();
+        const style = window.getComputedStyle(button);
+        return { width: rect.width, height: rect.height, centerOffset: parent ? rect.left - parent.left + rect.width / 2 - parent.width / 2 : Number.NaN, position: style.position };
+    });
+    expect(scrollButtonLayout.width).toBeCloseTo(32, 0);
+    expect(scrollButtonLayout.height).toBeCloseTo(32, 0);
+    expect(scrollButtonLayout.centerOffset).toBeCloseTo(0, 0);
+    expect(scrollButtonLayout.position).toBe("absolute");
 
     await page.evaluate(async () => {
         const { useAgentStore } = await import("/src/stores/use-agent-store.ts");
@@ -72,6 +82,26 @@ test("Agent 对话可暂停跟随并返回最新消息", async ({ page }) => {
     await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBe(0);
 
     await latestButton.click();
+    await expect.poll(() => list.evaluate((element) => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeLessThanOrEqual(2);
+    await expect(latestButton).toHaveCount(0);
+    await expect
+        .poll(() =>
+            list.evaluate((element) => {
+                const content = element.firstElementChild;
+                const last = content?.lastElementChild;
+                if (!content || !last) return Number.POSITIVE_INFINITY;
+                return content.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom;
+            }),
+        )
+        .toBeLessThanOrEqual(1);
+
+    await list.evaluate((element) => {
+        element.scrollTop = 0;
+        element.dispatchEvent(new Event("scroll", { bubbles: true }));
+    });
+    await expect(latestButton).toBeVisible();
+    await page.getByRole("tab", { name: "日志" }).click();
+    await page.getByRole("tab", { name: "对话" }).click();
     await expect.poll(() => list.evaluate((element) => element.scrollHeight - element.scrollTop - element.clientHeight)).toBeLessThanOrEqual(2);
     await expect(latestButton).toHaveCount(0);
 });
