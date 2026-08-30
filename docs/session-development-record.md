@@ -2569,3 +2569,16 @@
 | `docs/session-development-record.md` | 修改 | 记录干净克隆发现、根因、修复范围和验证。 |
 
 验证记录：两次完整干净克隆序列先将失败定位为非规格内的 Escape 焦点时序；改用可见取消按钮后，失败快照显示 Ant Design 的实际可访问名称为“取 消”，故定位器改为匹配其中可变空白。修正后原工作树该专项 Chromium 文件 6/6、Web 单元测试 30 文件/83 项、类型与格式门禁通过。后续需在含本修复的新检查点干净克隆中再次执行完整浏览器回归。`pending-test` 双语主清单已包含该 Skill 草稿取消语义，因此无需增项。未执行 Docker/Compose、未部署、未访问或改动用户资产、日志、浏览器记录或 `web/src/lib/localforage-storage.ts`。
+
+## 198. 最终干净克隆复现（2026-08-30）
+
+在系统临时目录中，从 `codex/frameflow-roadmap` 创建无工作树改动的隔离克隆，冻结安装 Canvas Agent、Web 和 Docs 依赖；该克隆只包含检查点提交，不含原工作区的用户资产、浏览器记录、`localforage-storage.ts` 修改或运行配置。
+
+| 范围 | 结果 |
+| --- | --- |
+| Canvas Agent | `npm ci` 后 261/261 测试、TypeScript 生产构建和官方 npm registry 生产依赖审计均通过，0 个漏洞。 |
+| Web | `npm ci` 后 30 文件/83 项测试、类型、生产构建、CSP 静态安全头检查与格式基线检查通过。 |
+| Docs | `bun install --frozen-lockfile` 后内容检查（英文 25 项、中文与矩阵各 95 项）、类型、生产构建与官方 registry 的 `bun audit` 均通过，0 个漏洞。 |
+| Chromium | 在包含 `a990fa2` Skill 草稿取消回归修复的干净克隆中，`npm run test:e2e -- --workers=1` 为 108/108 通过。 |
+
+这证明本地开发检查点可在隔离干净环境安装、构建和验收；不代表外部部署已经发生。Docker/容器部署继续明确排除，未推送、未创建发布、版本号或 tag。原工作区仅保留用户明确不纳入本轮检查点的 `web/src/lib/localforage-storage.ts`、`99_PERCENT_ACCEPTANCE.md`、`artifacts/`、`canvas-agent/test-results/` 和 `design-qa.md`。
