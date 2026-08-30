@@ -261,6 +261,7 @@ export function AgentSkillsView({ clientId }: { clientId: string }) {
             },
         ],
         onClick: ({ key }) => {
+            setCreateMenuOpen(false);
             if (key === "manual") {
                 setDraft(null);
                 setEditor({ mode: "create" });

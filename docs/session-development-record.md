@@ -2556,3 +2556,16 @@
 | 后续文档提交 | 固化路线图、状态矩阵、威胁模型和本会话的复验/检查点记录。 |
 
 每个提交前均核对暂存差异、空白错误和受保护路径；`canvas-agent/test-results/`、`artifacts/`、`.playwright-cli/`、`99_PERCENT_ACCEPTANCE.md`、`design-qa.md` 与 `web/src/lib/localforage-storage.ts` 没有被暂存。Web 格式门禁现通过；它提示 6 个历史基线条目已被用户既有变更修复，但为遵守不触碰 `localforage-storage.ts` 的约束，本轮不改动基线清单。未推送、未创建发布、版本号或 tag，未运行 Docker/Compose。
+
+## 197. 干净克隆 Skill 草稿 Escape 回归修复（2026-08-30）
+
+在第 196 节三个检查点的隔离干净克隆中，Chromium 完整回归第 34 项失败：选择“从当前对话生成草稿”后，草稿编辑器显示，但 Escape 未关闭它。原因是受控的创建菜单在选择草稿来源后未被显式关闭，残留菜单遮罩可先截获 Escape。该问题与 Docker 或部署无关。
+
+| 文件 | 变更类型 | 关联与用途 |
+| --- | --- | --- |
+| `web/src/components/agent/agent-skills-view.tsx` | 修改 | 创建菜单的 `onClick` 首先关闭受控菜单，确保后续 Escape 由草稿编辑器 Modal 处理。 |
+| `web/e2e/agent-skill-management.spec.ts` | 既有回归 | 已有用例覆盖“取消草稿不写入 Skill”；无需新增重复测试。 |
+| `CHANGELOG.md` | 修改 | 在 Unreleased 记录用户可感知的取消交互修复。 |
+| `docs/session-development-record.md` | 修改 | 记录干净克隆发现、根因、修复范围和验证。 |
+
+验证记录：原工作树中该专项 Chromium 文件 6/6 通过，Web 单元测试 30 文件/83 项、类型与格式门禁通过；后续需在含本修复的新检查点干净克隆中再次执行完整浏览器回归。`pending-test` 双语主清单已包含该 Skill 草稿取消语义，因此无需增项。未执行 Docker/Compose、未部署、未访问或改动用户资产、日志、浏览器记录或 `web/src/lib/localforage-storage.ts`。
